@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  calidad:
+    name: Lint, tipos y pruebas (Python ${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          python-version: ${{ matrix.python }}
+
+      - name: Instalar dependencias desde uv.lock
+        run: uv sync --locked
+
+      - name: Formato
+        run: uv run ruff format --check .
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Tipos
+        run: uv run mypy app
+
+      - name: Pruebas con cobertura
+        run: uv run pytest --cov --cov-report=term
+
+      - name: requirements.txt sincronizado con uv.lock
+        if: matrix.python == '3.12'
+        run: |
+          uv export --frozen --no-dev --no-hashes --no-emit-project --no-header -o /tmp/requirements.txt
+          diff -u requirements.txt /tmp/requirements.txt || {
+            echo "::error::requirements.txt está desactualizado. Ejecutar: uv export --no-dev --no-hashes --no-emit-project --no-header -o requirements.txt"
+            exit 1
+          }
+
+  imagen:
+    name: Imagen Docker y prueba de humo
+    needs: calidad
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Construir la imagen
+        run: docker build -t chatbot-llm-rag:ci .
+
+      - name: Arrancar sin claves (modo demo) y esperar a que esté lista
+        run: |
+          docker run -d --name app -p 8000:8000 chatbot-llm-rag:ci
+          for intento in $(seq 1 60); do
+            if curl -fsS http://localhost:8000/api/health/ready; then
+              echo
+              curl -fsS -X POST http://localhost:8000/api/chat \
+                -H 'Content-Type: application/json' \
+                -d '{"mensaje":"¿cuánto cuesta el envío?","usuario_id":"ci","session_id":"ci"}'
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs app
+          exit 1

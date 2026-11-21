@@ -1,0 +1,10 @@
+# Finales de línea LF en el repositorio, aunque se edite en Windows
+* text=auto eol=lf
+
+# Binarios: sin conversión ni diffs de texto
+*.pdf binary
+*.png binary
+*.jpg binary
+*.gif binary
+*.mp4 binary
+*.npz binary

@@ -1,0 +1,178 @@
+{
+  "tienda": {
+    "nombre": "TechStore",
+    "descripcion": "Tienda de tecnología especializada en cómputo, periféricos y audio.",
+    "politicas": {
+      "envio": "Envío gratis en compras superiores a $200. Para compras menores, el costo es de $15. La entrega demora de 2 a 5 días hábiles.",
+      "devoluciones": "Se aceptan devoluciones dentro de los 15 días posteriores a la compra, con el empaque original, sin uso y con todos los accesorios. El reembolso se procesa en 5 a 7 días hábiles.",
+      "garantia": "Laptops y componentes tienen 1 año de garantía del fabricante; los periféricos, 6 meses. Cubre defectos de fábrica, no daños por mal uso.",
+      "pagos": "Se aceptan tarjeta de crédito/débito (card) y efectivo. Por ahora no hay financiamiento ni pagos en cuotas.",
+      "servicio_tecnico": "Diagnóstico gratuito, reparaciones con garantía y asesoría técnica. Citas al (555) 123-4567.",
+      "ubicacion": "Av. Tecnología 123, Centro Comercial Tech Plaza, Local 45. Lunes a viernes de 9:00 a 19:00; sábados de 10:00 a 18:00.",
+      "mayoreo": "Descuentos especiales en compras superiores a 10 unidades del mismo producto. Cotizaciones personalizadas.",
+      "ensamblado": "Servicio de armado de PC personalizada por $50, con los componentes que elija el cliente."
+    }
+  },
+  "productos": [
+    {
+      "codigo": "LAPTOP001",
+      "nombre": "Laptop Dell Inspiron 15",
+      "categoria": "laptop",
+      "precio": 899.99,
+      "specs": "Intel Core i7, 16 GB RAM, 512 GB SSD, pantalla 15.6\"",
+      "stock": 15
+    },
+    {
+      "codigo": "LAPTOP002",
+      "nombre": "Laptop HP Pavilion Gaming",
+      "categoria": "laptop",
+      "precio": 1299.99,
+      "specs": "AMD Ryzen 7, 16 GB RAM, 1 TB SSD, RTX 3050, pantalla 15.6\"",
+      "stock": 8
+    },
+    {
+      "codigo": "LAPTOP003",
+      "nombre": "MacBook Air M2",
+      "categoria": "laptop",
+      "precio": 1499.99,
+      "specs": "Apple M2, 8 GB RAM, 256 GB SSD, pantalla 13.6\"",
+      "stock": 12
+    },
+    {
+      "codigo": "MONITOR001",
+      "nombre": "Monitor LG UltraWide 29 pulgadas",
+      "categoria": "monitor",
+      "precio": 349.99,
+      "specs": "2560x1080, IPS, 75 Hz, HDMI/DisplayPort",
+      "stock": 20
+    },
+    {
+      "codigo": "MONITOR002",
+      "nombre": "Monitor Samsung Gaming 27 pulgadas",
+      "categoria": "monitor",
+      "precio": 279.99,
+      "specs": "1920x1080, VA, 144 Hz, FreeSync",
+      "stock": 18
+    },
+    {
+      "codigo": "KEYBOARD001",
+      "nombre": "Teclado Mecánico Logitech G Pro",
+      "categoria": "teclado",
+      "precio": 129.99,
+      "specs": "Switches GX Blue, RGB, TKL",
+      "stock": 25
+    },
+    {
+      "codigo": "KEYBOARD002",
+      "nombre": "Teclado Corsair K95 RGB",
+      "categoria": "teclado",
+      "precio": 199.99,
+      "specs": "Switches Cherry MX, RGB, teclas macro",
+      "stock": 10
+    },
+    {
+      "codigo": "MOUSE001",
+      "nombre": "Mouse Logitech MX Master 3",
+      "categoria": "mouse",
+      "precio": 99.99,
+      "specs": "Inalámbrico, 7 botones programables, 4000 DPI",
+      "stock": 30
+    },
+    {
+      "codigo": "MOUSE002",
+      "nombre": "Mouse Razer DeathAdder V3",
+      "categoria": "mouse",
+      "precio": 69.99,
+      "specs": "Gaming, 8 botones, 30000 DPI, RGB",
+      "stock": 22
+    },
+    {
+      "codigo": "GPU001",
+      "nombre": "Tarjeta gráfica NVIDIA RTX 4070 Ti",
+      "categoria": "componente",
+      "precio": 799.99,
+      "specs": "12 GB GDDR6X, PCIe 4.0",
+      "stock": 5
+    },
+    {
+      "codigo": "GPU002",
+      "nombre": "Tarjeta gráfica AMD Radeon RX 7800 XT",
+      "categoria": "componente",
+      "precio": 649.99,
+      "specs": "16 GB GDDR6, PCIe 4.0",
+      "stock": 7
+    },
+    {
+      "codigo": "RAM001",
+      "nombre": "Memoria RAM Corsair Vengeance 32 GB",
+      "categoria": "componente",
+      "precio": 119.99,
+      "specs": "DDR4 3200 MHz, 2x16 GB, RGB",
+      "stock": 40
+    },
+    {
+      "codigo": "SSD001",
+      "nombre": "SSD Samsung 980 PRO 1 TB",
+      "categoria": "almacenamiento",
+      "precio": 149.99,
+      "specs": "NVMe M.2, 7000 MB/s de lectura",
+      "stock": 35
+    },
+    {
+      "codigo": "SSD002",
+      "nombre": "SSD Kingston NV2 500 GB",
+      "categoria": "almacenamiento",
+      "precio": 49.99,
+      "specs": "NVMe M.2, 3500 MB/s de lectura",
+      "stock": 50
+    },
+    {
+      "codigo": "WEBCAM001",
+      "nombre": "Webcam Logitech C920",
+      "categoria": "webcam",
+      "precio": 79.99,
+      "specs": "1080p, 30 fps, micrófono estéreo",
+      "stock": 28
+    },
+    {
+      "codigo": "HEADSET001",
+      "nombre": "Audífonos HyperX Cloud II",
+      "categoria": "auriculares",
+      "precio": 99.99,
+      "specs": "Sonido 7.1, micrófono desmontable, USB",
+      "stock": 15
+    },
+    {
+      "codigo": "HEADSET002",
+      "nombre": "Audífonos Sony WH-1000XM5",
+      "categoria": "auriculares",
+      "precio": 399.99,
+      "specs": "Bluetooth, cancelación de ruido, 30 h de batería",
+      "stock": 10
+    },
+    {
+      "codigo": "ROUTER001",
+      "nombre": "Router TP-Link AX3000",
+      "categoria": "redes",
+      "precio": 129.99,
+      "specs": "WiFi 6, doble banda, 4 antenas",
+      "stock": 20
+    },
+    {
+      "codigo": "UPS001",
+      "nombre": "UPS APC 1500VA",
+      "categoria": "energia",
+      "precio": 249.99,
+      "specs": "900 W, 8 tomas, protección contra picos",
+      "stock": 12
+    },
+    {
+      "codigo": "CHAIR001",
+      "nombre": "Silla Gamer Secretlab Titan",
+      "categoria": "mobiliario",
+      "precio": 449.99,
+      "specs": "Cuero PU, reclinable, soporte lumbar",
+      "stock": 6
+    }
+  ]
+}

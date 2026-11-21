@@ -1,0 +1,216 @@
+{
+  "tienda": "TechStore",
+  "config": {
+    "umbral_faq": 0.55,
+    "umbral_contexto": 0.25,
+    "margen": 0.03,
+    "top_k": 3
+  },
+  "temas_criticos": [
+    "paga",
+    "pago",
+    "tarjeta",
+    "efectivo",
+    "financi",
+    "cuota",
+    "credito",
+    "interes",
+    "tasa",
+    "envio",
+    "envi",
+    "entrega",
+    "domicilio",
+    "delivery",
+    "mandar",
+    "pedido",
+    "garantia",
+    "devolv",
+    "reembolso",
+    "cambi",
+    "servicio tecnico",
+    "soporte",
+    "repar",
+    "mayoreo",
+    "mayorista",
+    "por mayor",
+    "corporativo",
+    "volumen",
+    "personaliz",
+    "ensambl",
+    "ubic",
+    "horario",
+    "direccion",
+    "reclam",
+    "factura",
+    "legal",
+    "regulatorio",
+    "multa",
+    "impuesto",
+    "fraude",
+    "prestamo",
+    "banco",
+    "abogado",
+    "demanda"
+  ],
+  "faqs": [
+    {
+      "id": "FAQ-001",
+      "categoria": "pagos",
+      "critico": true,
+      "pregunta": "¿Cuáles son los métodos de pago disponibles?",
+      "variaciones": [
+        "¿cómo puedo pagar?",
+        "¿qué formas de pago aceptan?",
+        "métodos de pago",
+        "¿aceptan tarjeta?",
+        "¿puedo pagar en efectivo?",
+        "¿se puede pagar con tarjeta de crédito?",
+        "formas de pago disponibles",
+        "¿aceptan transferencia?"
+      ],
+      "respuesta": "Aceptamos dos métodos de pago: tarjeta de crédito/débito (card) y efectivo. Para pagos con tarjeta, procesamos la transacción de forma segura. Para efectivo, coordinamos la entrega contra pago. No contamos con financiamiento ni pagos en cuotas."
+    },
+    {
+      "id": "FAQ-002",
+      "categoria": "envios",
+      "critico": true,
+      "pregunta": "¿Hacen envíos a domicilio?",
+      "variaciones": [
+        "¿entregan a domicilio?",
+        "¿tienen delivery?",
+        "envío a casa",
+        "¿cómo es la entrega?",
+        "¿cuánto cuesta el envío?",
+        "¿en cuánto tiempo llega mi pedido?",
+        "¿el envío es gratis?",
+        "política de envíos"
+      ],
+      "respuesta": "Sí, hacemos envíos a domicilio en toda la ciudad. El envío es gratis para compras superiores a $200. Para compras menores, el costo de envío es de $15. El tiempo de entrega es de 2 a 5 días hábiles."
+    },
+    {
+      "id": "FAQ-003",
+      "categoria": "garantia",
+      "critico": true,
+      "pregunta": "¿Tienen garantía los productos?",
+      "variaciones": [
+        "¿dan garantía?",
+        "garantía de productos",
+        "¿qué garantía tienen?",
+        "¿cuánto dura la garantía?",
+        "política de garantía",
+        "¿cubren fallas de fábrica?",
+        "mi producto falló, ¿aplica garantía?"
+      ],
+      "respuesta": "Todos nuestros productos tienen garantía. Laptops y componentes tienen 1 año de garantía del fabricante. Periféricos tienen 6 meses. Cubrimos defectos de fábrica, no daños por mal uso."
+    },
+    {
+      "id": "FAQ-004",
+      "categoria": "devoluciones",
+      "critico": true,
+      "pregunta": "¿Puedo devolver un producto?",
+      "variaciones": [
+        "política de devoluciones",
+        "¿aceptan devoluciones?",
+        "quiero devolver un producto",
+        "¿puedo cambiar un producto?",
+        "devolución de productos",
+        "¿me devuelven el dinero?",
+        "¿cómo hago una devolución?"
+      ],
+      "respuesta": "Aceptamos devoluciones dentro de los primeros 15 días después de la compra, siempre que el producto esté en su empaque original, sin uso y con todos sus accesorios. Procesamos el reembolso en 5 a 7 días hábiles."
+    },
+    {
+      "id": "FAQ-005",
+      "categoria": "tienda",
+      "critico": true,
+      "pregunta": "¿Tienen tienda física?",
+      "variaciones": [
+        "¿dónde están ubicados?",
+        "dirección de la tienda",
+        "¿puedo visitar la tienda?",
+        "ubicación física",
+        "¿tienen local?",
+        "¿cuál es el horario de atención?",
+        "¿cómo llego a la tienda?"
+      ],
+      "respuesta": "Sí, contamos con una tienda física ubicada en Av. Tecnología 123, Centro Comercial Tech Plaza, Local 45. Horario: lunes a viernes de 9:00 a 19:00; sábados de 10:00 a 18:00."
+    },
+    {
+      "id": "FAQ-006",
+      "categoria": "stock",
+      "critico": true,
+      "pregunta": "¿Tienen productos en stock?",
+      "variaciones": [
+        "¿hay disponibilidad?",
+        "¿tienen existencias?",
+        "stock de productos",
+        "¿cuándo llega stock?",
+        "productos disponibles",
+        "¿está disponible la laptop Dell?",
+        "¿tienen el mouse Logitech en stock?"
+      ],
+      "respuesta": "Mantenemos stock de la mayoría de nuestros productos. Para verificar la disponibilidad de un producto específico, indícanos cuál te interesa y te confirmamos las unidades disponibles en tiempo real."
+    },
+    {
+      "id": "FAQ-007",
+      "categoria": "soporte",
+      "critico": true,
+      "pregunta": "¿Ofrecen servicio técnico?",
+      "variaciones": [
+        "¿tienen soporte técnico?",
+        "servicio de reparación",
+        "¿reparan computadoras?",
+        "soporte post-venta",
+        "asistencia técnica",
+        "¿dónde reparan laptops?",
+        "necesito reparar mi laptop"
+      ],
+      "respuesta": "Sí, ofrecemos servicio técnico para todos los productos que vendemos. Incluye diagnóstico gratuito, reparaciones con garantía y asesoría técnica. Puedes agendar una cita llamando al (555) 123-4567."
+    },
+    {
+      "id": "FAQ-008",
+      "categoria": "ventas",
+      "critico": true,
+      "pregunta": "¿Venden al por mayor?",
+      "variaciones": [
+        "¿hacen ventas corporativas?",
+        "compras al mayoreo",
+        "¿tienen descuentos por volumen?",
+        "ventas empresariales",
+        "precios para empresas",
+        "¿hay descuento por comprar muchas unidades?"
+      ],
+      "respuesta": "Sí, manejamos ventas al por mayor y corporativas. Para compras superiores a 10 unidades del mismo producto ofrecemos descuentos especiales. Contáctanos para cotizaciones personalizadas."
+    },
+    {
+      "id": "FAQ-009",
+      "categoria": "servicios",
+      "critico": true,
+      "pregunta": "¿Puedo armar una PC personalizada?",
+      "variaciones": [
+        "¿arman computadoras?",
+        "PC a medida",
+        "ensamblado de PC",
+        "¿puedo elegir componentes?",
+        "armado personalizado",
+        "¿me arman una computadora?"
+      ],
+      "respuesta": "¡Por supuesto! Ofrecemos servicio de ensamblado de PC personalizada. Puedes elegir todos los componentes (procesador, tarjeta gráfica, RAM, almacenamiento, etc.) y nosotros armamos tu PC. El servicio de ensamblado tiene un costo de $50."
+    },
+    {
+      "id": "FAQ-010",
+      "categoria": "financiamiento",
+      "critico": true,
+      "pregunta": "¿Tienen financiamiento?",
+      "variaciones": [
+        "¿dan crédito?",
+        "pago en cuotas",
+        "¿puedo pagar a meses?",
+        "planes de financiamiento",
+        "¿aceptan pagos diferidos?",
+        "¿tienen meses sin intereses?"
+      ],
+      "respuesta": "Actualmente solo aceptamos pagos de contado con tarjeta o efectivo. No contamos con planes de financiamiento o pagos en cuotas por el momento."
+    }
+  ]
+}

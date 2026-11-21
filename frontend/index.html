@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="Asistente de TechStore: catálogo, pedidos, pagos y políticas de la tienda.">
+  <title>TechStore · Asistente</title>
+  <link rel="stylesheet" href="css/estilos.css">
+  <script type="module" src="js/main.js"></script>
+</head>
+<body>
+  <a class="saltar" href="#entrada">Ir al campo de mensaje</a>
+
+  <header class="cabecera">
+    <h1 class="marca">TechStore <span class="marca-sub">· Asistente</span></h1>
+    <div class="estado">
+      <span class="estado-indicador" id="estado-indicador" data-estado="cargando" role="status">Conectando…</span>
+      <ul class="estado-meta" id="estado-meta" aria-label="Estado del servicio"></ul>
+    </div>
+  </header>
+
+  <main class="disposicion">
+    <!-- Columna 1: conversación -->
+    <section class="chat" aria-labelledby="titulo-chat">
+      <h2 class="solo-lectores" id="titulo-chat">Conversación</h2>
+      <div class="hilo" id="hilo" role="log" aria-live="polite" aria-relevant="additions"
+           aria-label="Mensajes de la conversación" tabindex="0"></div>
+
+      <form class="compositor" id="formulario" autocomplete="off">
+        <label class="solo-lectores" for="entrada">Mensaje para el asistente</label>
+        <textarea class="compositor-entrada" id="entrada" name="mensaje" rows="1"
+                  placeholder="Ej.: ¿tienen laptops? · quiero 2 Dell · ¿cuánto dura la garantía?"
+                  aria-describedby="ayuda-entrada" enterkeyhint="send"></textarea>
+        <button class="boton compositor-boton" id="enviar" type="submit">Enviar</button>
+        <p class="ayuda compositor-ayuda" id="ayuda-entrada">Enter envía · Shift+Enter agrega un salto de línea</p>
+      </form>
+    </section>
+
+    <!-- Columna 2: cliente, pedidos y catálogo -->
+    <aside class="panel" aria-label="Cliente, pedidos y catálogo">
+      <section class="bloque" aria-labelledby="titulo-cliente">
+        <h2 class="bloque-titulo" id="titulo-cliente">Cliente</h2>
+        <label class="etiqueta" for="usuario">ID del cliente</label>
+        <input class="campo" id="usuario" type="text" value="cliente-01"
+               autocomplete="off" autocapitalize="off" spellcheck="false" aria-describedby="ayuda-usuario">
+        <p class="ayuda" id="ayuda-usuario">También identifica la sesión de la conversación.</p>
+        <div class="acciones">
+          <button class="boton suave" id="recargar" type="button">Recargar</button>
+          <button class="boton suave" id="borrar" type="button">Borrar conversación</button>
+        </div>
+      </section>
+
+      <section class="bloque" aria-labelledby="titulo-pedidos">
+        <h2 class="bloque-titulo" id="titulo-pedidos">Pedidos</h2>
+        <div id="pedidos"><p class="vacio">Cargando pedidos…</p></div>
+      </section>
+
+      <section class="bloque" aria-labelledby="titulo-catalogo">
+        <h2 class="bloque-titulo" id="titulo-catalogo">Catálogo</h2>
+        <label class="solo-lectores" for="buscar-catalogo">Buscar en el catálogo</label>
+        <input class="campo" id="buscar-catalogo" type="search" placeholder="Buscar producto…"
+               autocomplete="off" aria-describedby="catalogo-resumen">
+        <p class="ayuda" id="catalogo-resumen" aria-live="polite"></p>
+        <div id="catalogo"><p class="vacio">Cargando catálogo…</p></div>
+      </section>
+    </aside>
+
+    <!-- Columna 3: logs en vivo -->
+    <section class="logs" id="panel-logs" aria-labelledby="titulo-logs">
+      <div class="barra">
+        <h2 class="bloque-titulo" id="titulo-logs">Log del turno</h2>
+        <span class="en-vivo" id="en-vivo" data-activo="true">en vivo</span>
+        <label class="solo-lectores" for="nivel">Nivel mínimo de los eventos</label>
+        <select class="campo campo-compacto" id="nivel">
+          <option value="">Todos</option>
+          <option value="INFO">INFO+</option>
+          <option value="WARN">WARN+</option>
+          <option value="ERROR">ERROR</option>
+        </select>
+        <button class="boton suave" id="auto" type="button">Pausar</button>
+      </div>
+
+      <div class="filtro-turno" id="filtro-turno" hidden>
+        <span>Turno <code id="filtro-turno-id"></code></span>
+        <button class="boton suave" id="limpiar" type="button">Quitar filtro</button>
+      </div>
+
+      <ol class="eventos" id="logs" tabindex="0"
+          aria-label="Eventos recientes, del más antiguo al más nuevo"></ol>
+
+      <form class="token" id="form-token" hidden>
+        <p class="token-texto">Este servidor protege los logs y las métricas con un token de administración.
+          Se guarda solo en este navegador.</p>
+        <label class="etiqueta" for="token-admin">Token de administración</label>
+        <div class="token-fila">
+          <input class="campo" id="token-admin" type="password" autocomplete="off" spellcheck="false">
+          <button class="boton" type="submit">Guardar</button>
+        </div>
+        <p class="token-error" id="token-error" role="alert" hidden></p>
+      </form>
+
+      <footer class="pie-logs">
+        <p class="metricas" id="metricas">Métricas…</p>
+        <p class="estado-logs" id="estado-logs"></p>
+        <button class="enlace" id="olvidar-token" type="button" hidden>Olvidar token de administración</button>
+      </footer>
+    </section>
+  </main>
+</body>
+</html>

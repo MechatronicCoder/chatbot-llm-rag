@@ -1,0 +1,146 @@
+# Despliegue continuo en Azure Container Apps.
+#
+# Corre cuando el workflow "CI" termina con éxito en main (o a mano). Construye la
+# imagen en el runner, la sube al registro con la identidad federada (OIDC, sin
+# contraseñas guardadas), actualiza la Container App y verifica /api/health/ready.
+#
+# Variables de repositorio necesarias (Settings > Secrets and variables > Actions >
+# Variables): AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID,
+# AZURE_RESOURCE_GROUP, ACR_NOMBRE, CONTAINERAPP_NOMBRE.
+# Mientras AZURE_CLIENT_ID esté vacía, el job se omite en vez de fallar.
+
+name: CD
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+# Un solo despliegue a la vez; el siguiente espera en cola en lugar de cancelar al actual.
+concurrency:
+  group: cd-produccion
+  cancel-in-progress: false
+
+jobs:
+  desplegar:
+    name: Desplegar en Azure Container Apps
+    # workflow_run: solo si CI pasó en un push del propio repositorio (nunca código de un fork).
+    if: >-
+      vars.AZURE_CLIENT_ID != '' &&
+      (github.event_name == 'workflow_dispatch' ||
+        (github.event.workflow_run.conclusion == 'success' &&
+         github.event.workflow_run.event == 'push' &&
+         github.event.workflow_run.head_repository.full_name == github.repository))
+    runs-on: ubuntu-latest
+    environment: produccion
+    timeout-minutes: 30
+    env:
+      COMMIT_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+      IMAGEN_NOMBRE: chatbot-llm-rag
+      GRUPO: ${{ vars.AZURE_RESOURCE_GROUP }}
+      ACR_NOMBRE: ${{ vars.ACR_NOMBRE }}
+      APP_NOMBRE: ${{ vars.CONTAINERAPP_NOMBRE }}
+
+    steps:
+      - name: Obtener el commit que pasó CI
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.COMMIT_SHA }}
+          persist-credentials: false
+
+      - name: Validar variables de despliegue
+        run: |
+          faltan=""
+          for nombre in GRUPO ACR_NOMBRE APP_NOMBRE; do
+            if [ -z "${!nombre}" ]; then faltan="$faltan $nombre"; fi
+          done
+          if [ -n "$faltan" ]; then
+            echo "::error::Faltan variables de repositorio para:$faltan (AZURE_RESOURCE_GROUP, ACR_NOMBRE, CONTAINERAPP_NOMBRE)."
+            exit 1
+          fi
+
+      - name: Iniciar sesión en Azure (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Preparar Azure CLI
+        run: |
+          az extension add --name containerapp --upgrade --yes --only-show-errors
+          REGISTRO=$(az acr show --name "$ACR_NOMBRE" --resource-group "$GRUPO" --query loginServer -o tsv)
+          echo "REGISTRO=$REGISTRO" >> "$GITHUB_ENV"
+          echo "IMAGEN=$REGISTRO/$IMAGEN_NOMBRE:$COMMIT_SHA" >> "$GITHUB_ENV"
+
+      # Se construye en el runner y no con "az acr build": ACR Tasks puede no estar
+      # disponible en suscripciones de prueba gratuita.
+      - name: Construir la imagen
+        run: |
+          docker build \
+            --pull \
+            --platform linux/amd64 \
+            --label "org.opencontainers.image.revision=$COMMIT_SHA" \
+            --label "org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}" \
+            --tag "$IMAGEN" \
+            .
+
+      - name: Subir la imagen al registro
+        run: |
+          az acr login --name "$ACR_NOMBRE"
+          docker push "$IMAGEN"
+
+      - name: Actualizar la Container App
+        id: actualizar
+        run: |
+          REVISION=$(az containerapp update \
+            --name "$APP_NOMBRE" \
+            --resource-group "$GRUPO" \
+            --image "$IMAGEN" \
+            --query properties.latestRevisionName -o tsv)
+          echo "Revisión desplegada: $REVISION"
+          echo "revision=$REVISION" >> "$GITHUB_OUTPUT"
+
+      # Pasa cuando la revisión nueva está lista y /api/health/ready responde 200.
+      # El índice de documentos tarda hasta ~60 s en cargarse; se espera hasta ~3 min.
+      - name: Prueba de humo
+        env:
+          REVISION: ${{ steps.actualizar.outputs.revision }}
+          INTENTOS: "18"
+          ESPERA_S: "10"
+        run: |
+          FQDN=$(az containerapp show --name "$APP_NOMBRE" --resource-group "$GRUPO" \
+            --query properties.configuration.ingress.fqdn -o tsv)
+          URL="https://$FQDN/api/health/ready"
+          echo "Verificando $URL (revisión $REVISION)"
+          for intento in $(seq 1 "$INTENTOS"); do
+            LISTA=$(az containerapp show --name "$APP_NOMBRE" --resource-group "$GRUPO" \
+              --query properties.latestReadyRevisionName -o tsv 2>/dev/null || true)
+            CODIGO=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+              --max-time 10 "$URL" || true)
+            echo "Intento $intento/$INTENTOS: revisión lista=${LISTA:-ninguna}, HTTP $CODIGO"
+            if [ "$LISTA" = "$REVISION" ] && [ "$CODIGO" = "200" ]; then
+              {
+                echo "### Despliegue correcto"
+                echo ""
+                echo "- Imagen: \`$IMAGEN\`"
+                echo "- Revisión: \`$REVISION\`"
+                echo "- URL: https://$FQDN"
+              } >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            sleep "$ESPERA_S"
+          done
+          echo "::error::La revisión $REVISION no quedó lista o $URL no respondió 200."
+          az containerapp revision list --name "$APP_NOMBRE" --resource-group "$GRUPO" \
+            --query "[].{revision:name, activa:properties.active, salud:properties.healthState, estado:properties.runningState}" \
+            -o table || true
+          az containerapp logs show --name "$APP_NOMBRE" --resource-group "$GRUPO" \
+            --type system --tail 30 --format text || true
+          exit 1

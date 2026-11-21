@@ -1,0 +1,22 @@
+# Solo entra a la imagen lo que copia el Dockerfile; esto evita enviar el resto al build.
+.git
+.github
+.venv
+.env
+.env.*
+!.env.example
+var
+**/__pycache__
+**/*.py[cod]
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov
+tests
+docs
+evaluacion
+scripts
+infra
+*.md
+!datos/*.md
