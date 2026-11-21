@@ -13,7 +13,8 @@ from app.api.limitador import LimitadorPeticiones
 from app.core.config import Settings
 from app.core.logs import RegistroEventos
 from app.persistencia.db import BaseDatos
-from app.servicios.chat import ServicioChat, construir_servicio
+from app.servicios.chat import ServicioChat
+from app.servicios.fabrica import construir_servicio
 
 
 class EstadoApp:

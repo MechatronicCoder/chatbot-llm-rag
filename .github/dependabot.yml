@@ -1,14 +1,17 @@
 # Actualizaciones automáticas de acciones de GitHub y de la imagen base de Docker.
+# Los pull requests se abren contra dev, nunca directamente contra main.
 # Las dependencias de Python se actualizan con `uv lock --upgrade` para mantener
 # uv.lock y requirements.txt sincronizados en el mismo commit.
 version: 2
 updates:
   - package-ecosystem: "github-actions"
     directory: "/"
+    target-branch: "dev"
     schedule:
       interval: "monthly"
   - package-ecosystem: "docker"
     directory: "/"
+    target-branch: "dev"
     schedule:
       interval: "monthly"
     ignore:

@@ -15,11 +15,17 @@ Este documento describe los componentes, el flujo de un turno, el modelo de dato
 | `app/core/seguridad.py` | Redacción, guardias y validación de salida (funciones puras) | nada |
 | `app/llm/cliente.py` | Chat compatible con OpenAI, herramientas y respaldo | httpx |
 | `app/llm/embeddings.py` | Embeddings por API, lotes y reintentos | httpx, numpy |
-| `app/persistencia/db.py` | SQLite: catálogo, pedidos, pagos, mensajes y métricas | sqlite3 |
+| `app/persistencia/db.py` | `BaseDatos`: reúne los repositorios en un solo punto de acceso | `tienda`, `conversacion` |
+| `app/persistencia/esquema.py` | Tablas, errores de pedido y conversión de filas | sqlite3 |
+| `app/persistencia/conexion.py` | Conexión, creación del esquema y carga del catálogo | `esquema` |
+| `app/persistencia/tienda.py` | Productos, usuarios, pedidos y pagos con transacciones | `conexion` |
+| `app/persistencia/conversacion.py` | Mensajes de cada sesión y métricas por ruta | `conexion` |
 | `app/servicios/faq.py` | Clasificador TF-IDF de preguntas frecuentes | scikit-learn |
 | `app/servicios/rag.py` | Fragmentos, índice denso y TF-IDF, caché y MMR | pypdf, numpy, `llm.embeddings` |
 | `app/servicios/herramientas.py` | Esquemas y ejecución de las 7 herramientas | `db`, `rag` |
-| `app/servicios/chat.py` | El turno completo y la fábrica `construir_servicio` | todos los servicios |
+| `app/servicios/chat.py` | El turno completo, paso a paso | `turno`, `faq`, `rag`, `herramientas` |
+| `app/servicios/turno.py` | Ajustes, respuesta del turno, ejecución de herramientas con sus eventos y modo demo | `herramientas`, `db` |
+| `app/servicios/fabrica.py` | `construir_servicio`: arma el servicio real desde la configuración | todos los servicios |
 
 Las dependencias van en un solo sentido: la API conoce a los servicios, los servicios conocen a la persistencia y a los clientes de modelos, y nada de lo anterior conoce a FastAPI. Por eso el turno completo se prueba sin servidor HTTP, con un modelo simulado.
 

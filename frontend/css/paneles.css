@@ -1,0 +1,325 @@
+/* TechStore · Asistente — Panel lateral (cliente, pedidos, catálogo) y panel de logs.
+   Orden de carga en index.html: base, disposicion, chat, paneles, responsive, animaciones. */
+
+/* 6. Panel ----------------------------------------------------------------- */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--esp-5);
+  padding: var(--esp-4);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-right: 1px solid var(--color-linea);
+}
+
+.bloque {
+  display: flex;
+  flex-direction: column;
+  gap: var(--esp-2);
+}
+
+.bloque-titulo {
+  font-size: var(--texto-s);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-tenue);
+}
+
+.acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--esp-2);
+}
+
+.lista {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  padding: 7px 6px;
+  border-bottom: 1px solid var(--color-linea);
+  font-size: 12.5px;
+}
+
+.item-titulo {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--esp-2);
+}
+
+.item-titulo strong {
+  min-width: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.item-sub {
+  color: var(--color-tenue);
+  overflow-wrap: anywhere;
+}
+
+.precio {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.agotado {
+  color: var(--color-error-texto);
+}
+
+.etiqueta-estado {
+  flex: none;
+  padding: 0 7px;
+  border: 1px solid var(--color-linea);
+  border-radius: var(--radio-pildora);
+  font-size: var(--texto-xs);
+  color: var(--color-tenue);
+}
+
+.etiqueta-estado.estado-pendiente {
+  color: var(--color-aviso-texto);
+  border-color: color-mix(in srgb, var(--color-aviso) 45%, transparent);
+}
+
+.etiqueta-estado.estado-pagado {
+  color: var(--color-ok-texto);
+  border-color: color-mix(in srgb, var(--color-ok) 45%, transparent);
+}
+
+.etiqueta-estado.estado-cancelado {
+  color: var(--color-error-texto);
+  border-color: color-mix(in srgb, var(--color-error) 45%, transparent);
+}
+
+.item.nuevo {
+  animation: resaltar var(--dur-resaltado) ease-out both;
+}
+
+.totales {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--esp-1) var(--esp-2);
+  padding: var(--esp-2) 6px 0;
+  font-size: var(--texto-s);
+  color: var(--color-tenue);
+}
+
+.totales strong {
+  color: var(--color-texto);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.vacio {
+  padding: 7px 6px;
+  font-size: 12.5px;
+  color: var(--color-tenue);
+}
+
+.vacio.error {
+  color: var(--color-error-texto);
+}
+
+[aria-busy="true"] > .lista {
+  opacity: 0.7;
+  transition: opacity var(--dur-rapida) ease-out;
+}
+
+/* 7. Logs ------------------------------------------------------------------ */
+
+.logs {
+  display: flex;
+  flex-direction: column;
+  background: var(--color-fondo-log);
+}
+
+.barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--esp-2);
+  padding: 10px var(--esp-3);
+  border-bottom: 1px solid var(--color-linea);
+}
+
+.barra .bloque-titulo {
+  flex: 1 1 auto;
+}
+
+.en-vivo {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--texto-xs);
+  color: var(--color-tenue);
+}
+
+.en-vivo::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-ok-texto);
+  transition: background-color var(--dur-rapida) ease-out;
+}
+
+.en-vivo[data-activo="false"]::before {
+  background: var(--color-tenue);
+}
+
+.filtro-turno {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--esp-2);
+  padding: 6px var(--esp-3);
+  border-bottom: 1px solid var(--color-linea);
+  background: color-mix(in srgb, var(--color-acento) 12%, var(--color-fondo-log));
+  font-size: var(--texto-s);
+  color: var(--color-tenue);
+  animation: entrar var(--dur-mensaje) var(--curva-salida) both;
+}
+
+.filtro-turno code {
+  color: var(--color-texto);
+}
+
+.eventos {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: var(--esp-2) 10px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+  font: var(--texto-log) / 1.5 var(--fuente-mono);
+}
+
+.eventos:focus-visible {
+  outline-offset: -2px;
+}
+
+.ev {
+  display: flex;
+  gap: 7px;
+  min-width: 0;
+  padding: 1px 2px;
+  border-bottom: 1px solid var(--color-linea-log);
+}
+
+.ev .hora {
+  flex: none;
+  color: var(--color-hora-log);
+  font-variant-numeric: tabular-nums;
+}
+
+.ev .niv {
+  flex: 0 0 5ch;
+  font-weight: 700;
+  color: var(--color-hora-log);
+}
+
+.ev .niv-INFO { color: var(--color-info-log); }
+.ev .niv-WARN { color: var(--color-aviso-texto); }
+.ev .niv-ERROR { color: var(--color-error-texto); }
+.ev .niv-DEBUG { color: var(--color-hora-log); }
+
+.ev .evn {
+  flex: none;
+  color: var(--color-evento-log);
+}
+
+.ev .campos {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-campos-log);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ev.nivel-error {
+  background: color-mix(in srgb, var(--color-error) 9%, transparent);
+}
+
+.ev.turno-activo {
+  background: var(--color-turno-activo);
+}
+
+.ev-turno {
+  padding: 0;
+  border: 0;
+  border-radius: 3px;
+  background: none;
+  color: var(--color-acento-texto);
+  font: inherit;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.ev-turno[aria-pressed="true"] {
+  color: var(--color-texto);
+  text-decoration-style: solid;
+}
+
+.ev-vacio {
+  padding: var(--esp-2) 2px;
+  color: var(--color-tenue);
+  font-family: var(--fuente-base);
+}
+
+.token {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--esp-2);
+  padding: var(--esp-4) var(--esp-3);
+  overflow-y: auto;
+  animation: entrar var(--dur-mensaje) var(--curva-salida) both;
+}
+
+.token-texto {
+  font-size: var(--texto-s);
+  color: var(--color-tenue);
+}
+
+.token-fila {
+  display: flex;
+  gap: var(--esp-2);
+}
+
+.token-error {
+  font-size: var(--texto-s);
+  color: var(--color-error-texto);
+}
+
+.pie-logs {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: var(--esp-2) var(--esp-3);
+  border-top: 1px solid var(--color-linea);
+  font-size: var(--texto-log);
+  color: var(--color-tenue);
+}
+
+.metricas {
+  overflow-wrap: anywhere;
+}
+
+.estado-logs:empty {
+  display: none;
+}
+
+.estado-logs.error {
+  color: var(--color-error-texto);
+}
