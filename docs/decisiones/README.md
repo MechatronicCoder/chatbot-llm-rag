@@ -10,6 +10,7 @@ Cada documento registra una decisión de arquitectura con el mismo formato: cont
 | [0004](0004-azure-container-apps.md) | Azure Container Apps con Bicep y despliegue por OIDC | Aceptada |
 | [0005](0005-frontend-sin-framework.md) | Frontend sin framework ni paso de compilación | Aceptada |
 | [0006](0006-guardias-y-faq-antes-del-modelo.md) | Guardias y FAQ antes del modelo | Aceptada |
+| [0007](0007-flujo-de-ramas.md) | Flujo de ramas con main y dev, y aprobación del dueño | Aceptada |
 
 Plantilla para una decisión nueva:
 

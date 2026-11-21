@@ -384,14 +384,56 @@ Cada decisión importante está documentada con su contexto, las alternativas y 
 - [0004 Azure Container Apps con Bicep y OIDC](docs/decisiones/0004-azure-container-apps.md)
 - [0005 Frontend sin framework](docs/decisiones/0005-frontend-sin-framework.md)
 - [0006 Guardias y FAQ antes del modelo](docs/decisiones/0006-guardias-y-faq-antes-del-modelo.md)
+- [0007 Flujo de ramas con main y dev](docs/decisiones/0007-flujo-de-ramas.md)
 
 ## Flujo de trabajo del equipo
 
-- `main` siempre desplegable; nadie hace push directo a `main`.
-- Cada cambio en una rama (`feature/chat-animaciones`, `fix/limite-ip`, `docs/readme`) y un pull request revisado por otra persona del equipo.
+```mermaid
+gitGraph
+    commit id: "versión estable"
+    branch dev
+    checkout dev
+    branch feature/chat-animaciones
+    checkout feature/chat-animaciones
+    commit id: "trabajo del integrante"
+    checkout dev
+    merge feature/chat-animaciones id: "PR aprobado por el dueño"
+    checkout main
+    merge dev id: "PR de versión (solo el dueño)"
+```
+
+| Rama | Para qué | Quién la actualiza |
+|---|---|---|
+| `main` | Versión estable; lo que se despliega en Azure | Solo el dueño del repositorio, con un pull request desde `dev` |
+| `dev` | Integración de los cambios del equipo; rama por defecto | Solo el dueño, aprobando y uniendo los pull requests |
+| `feature/*`, `fix/*`, `docs/*` | Trabajo de cada integrante, creado desde `dev` | Quien la creó |
+
+Pasos para un cambio:
+
+```powershell
+git switch dev
+git pull
+git switch -c feature/chat-animaciones
+# ... cambios, pruebas y commits ...
+git push -u origin feature/chat-animaciones
+gh pr create --base dev --fill
+```
+
+Reglas:
+
+- Nadie hace push directo a `main` ni a `dev`; todo entra por pull request.
+- Todo pull request debe pasar el CI (lint, tipos, pruebas en 3.12 y 3.13, e imagen Docker) y completar la plantilla.
+- El archivo `.github/CODEOWNERS` asigna la revisión al dueño del repositorio: él aprueba y une los pull requests hacia `dev`, y el pull request de `dev` a `main`.
+- `main` y `dev` no se borran ni se reescriben (sin `git push --force`).
 - Mensajes de commit en formato convencional: `feat: ...`, `fix: ...`, `docs: ...`, `test: ...`, `refactor: ...`.
-- El pull request debe pasar el CI y completar la plantilla.
-- Para agregar una dependencia: `uv add paquete` y luego regenerar `requirements.txt`:
+
+Las reglas anteriores están descritas en [.github/reglas/proteger-main-y-dev.json](.github/reglas/proteger-main-y-dev.json) para que GitHub las haga cumplir: bloquea el borrado y el `force push` de `main` y `dev`, exige pull request, aprobación del dueño y CI en verde, y solo permite unir al dueño. GitHub solo aplica estas reglas en repositorios públicos o con GitHub Pro; en cuanto el repositorio cumpla una de esas condiciones, el dueño las activa con:
+
+```powershell
+gh api -X POST repos/MechatronicCoder/chatbot-llm-rag/rulesets --input .github/reglas/proteger-main-y-dev.json
+```
+
+Para agregar una dependencia: `uv add paquete` y luego regenerar `requirements.txt`:
 
 ```powershell
 uv export --no-dev --no-hashes --no-emit-project --no-header -o requirements.txt
