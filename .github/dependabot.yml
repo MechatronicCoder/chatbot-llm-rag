@@ -11,3 +11,8 @@ updates:
     directory: "/"
     schedule:
       interval: "monthly"
+    ignore:
+      # La versión de Python (3.12) es una decisión del proyecto: solo se aceptan
+      # actualizaciones de la misma versión, no saltos a 3.13, 3.14, etc.
+      - dependency-name: "python"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
