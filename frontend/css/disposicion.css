@@ -1,0 +1,233 @@
+/* TechStore · Asistente — Disposición de las columnas y controles (botones, campos, selects).
+   Orden de carga en index.html: base, disposicion, chat, paneles, responsive, animaciones. */
+
+/* 3. Disposición ----------------------------------------------------------- */
+
+.cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--esp-2) var(--esp-4);
+  padding: var(--esp-3) var(--esp-5);
+  border-bottom: 1px solid var(--color-linea);
+}
+
+.marca {
+  font-size: var(--texto-l);
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.marca-sub {
+  color: var(--color-tenue);
+  font-weight: 500;
+}
+
+.estado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--esp-2) var(--esp-3);
+  min-width: 0;
+  font-size: var(--texto-s);
+  color: var(--color-tenue);
+}
+
+.estado-indicador {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 9px 1px 8px;
+  border: 1px solid var(--color-linea);
+  border-radius: var(--radio-pildora);
+  color: var(--color-texto);
+  white-space: nowrap;
+}
+
+.estado-indicador::before {
+  content: "";
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-tenue);
+  transition: background-color var(--dur-rapida) ease-out;
+}
+
+.estado-indicador[data-estado="ok"]::before {
+  background: var(--color-ok-texto);
+}
+
+.estado-indicador[data-estado="iniciando"]::before {
+  background: var(--color-aviso);
+  animation: latido var(--dur-latido) var(--curva-suave) infinite;
+}
+
+.estado-indicador[data-estado="error"]::before {
+  background: var(--color-error-texto);
+}
+
+.estado-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px var(--esp-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-width: 0;
+}
+
+.estado-meta li {
+  overflow-wrap: anywhere;
+}
+
+.estado-meta strong {
+  color: var(--color-texto);
+  font-weight: 600;
+}
+
+.estado-meta .modo-demo strong,
+.estado-meta .aviso-corpus {
+  color: var(--color-aviso-texto);
+}
+
+.disposicion {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--ancho-panel) var(--ancho-logs);
+  grid-template-areas: "chat panel logs";
+  min-height: 0;
+}
+
+.chat,
+.panel,
+.logs {
+  min-width: 0;
+  min-height: 0;
+}
+
+.chat {
+  grid-area: chat;
+}
+
+.panel {
+  grid-area: panel;
+}
+
+.logs {
+  grid-area: logs;
+}
+
+/* Los cambios por ancho de pantalla están en la sección 8, después de todos los
+   componentes, para que prevalezcan sobre sus reglas base. */
+
+/* 4. Controles ------------------------------------------------------------- */
+
+.boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 var(--esp-4);
+  border: 1px solid transparent;
+  border-radius: var(--radio-m);
+  background: var(--color-acento);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-rapida) ease-out,
+    border-color var(--dur-rapida) ease-out,
+    opacity var(--dur-rapida) ease-out;
+}
+
+.boton:hover:not(:disabled) {
+  background: var(--color-acento-hover);
+}
+
+.boton:active:not(:disabled) {
+  background: var(--color-acento-activo);
+}
+
+.boton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.boton[aria-busy="true"] {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.boton.suave {
+  min-height: 30px;
+  padding: 0 10px;
+  border-color: var(--color-linea);
+  background: var(--color-boton-suave);
+  color: var(--color-texto);
+  font-size: var(--texto-s);
+  font-weight: 500;
+}
+
+.boton.suave:hover:not(:disabled) {
+  border-color: var(--color-linea-fuerte);
+  background: var(--color-boton-suave-hover);
+}
+
+.enlace {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-acento-texto);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.campo {
+  width: 100%;
+  min-height: 32px;
+  padding: 6px 9px;
+  border: 1px solid var(--color-linea);
+  border-radius: var(--radio-s);
+  background: var(--color-panel);
+  color: var(--color-texto);
+  font: inherit;
+  font-size: var(--texto-s);
+  transition: border-color var(--dur-rapida) ease-out;
+}
+
+.campo:hover {
+  border-color: var(--color-linea-fuerte);
+}
+
+.campo:focus {
+  border-color: var(--color-acento-texto);
+}
+
+.campo-compacto {
+  width: auto;
+  min-height: 30px;
+  padding: 4px 8px;
+}
+
+.etiqueta {
+  font-size: var(--texto-s);
+  color: var(--color-tenue);
+}
+
+.ayuda {
+  font-size: var(--texto-xs);
+  color: var(--color-tenue);
+}
+
+@media (pointer: coarse) {
+  .boton,
+  .boton.suave,
+  .campo,
+  .campo-compacto {
+    min-height: 44px;
+  }
+}

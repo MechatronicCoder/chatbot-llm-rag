@@ -28,6 +28,11 @@ repos:
         entry: uv run ruff check --fix
         language: system
         types: [python]
+      - id: limite-de-lineas
+        name: máximo 400 líneas por archivo de código
+        entry: uv run python scripts/verificar_lineas.py
+        language: system
+        files: '(\.(py|js|css|html|bicep|ya?ml|sh|ps1|toml)|Dockerfile)$'
       - id: mypy
         name: mypy
         entry: uv run mypy app

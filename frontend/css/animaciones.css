@@ -1,0 +1,90 @@
+/* TechStore · Asistente — Animaciones y preferencias del sistema (movimiento reducido, colores forzados).
+   Orden de carga en index.html: base, disposicion, chat, paneles, responsive, animaciones. */
+
+/* 9. Animaciones ----------------------------------------------------------- */
+
+/* Entrada de mensajes, notas y bloques: aparece y sube unos píxeles. */
+@keyframes entrar {
+  from {
+    opacity: 0;
+    transform: translateY(var(--desplazamiento-entrada));
+  }
+}
+
+/* Entrada de chips: más corta y con menos recorrido que la burbuja. */
+@keyframes entrar-chip {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+}
+
+/* Indicador de escritura: cada punto se ilumina y sube 3 px, en ola. */
+@keyframes punto {
+  0%,
+  60%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+/* Estado "iniciando" en la cabecera. */
+@keyframes latido {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* Pedido recién creado: fondo verde que se desvanece. */
+@keyframes resaltar {
+  from {
+    background-color: color-mix(in srgb, var(--color-ok) 28%, transparent);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+/* 10. Preferencias del sistema --------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-rapida: 0ms;
+    --dur-chip: 0ms;
+    --dur-mensaje: 0ms;
+    --retardo-chips: 0ms;
+    --paso-chip: 0ms;
+    --desplazamiento-entrada: 0px;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Sin animación, los puntos quedan estáticos y visibles. */
+  .puntos span {
+    opacity: 0.7;
+  }
+}
+
+@media (forced-colors: active) {
+  .dato,
+  .etiqueta-estado,
+  .estado-indicador {
+    border-color: CanvasText;
+  }
+
+  .estado-indicador::before,
+  .en-vivo::before {
+    forced-color-adjust: none;
+  }
+}

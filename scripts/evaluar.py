@@ -32,7 +32,7 @@ sys.path.insert(0, str(RAIZ))
 from app.core.config import Settings  # noqa: E402
 from app.core.logs import RegistroEventos  # noqa: E402
 from app.persistencia.db import BaseDatos  # noqa: E402
-from app.servicios.chat import construir_servicio  # noqa: E402
+from app.servicios.fabrica import construir_servicio  # noqa: E402
 
 
 def evaluar_caso(servicio: Any, caso: dict[str, Any]) -> dict[str, Any]:
