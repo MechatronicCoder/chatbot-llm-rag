@@ -182,3 +182,10 @@ def test_sin_x_forwarded_for_se_usa_la_ip_de_la_conexion(tmp_path: Path) -> None
     cuerpo = {"mensaje": "¿cuánto cuesta el envío?", "usuario_id": "u1", "session_id": "s1"}
     assert c.post("/api/chat", json=cuerpo).status_code == 200
     assert c.post("/api/chat", json=cuerpo).status_code == 429
+
+
+def test_los_modulos_del_frontend_se_sirven_como_javascript(cliente: TestClient) -> None:
+    r = cliente.get("/js/main.js")
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("text/javascript")
+    assert cliente.get("/css/estilos.css").headers["content-type"].startswith("text/css")

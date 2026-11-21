@@ -10,6 +10,7 @@ simulado en las pruebas, sin variables globales ni parches.
 
 from __future__ import annotations
 
+import mimetypes
 import threading
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
@@ -24,6 +25,11 @@ from app.core.config import RAIZ, Settings, get_settings
 from app.core.logs import RegistroEventos
 from app.persistencia.db import BaseDatos
 from app.servicios.chat import ServicioChat
+
+# En Windows el tipo de .js puede venir del registro como text/plain; con nosniff,
+# el navegador no ejecutaría los módulos del frontend. Se fija explícitamente.
+mimetypes.add_type("text/javascript", ".js")
+mimetypes.add_type("text/css", ".css")
 
 CARPETA_FRONTEND = RAIZ / "frontend"
 RUTAS_SIN_CSP = ("/docs", "/redoc", "/openapi.json")  # Swagger carga recursos de un CDN

@@ -312,7 +312,7 @@ Las rutas de administración piden el encabezado `X-Admin-Token` cuando `ADMIN_T
 ## Pruebas y calidad
 
 ```powershell
-uv run pytest                 # 151 pruebas, sin red ni claves
+uv run pytest                 # 152 pruebas, sin red ni claves
 uv run pytest --cov           # cobertura de líneas y ramas: 100 % (el mínimo exigido)
 uv run ruff check .           # lint
 uv run ruff format .          # formato
