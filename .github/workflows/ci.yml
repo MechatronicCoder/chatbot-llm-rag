@@ -31,6 +31,9 @@ jobs:
       - name: Instalar dependencias desde uv.lock
         run: uv sync --locked
 
+      - name: Máximo 400 líneas por archivo de código
+        run: uv run python scripts/verificar_lineas.py
+
       - name: Formato
         run: uv run ruff format --check .
 

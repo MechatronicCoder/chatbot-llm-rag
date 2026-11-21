@@ -176,9 +176,16 @@ chatbot-llm-rag/
 │   ├── llm/                  Clientes de modelos
 │   │   ├── cliente.py        Chat con herramientas y cadena de respaldo
 │   │   └── embeddings.py     Embeddings por API con lotes y reintentos
-│   ├── persistencia/db.py    SQLite: catálogo, pedidos, pagos, mensajes, métricas
+│   ├── persistencia/         SQLite
+│   │   ├── db.py             BaseDatos: reúne los repositorios en un solo punto de acceso
+│   │   ├── esquema.py        Tablas y conversión de filas
+│   │   ├── conexion.py       Conexión, creación del esquema y carga del catálogo
+│   │   ├── tienda.py         Productos, usuarios, pedidos y pagos
+│   │   └── conversacion.py   Mensajes de cada sesión y métricas
 │   └── servicios/            Lógica del producto
-│       ├── chat.py           El turno completo
+│       ├── chat.py           El turno completo, paso a paso
+│       ├── turno.py          Ajustes, respuesta, ejecución de herramientas y modo demo
+│       ├── fabrica.py        Arma el servicio real a partir de la configuración
 │       ├── faq.py            Clasificador de preguntas frecuentes
 │       ├── herramientas.py   Las 7 herramientas y sus esquemas
 │       └── rag.py            Fragmentación, índice, caché de embeddings y MMR
@@ -317,6 +324,7 @@ uv run pytest --cov           # cobertura de líneas y ramas: 100 % (el mínimo 
 uv run ruff check .           # lint
 uv run ruff format .          # formato
 uv run mypy app               # tipos
+uv run python scripts/verificar_lineas.py   # ningún archivo de código supera 400 líneas
 uv run pre-commit install     # revisa todo lo anterior antes de cada commit
 ```
 
@@ -426,11 +434,13 @@ Reglas:
 - El archivo `.github/CODEOWNERS` asigna la revisión al dueño del repositorio: él aprueba y une los pull requests hacia `dev`, y el pull request de `dev` a `main`.
 - `main` y `dev` no se borran ni se reescriben (sin `git push --force`).
 - Mensajes de commit en formato convencional: `feat: ...`, `fix: ...`, `docs: ...`, `test: ...`, `refactor: ...`.
+- Ningún archivo de código supera las 400 líneas. Si un archivo se acerca al límite, se divide por responsabilidad. Lo verifican pre-commit y el CI con `scripts/verificar_lineas.py`.
 
-Las reglas anteriores están descritas en [.github/reglas/proteger-main-y-dev.json](.github/reglas/proteger-main-y-dev.json) para que GitHub las haga cumplir: bloquea el borrado y el `force push` de `main` y `dev`, exige pull request, aprobación del dueño y CI en verde, y solo permite unir al dueño. GitHub solo aplica estas reglas en repositorios públicos o con GitHub Pro; en cuanto el repositorio cumpla una de esas condiciones, el dueño las activa con:
+GitHub hace cumplir estas reglas con el ruleset "Proteger main y dev", definido como código en [.github/reglas/proteger-main-y-dev.json](.github/reglas/proteger-main-y-dev.json): bloquea el borrado y el `force push` de `main` y `dev`, exige pull request, aprobación del dueño y CI en verde, y solo el dueño puede unir. Si se modifica el archivo, el ruleset se actualiza con:
 
 ```powershell
-gh api -X POST repos/MechatronicCoder/chatbot-llm-rag/rulesets --input .github/reglas/proteger-main-y-dev.json
+gh api repos/MechatronicCoder/chatbot-llm-rag/rulesets --jq '.[] | "\(.id) \(.name)"'
+gh api -X PUT repos/MechatronicCoder/chatbot-llm-rag/rulesets/<id> --input .github/reglas/proteger-main-y-dev.json
 ```
 
 Para agregar una dependencia: `uv add paquete` y luego regenerar `requirements.txt`:

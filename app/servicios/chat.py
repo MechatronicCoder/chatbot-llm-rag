@@ -16,107 +16,28 @@ de envío ya respondida en las FAQs no debe llegar al modelo para que la improvi
 from __future__ import annotations
 
 import json
-import re
 import time
-from dataclasses import asdict, dataclass, field
 from typing import Any
 
 from app.core import seguridad
-from app.core.config import Settings
 from app.core.logs import RegistroEventos, nuevo_turno
-from app.llm.cliente import ClienteLLM, Mensaje, ModeloChat, SinProveedores
-from app.llm.embeddings import ClienteEmbeddings
+from app.llm.cliente import Mensaje, ModeloChat, SinProveedores
 from app.persistencia.db import BaseDatos
 from app.servicios.faq import Decision, IndiceFAQ
-from app.servicios.herramientas import ACCIONES, IDEMPOTENTES, Herramientas
-from app.servicios.rag import BuscadorDocumentos, ParametrosRAG
-
-# Uno o varios saludos o cortesías seguidos ("hola, buenas tardes", "gracias, eso era todo").
-RE_SALUDO = re.compile(
-    r"^[\s¿¡]*(?:(?:hola|buenas tardes|buenas noches|buenos d[ií]as|buenas|hey|qu[eé] tal|"
-    r"saludos|muchas gracias|gracias|adi[oó]s|hasta luego|chao|c[oó]mo est[aá]s?|c[oó]mo va|"
-    r"eso era todo)\b[\s!.,?¿¡]*)+$",
-    re.IGNORECASE,
+from app.servicios.herramientas import Herramientas
+from app.servicios.rag import BuscadorDocumentos
+from app.servicios.turno import (
+    MENSAJE_ESCALADO,
+    RE_ACCION,
+    RE_SALUDO,
+    Acumulado,
+    AjustesChat,
+    RespuestaChat,
+    ejecutar_llamada,
+    fuente_de,
+    ruta_de,
+    texto_demo,
 )
-
-# Una acción sobre un pedido ("págala", "cancélalo", "PED-1A2B") no la responde
-# la FAQ: la decide el modelo con las herramientas, que es quien ve el historial.
-RE_ACCION = re.compile(
-    r"\b(paga|págala|pagala|págalo|pagalo|cobra|cóbrala|cobrala|reserva|resérvala|"
-    r"reservala|cancela|cancélalo|cancelalo|compra|cómprala|comprala)\b|\bPED-[A-Z0-9]{4,}\b",
-    re.IGNORECASE,
-)
-
-MENSAJE_ESCALADO = (
-    "Esa consulta la responde mejor un asesor humano; queda registrada. "
-    "Mientras tanto se puede revisar el catálogo y el estado de los pedidos."
-)
-
-
-@dataclass(frozen=True)
-class AjustesChat:
-    max_mensajes: int = 8
-    max_vueltas: int = 3
-    limite_mensaje: int = 2000
-    faq_contexto_min: float = 0.25
-    temperatura: float = 0.3
-    max_tokens: int = 700
-    llm_lento_ms: int = 4000
-
-    @classmethod
-    def desde_config(cls, ajustes: Settings) -> AjustesChat:
-        return cls(
-            max_mensajes=ajustes.max_mensajes,
-            max_vueltas=ajustes.max_vueltas,
-            limite_mensaje=ajustes.limite_mensaje,
-            faq_contexto_min=ajustes.faq_contexto_min,
-            temperatura=ajustes.llm_temperatura,
-            max_tokens=ajustes.llm_max_tokens,
-            llm_lento_ms=ajustes.llm_lento_ms,
-        )
-
-
-@dataclass
-class RespuestaChat:
-    respuesta: str
-    usuario_id: str
-    session_id: str
-    ruta: str = "directa"
-    fuente: str = ""
-    faq_id: str | None = None
-    similitud: float | None = None
-    herramientas: list[dict[str, Any]] = field(default_factory=list)
-    pedidos: list[str] = field(default_factory=list)
-    pagos: list[str] = field(default_factory=list)
-    documentos: list[dict[str, Any]] = field(default_factory=list)
-    modo: str = "real"
-    modelo: str = "—"
-    endpoint: str = ""
-    latencia_ms: int = 0
-    tokens: list[int] = field(default_factory=lambda: [0, 0])
-    turno: int = 1
-    turno_id: str = ""
-    aviso: str | None = None
-    clasificacion: dict[str, Any] | None = None
-
-    def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
-
-
-@dataclass
-class _Acumulado:
-    """Lo que se va juntando durante las vueltas con el modelo."""
-
-    usadas: list[dict[str, Any]] = field(default_factory=list)
-    pedidos: list[str] = field(default_factory=list)
-    pagos: list[str] = field(default_factory=list)
-    documentos: list[dict[str, Any]] = field(default_factory=list)
-    tokens: list[int] = field(default_factory=lambda: [0, 0])
-    cache: dict[str, dict[str, Any]] = field(default_factory=dict)
-
-    def sumar_uso(self, uso: dict[str, int]) -> None:
-        self.tokens[0] += uso.get("prompt_tokens", 0)
-        self.tokens[1] += uso.get("completion_tokens", 0)
 
 
 class ServicioChat:
@@ -263,7 +184,7 @@ class ServicioChat:
         turno_id, usuario_id = cierre["turno_id"], cierre["usuario_id"]
         saludo = bool(RE_SALUDO.match(mensaje))
         mensajes = self._mensajes_iniciales(mensaje, cierre["session_id"], saludo)
-        acumulado = _Acumulado()
+        acumulado = Acumulado()
         a = self.ajustes
 
         try:
@@ -326,7 +247,9 @@ class ServicioChat:
                 mensajes.append(asistente)
 
                 for tc in resp.tool_calls:
-                    resultado = self._ejecutar(tc, usuario_id, turno_id, acumulado)
+                    resultado = ejecutar_llamada(
+                        self.herramientas, self.registro, tc, usuario_id, turno_id, acumulado
+                    )
                     mensajes.append(
                         {
                             "role": "tool",
@@ -350,63 +273,6 @@ class ServicioChat:
             self.registro.aviso("degradacion", turno_id, motivo=aviso)
             return self._demo(mensaje, inicio, decision, cierre, acumulado, aviso)
 
-    def _ejecutar(
-        self, tc: dict[str, Any], usuario_id: str, turno_id: str, acumulado: _Acumulado
-    ) -> dict[str, Any]:
-        nombre = tc["name"]
-        firma = nombre + json.dumps(tc["arguments"] or {}, sort_keys=True, ensure_ascii=False)
-        if nombre in IDEMPOTENTES and firma in acumulado.cache:
-            return acumulado.cache[firma]
-
-        t0 = time.perf_counter()
-        resultado = self.herramientas.ejecutar(nombre, tc["arguments"], usuario_id)
-        ms = int((time.perf_counter() - t0) * 1000)
-        if nombre in IDEMPOTENTES:
-            acumulado.cache[firma] = resultado
-
-        ok = "error" not in resultado
-        resumen = _resumen(resultado)
-        acumulado.usadas.append(
-            {
-                "nombre": nombre,
-                "ok": ok,
-                "ms": ms,
-                "argumentos": tc["arguments"],
-                "resumen": resumen,
-            }
-        )
-        self.registro.info(
-            "herramienta.ejecutada", turno_id, herramienta=nombre, ok=ok, ms=ms, resumen=resumen
-        )
-        if nombre == "buscar_politica" and resultado.get("hallazgos"):
-            acumulado.documentos = resultado["hallazgos"]
-            self.registro.info(
-                "rag.recuperado",
-                turno_id,
-                chunks=len(acumulado.documentos),
-                mejor=acumulado.documentos[0]["score"],
-                motor=acumulado.documentos[0].get("motor"),
-            )
-        if nombre == "reservar_pedido" and resultado.get("pedido_id"):
-            acumulado.pedidos.append(resultado["pedido_id"])
-            self.registro.info(
-                "pedido.creado",
-                turno_id,
-                pedido=resultado["pedido_id"],
-                total=resultado.get("total"),
-            )
-        if nombre == "cobrar_pedido" and resultado.get("pago_id"):
-            acumulado.pagos.append(resultado["pago_id"])
-            self.registro.info(
-                "pedido.cobrado",
-                turno_id,
-                pago=resultado["pago_id"],
-                pedido=resultado.get("pedido_id"),
-            )
-        if nombre == "cancelar_pedido" and resultado.get("estado") == "cancelado":
-            self.registro.info("pedido.cancelado", turno_id, pedido=resultado.get("pedido_id"))
-        return resultado
-
     def _cerrar_con_modelo(
         self,
         texto: str,
@@ -414,7 +280,7 @@ class ServicioChat:
         inicio: float,
         decision: Decision,
         cierre: dict[str, str],
-        acumulado: _Acumulado,
+        acumulado: Acumulado,
         modelo: str,
         proveedor: str,
     ) -> RespuestaChat:
@@ -422,8 +288,8 @@ class ServicioChat:
             texto,
             mensaje,
             inicio,
-            ruta=_ruta_de(acumulado.usadas),
-            fuente=_fuente_de(acumulado.usadas),
+            ruta=ruta_de(acumulado.usadas),
+            fuente=fuente_de(acumulado.usadas),
             herramientas=acumulado.usadas,
             pedidos=acumulado.pedidos,
             pagos=acumulado.pagos,
@@ -443,28 +309,13 @@ class ServicioChat:
         inicio: float,
         decision: Decision,
         cierre: dict[str, str],
-        acumulado: _Acumulado,
+        acumulado: Acumulado,
         aviso: str,
     ) -> RespuestaChat:
         """Sin modelo se responde solo con datos verificados: FAQ cercana o catálogo."""
-        similitud: float | None = None
-        if decision.similitud >= self.ajustes.faq_contexto_min:
-            texto = decision.faq_similar.respuesta
-            fuente = f"modo demo · FAQ cercana ({decision.faq_similar.id})"
-            similitud = decision.similitud
-        elif productos := self.bd.buscar_productos(mensaje, limite=3):
-            listado = "; ".join(
-                f"{p['nombre']} ({p['codigo']}) ${p['precio']:.2f} · {p['stock']} en stock"
-                for p in productos
-            )
-            texto = f"Modo demo, sin modelo configurado. Del catálogo se confirma: {listado}."
-            fuente = "modo demo · catálogo"
-        else:
-            texto = (
-                "Modo demo, sin modelo configurado: se puede consultar el catálogo y los "
-                "pedidos, pero no redactar respuestas libres."
-            )
-            fuente = "modo demo"
+        texto, fuente, similitud = texto_demo(
+            self.bd, decision, mensaje, self.ajustes.faq_contexto_min
+        )
         return self._cerrar(
             texto,
             mensaje,
@@ -517,62 +368,3 @@ class ServicioChat:
             tokens=tokens,
             **datos,
         )
-
-
-def _ruta_de(usadas: list[dict[str, Any]]) -> str:
-    nombres = {u["nombre"] for u in usadas}
-    if "buscar_politica" in nombres:
-        return "rag"
-    if nombres & ACCIONES:
-        return "accion"
-    return "herramientas" if nombres else "directa"
-
-
-def _fuente_de(usadas: list[dict[str, Any]]) -> str:
-    nombres = list(dict.fromkeys(u["nombre"] for u in usadas))
-    return "LLM + " + ", ".join(nombres) if nombres else "LLM (sin herramientas)"
-
-
-def _resumen(resultado: dict[str, Any]) -> str:
-    if "error" in resultado:
-        return f"error: {str(resultado['error'])[:60]}"
-    if "hallazgos" in resultado:
-        mejor = max((h["score"] for h in resultado["hallazgos"]), default=0)
-        return f"{len(resultado['hallazgos'])} fragmentos · mejor {mejor:.3f}"
-    if "encontrados" in resultado:
-        return f"{resultado['encontrados']} productos"
-    if "pago_id" in resultado:
-        return f"pago {resultado['pago_id']} · {resultado.get('monto')}"
-    if "pedido_id" in resultado:
-        return f"pedido {resultado['pedido_id']} · {resultado.get('estado')}"
-    return ", ".join(resultado)[:60]
-
-
-# ---------------------------------------------------------------------------
-# Fábrica: arma el servicio real a partir de la configuración
-# ---------------------------------------------------------------------------
-def construir_servicio(ajustes: Settings, registro: RegistroEventos, bd: BaseDatos) -> ServicioChat:
-    """Lee PDFs, FAQs y prompt; conecta LLM y embeddings si están configurados."""
-    embedder = ClienteEmbeddings.desde_config(ajustes) if ajustes.embeddings_configurados else None
-    buscador = BuscadorDocumentos.desde_carpeta(
-        ajustes.carpeta_datos / "pdfs",
-        ParametrosRAG.desde_config(ajustes),
-        embedder=embedder,
-        cache=ajustes.cache_embeddings,
-    )
-    faq = IndiceFAQ.desde_archivo(
-        ajustes.carpeta_datos / "faq.json",
-        umbral=ajustes.faq_umbral,
-        margen=ajustes.faq_margen,
-        umbral_contexto=ajustes.faq_contexto_min,
-    )
-    prompt = (ajustes.carpeta_datos / "prompt_sistema.md").read_text(encoding="utf-8")
-    return ServicioChat(
-        bd=bd,
-        registro=registro,
-        buscador=buscador,
-        llm=ClienteLLM.desde_config(ajustes),
-        faq=faq,
-        prompt_sistema=prompt,
-        ajustes=AjustesChat.desde_config(ajustes),
-    )

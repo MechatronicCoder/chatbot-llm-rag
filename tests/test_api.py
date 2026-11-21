@@ -188,4 +188,4 @@ def test_los_modulos_del_frontend_se_sirven_como_javascript(cliente: TestClient)
     r = cliente.get("/js/main.js")
     assert r.status_code == 200
     assert r.headers["content-type"].startswith("text/javascript")
-    assert cliente.get("/css/estilos.css").headers["content-type"].startswith("text/css")
+    assert cliente.get("/css/base.css").headers["content-type"].startswith("text/css")

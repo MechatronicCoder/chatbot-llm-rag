@@ -24,5 +24,5 @@ El repositorio lo trabajan tres personas. `main` es lo que se despliega en Azure
 ## Consecuencias
 
 - Los cambios se prueban juntos en `dev` antes de llegar a `main`, y `main` siempre corresponde a algo desplegable.
-- GitHub solo hace cumplir los rulesets en repositorios públicos o con GitHub Pro. Mientras el repositorio sea privado con cuenta gratuita, las reglas son una convención del equipo y no se aplican automáticamente; al hacerlo público o activar Pro, se activan con el comando documentado en el README.
+- GitHub solo hace cumplir los rulesets en repositorios públicos o con GitHub Pro. Por eso el repositorio se hizo público y el ruleset quedó activo el 2026-11-21; si alguna vez vuelve a ser privado sin Pro, las reglas dejan de aplicarse.
 - Los colaboradores de un repositorio personal tienen siempre permiso de escritura, así que la protección de ramas es la única forma de impedir que alguien borre `main` o `dev`. Borrar el repositorio completo solo lo puede hacer su dueño.

@@ -16,7 +16,8 @@ from app.llm.cliente import ClienteLLM
 from app.llm.embeddings import ClienteEmbeddings
 from app.main import crear_app
 from app.persistencia.db import BaseDatos
-from app.servicios.chat import ServicioChat, construir_servicio
+from app.servicios.chat import ServicioChat
+from app.servicios.fabrica import construir_servicio
 from app.servicios.rag import BuscadorDocumentos
 from tests.conftest import chunks_de_prueba, crear_ajustes, crear_servicio
 from tests.dobles import ModeloFalso

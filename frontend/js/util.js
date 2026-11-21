@@ -119,7 +119,7 @@ export function porId(id) {
  * - Los atributos con valor null, undefined o false se omiten; true crea un
  *   atributo vacío.
  * - `style` y los manejadores `on*` están prohibidos: la Content-Security-Policy
- *   los bloquearía de todos modos. Los estilos van en estilos.css y los eventos
+ *   los bloquearía de todos modos. Los estilos van en las hojas de css/ y los eventos
  *   con addEventListener.
  * - Los hijos pueden ser nodos o cadenas (las cadenas se insertan como texto).
  */

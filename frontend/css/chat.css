@@ -1,0 +1,337 @@
+/* TechStore · Asistente — Chat: hilo, burbujas, sugerencias, indicador de escritura, chips y formulario.
+   Orden de carga en index.html: base, disposicion, chat, paneles, responsive, animaciones. */
+
+/* 5. Chat ------------------------------------------------------------------ */
+
+.chat {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--color-linea);
+}
+
+.hilo {
+  position: relative; /* offsetTop de los mensajes se mide contra el hilo */
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: var(--esp-4) var(--esp-5);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.hilo:focus-visible {
+  outline-offset: -2px;
+}
+
+.msg {
+  max-width: min(100%, var(--ancho-burbuja));
+  padding: 9px 12px;
+  border-radius: var(--radio-l);
+  overflow-wrap: anywhere;
+  animation: entrar var(--dur-mensaje) var(--curva-salida) both;
+}
+
+.msg.u {
+  align-self: flex-end;
+  background: var(--color-burbuja-cliente);
+  border-bottom-right-radius: var(--radio-s);
+}
+
+.msg.b {
+  align-self: flex-start;
+  border: 1px solid var(--color-linea);
+  border-bottom-left-radius: var(--radio-s);
+  background: var(--color-panel);
+}
+
+.msg.error {
+  border-color: var(--color-error);
+  border-color: color-mix(in srgb, var(--color-error) 60%, var(--color-linea));
+  color: var(--color-error-texto);
+}
+
+.msg-texto {
+  white-space: pre-wrap;
+}
+
+.msg-texto strong {
+  font-weight: 650;
+}
+
+.msg-aviso {
+  margin-top: 6px;
+  font-size: var(--texto-s);
+  color: var(--color-aviso-texto);
+}
+
+.nota {
+  align-self: center;
+  max-width: min(100%, var(--ancho-burbuja));
+  padding: 2px 10px;
+  font-size: var(--texto-s);
+  color: var(--color-tenue);
+  text-align: center;
+  animation: entrar var(--dur-mensaje) var(--curva-salida) both;
+}
+
+.nota.error {
+  color: var(--color-error-texto);
+}
+
+/* Bienvenida y sugerencias */
+
+.bienvenida {
+  margin: auto;
+  max-width: 460px;
+  padding: var(--esp-5) var(--esp-3);
+  text-align: center;
+  color: var(--color-tenue);
+  animation: entrar var(--dur-mensaje) var(--curva-salida) both;
+}
+
+.bienvenida-titulo {
+  margin-bottom: 6px;
+  color: var(--color-texto);
+  font-size: 16px;
+  font-weight: 650;
+}
+
+.sugerencias {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--esp-2);
+  margin: var(--esp-4) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sugerencia {
+  min-height: 32px;
+  padding: 5px 12px;
+  border: 1px solid var(--color-linea);
+  border-radius: var(--radio-pildora);
+  background: var(--color-panel);
+  color: var(--color-texto);
+  font: inherit;
+  font-size: var(--texto-s);
+  cursor: pointer;
+  transition:
+    background-color var(--dur-rapida) ease-out,
+    border-color var(--dur-rapida) ease-out;
+}
+
+.sugerencia:hover {
+  border-color: var(--color-acento-texto);
+  background: var(--color-panel-alto);
+}
+
+/* Indicador de escritura */
+
+.msg.escribiendo {
+  padding: 12px 14px;
+}
+
+.puntos {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 20px;
+}
+
+.puntos span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-tenue);
+  animation: punto var(--dur-puntos) var(--curva-suave) infinite both;
+}
+
+.puntos span:nth-child(2) {
+  animation-delay: calc(var(--dur-puntos) * 0.15);
+}
+
+.puntos span:nth-child(3) {
+  animation-delay: calc(var(--dur-puntos) * 0.3);
+}
+
+/* Chips de metadatos */
+
+.datos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.datos > li {
+  max-width: 100%;
+  animation: entrar-chip var(--dur-chip) var(--curva-salida) both;
+  animation-delay: var(--retardo-chips);
+}
+
+.datos > li:nth-child(2) { animation-delay: calc(var(--retardo-chips) + var(--paso-chip) * 1); }
+.datos > li:nth-child(3) { animation-delay: calc(var(--retardo-chips) + var(--paso-chip) * 2); }
+.datos > li:nth-child(4) { animation-delay: calc(var(--retardo-chips) + var(--paso-chip) * 3); }
+.datos > li:nth-child(5) { animation-delay: calc(var(--retardo-chips) + var(--paso-chip) * 4); }
+.datos > li:nth-child(6) { animation-delay: calc(var(--retardo-chips) + var(--paso-chip) * 5); }
+.datos > li:nth-child(7) { animation-delay: calc(var(--retardo-chips) + var(--paso-chip) * 6); }
+.datos > li:nth-child(n + 8) { animation-delay: calc(var(--retardo-chips) + var(--paso-chip) * 7); }
+
+.dato {
+  display: block;
+  max-width: 100%;
+  margin: 0;
+  padding: 1px 8px;
+  overflow: hidden;
+  border: 1px solid var(--color-linea);
+  border-radius: var(--radio-pildora);
+  background: var(--color-chip);
+  color: var(--color-tenue);
+  font: inherit;
+  font-size: var(--texto-xs);
+  line-height: 1.5;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition:
+    color var(--dur-rapida) ease-out,
+    background-color var(--dur-rapida) ease-out,
+    border-color var(--dur-rapida) ease-out;
+}
+
+.dato.ruta {
+  color: var(--color-ruta);
+  border-color: color-mix(in srgb, var(--color-ruta) 45%, transparent);
+}
+
+.dato.demo {
+  color: var(--color-aviso-texto);
+  border-color: color-mix(in srgb, var(--color-aviso) 45%, transparent);
+}
+
+.dato.herramienta,
+.dato.documento {
+  color: var(--color-acento-texto);
+  border-color: color-mix(in srgb, var(--color-acento-texto) 40%, transparent);
+}
+
+.dato.herramienta::before {
+  content: "⚙ ";
+  content: "⚙ " / "";
+}
+
+.dato.documento::before {
+  content: "📄 ";
+  content: "📄 " / "";
+}
+
+.dato.herramienta.fallo {
+  color: var(--color-error-texto);
+  border-color: color-mix(in srgb, var(--color-error-texto) 45%, transparent);
+}
+
+.dato.pedido,
+.dato.pago {
+  color: var(--color-ok-texto);
+  border-color: color-mix(in srgb, var(--color-ok) 45%, transparent);
+}
+
+.dato.turno {
+  cursor: pointer;
+}
+
+.dato.turno:hover {
+  border-color: var(--color-linea-fuerte);
+  background: var(--color-panel-alto);
+  color: var(--color-texto);
+}
+
+.dato.turno[aria-pressed="true"] {
+  border-color: var(--color-acento-texto);
+  background: color-mix(in srgb, var(--color-acento) 28%, var(--color-chip));
+  color: var(--color-texto);
+}
+
+/* JSON completo */
+
+.json {
+  margin-top: 8px;
+  font-size: var(--texto-xs);
+  color: var(--color-tenue);
+}
+
+.json summary {
+  width: fit-content;
+  border-radius: var(--radio-s);
+  cursor: pointer;
+  transition: color var(--dur-rapida) ease-out;
+}
+
+.json summary:hover {
+  color: var(--color-texto);
+}
+
+.json pre {
+  max-height: 320px;
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  overflow: auto;
+  border: 1px solid var(--color-linea);
+  border-radius: var(--radio-s);
+  background: var(--color-codigo);
+  font: var(--texto-xs) / 1.5 var(--fuente-mono);
+  white-space: pre;
+  tab-size: 2;
+}
+
+.json[open] pre {
+  animation: entrar var(--dur-chip) var(--curva-salida) both;
+}
+
+/* Formulario de envío */
+
+.compositor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 6px var(--esp-2);
+  padding: var(--esp-3) var(--esp-5) var(--esp-2);
+  border-top: 1px solid var(--color-linea);
+}
+
+.compositor-entrada {
+  min-height: 46px;
+  max-height: 160px;
+  padding: 11px 12px;
+  border: 1px solid var(--color-linea);
+  border-radius: var(--radio-m);
+  background: var(--color-panel);
+  color: var(--color-texto);
+  font: inherit;
+  line-height: 1.45;
+  resize: none;
+  field-sizing: content; /* crece con el texto donde se soporta; si no, altura fija */
+  transition: border-color var(--dur-rapida) ease-out;
+}
+
+.compositor-entrada:hover {
+  border-color: var(--color-linea-fuerte);
+}
+
+.compositor-entrada:focus {
+  border-color: var(--color-acento-texto);
+}
+
+.compositor-boton {
+  min-width: 116px;
+  height: 46px;
+  font-variant-numeric: tabular-nums;
+}
+
+.compositor-ayuda {
+  grid-column: 1 / -1;
+}

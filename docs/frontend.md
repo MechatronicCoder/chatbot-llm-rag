@@ -16,7 +16,12 @@ La interfaz tiene tres zonas:
 frontend/
 ├── index.html          estructura de la página (sin estilos ni scripts en línea)
 ├── css/
-│   └── estilos.css     variables, disposición, componentes, responsive, animaciones
+│   ├── base.css          variables y estilos base
+│   ├── disposicion.css   columnas y controles
+│   ├── chat.css          hilo, burbujas, chips y formulario
+│   ├── paneles.css       panel lateral y panel de logs
+│   ├── responsive.css    ajustes por ancho de pantalla
+│   └── animaciones.css   animaciones y preferencias del sistema
 └── js/
     ├── main.js         arranque, estado de la cabecera y temporizadores
     ├── api.js          cliente HTTP, ErrorApi y token de administración
@@ -174,7 +179,7 @@ Cuando algo queda bloqueado, la consola del navegador muestra un mensaje `Refuse
 
 ## Estilos
 
-Toda la hoja está en `css/estilos.css`, organizada en secciones numeradas: variables, base, disposición, controles, chat, panel, logs, responsive, animaciones y preferencias del sistema. Las reglas responsive van después de los componentes para prevalecer sobre sus reglas base.
+Los estilos están en `css/`, en seis hojas que `index.html` carga en este orden: `base.css` (variables y base), `disposicion.css` (columnas y controles), `chat.css`, `paneles.css` (panel lateral y logs), `responsive.css` y `animaciones.css` (incluye movimiento reducido y colores forzados). El orden importa: las reglas responsive se cargan después de los componentes para prevalecer sobre sus reglas base. Ningún archivo de código supera las 400 líneas.
 
 ### Variables
 
@@ -309,7 +314,7 @@ El ejemplo agrega un bloque "Documentos del corpus" al panel, a partir de un end
 
 4. Conexión en `main.js`: se crea junto a los demás y se llama donde corresponda (arranque, `alQuedarListo`, temporizadores). Los temporizadores viven en `main.js`; los módulos solo exponen funciones.
 
-5. Estilos en la sección correspondiente de `estilos.css`, con variables. Los ajustes por ancho van en la sección "Responsive".
+5. Estilos en la hoja que corresponda (`chat.css`, `paneles.css`…), con variables de `base.css`. Los ajustes por ancho van en `responsive.css`.
 
 6. Comprobaciones: etiquetas y nombres accesibles, foco visible, comportamiento con movimiento reducido, ningún `innerHTML` con datos y ningún atributo `style` u `on*`.
 

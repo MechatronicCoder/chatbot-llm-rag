@@ -9,9 +9,10 @@ import pytest
 from app.core.config import RAIZ, Settings
 from app.core.logs import RegistroEventos
 from app.persistencia.db import BaseDatos
-from app.servicios.chat import AjustesChat, ServicioChat
+from app.servicios.chat import ServicioChat
 from app.servicios.faq import IndiceFAQ
 from app.servicios.rag import BuscadorDocumentos, Chunk, ParametrosRAG
+from app.servicios.turno import AjustesChat
 from tests.dobles import ModeloFalso
 
 DATOS = RAIZ / "datos"
