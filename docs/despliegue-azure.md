@@ -239,7 +239,7 @@ El workflow `CD` se ejecuta cuando el workflow `CI` termina con éxito en un pus
 
 La autenticación usa OpenID Connect: GitHub emite un token de corta duración que Entra ID acepta gracias a una credencial federada. No se guarda ninguna contraseña ni clave de Azure en GitHub.
 
-Requisitos previos: la Container App ya existe (fase 2 completada) y el archivo `.github/workflows/cd.yml` está en la rama `main`, porque los disparadores `workflow_run` solo se leen desde la rama por defecto.
+Requisitos previos: la Container App ya existe (fase 2 completada) y el archivo `.github/workflows/cd.yml` está en la rama por defecto del repositorio (`dev`), porque GitHub lee los disparadores `workflow_run` solo desde esa rama. Por la misma razón, la ejecución del CD figura sobre la rama por defecto aunque despliega el commit de `main` que pasó el CI.
 
 ### 1. Variables de trabajo
 
@@ -313,7 +313,7 @@ gh variable list --repo $REPO
 
 - Son variables de repositorio, no del environment: la condición del job se evalúa antes de entrar al environment y necesita leer `AZURE_CLIENT_ID`. Mientras esa variable esté vacía, el job se omite en lugar de fallar.
 - No son secretos: son identificadores. Lo que protege el acceso es la credencial federada, que solo acepta tokens de este repositorio y este environment.
-- Opcionalmente, en Settings > Environments > produccion se limita el environment a la rama `main` y se exige una aprobación manual antes de cada despliegue.
+- Para exigir una aprobación manual antes de cada despliegue se agrega un revisor en Settings > Environments > produccion > Required reviewers. No se limita el environment a la rama `main`: el CD corre sobre la rama por defecto y esa regla lo bloquearía.
 
 ### 6. Probar el workflow
 
