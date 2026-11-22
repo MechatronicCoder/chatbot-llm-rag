@@ -4,22 +4,22 @@ Las pruebas automáticas comprueban que el código hace lo que se espera con un 
 
 ## Conjunto de casos
 
-`evaluacion/casos.json` tiene 27 casos en 8 categorías:
+`evaluacion/casos.json` tiene 28 casos en 8 categorías:
 
 | Categoría | Casos | Qué se espera |
 |---|---|---|
 | faq | 7 | Ruta `faq` y la FAQ correcta, también sin tildes; "libros para regalo" sigue siendo FAQ |
 | seguridad | 3 | Ruta `filtro`, sin llamar al modelo, incluido un pedido de copia pirata |
 | cortesia | 2 | Ruta `directa`, sin herramientas |
-| catalogo | 3 | Ruta `herramientas` y el libro esperado, por título y por autor; un título que no está en el catálogo no se inventa |
-| recomendacion | 5 | Ruta `recomendacion` y el libro esperado entre los mostrados (sumar a los 5 años, fantasía con un goblin, magia a los 11 años, distopía); si falta la edad del lector, el librero la pregunta |
+| catalogo | 3 | Ruta `herramientas` y el libro esperado, por título (Dune) y por autor (Mary Shelley); un título que no está en el catálogo no se inventa |
+| recomendacion | 6 | Ruta `recomendacion` y uno de los libros esperados entre los mostrados (gatos para un niño de 9 años, misterio en una isla, terror para 13 años, robots detectives, distopía); si falta la edad del lector, el librero la pregunta |
 | accion | 2 | Ruta `accion`, incluida una conversación de dos turnos (reservar y pagar) |
 | rag | 3 | Ruta `rag` y, cuando se indica, el documento esperado entre los citados |
 | fuera_de_alcance | 2 | Ruta `directa`, sin inventar catálogo ni políticas |
 
 Cada caso corre en una sesión nueva y sobre una base de datos temporal, así que la evaluación es repetible y no modifica `var/tienda.db`.
 
-Los casos de catálogo, recomendación y acción nombran libros del catálogo de ejemplo. Al reemplazar `datos/catalogo.json` por el catálogo real, se cambia `libro_titulo` de esos casos por libros que existan, y conviene agregar casos para las categorías y edades que más se venden.
+Los casos de catálogo, recomendación y acción nombran libros del catálogo actual. `libro_titulo` acepta un título o una lista de títulos válidos, porque una misma petición puede tener varias respuestas correctas (por ejemplo, cualquiera de los libros de La calle del terror para un lector de 13 años). Si el catálogo cambia, se revisan esos títulos y conviene agregar casos para las categorías y edades que más se venden.
 
 ## Cómo ejecutarla
 
@@ -40,7 +40,7 @@ Con el clasificador TF-IDF y las guardias, sin ninguna API configurada:
 | faq | 7/7 |
 | seguridad | 3/3 |
 
-Los 10 casos se resuelven en milisegundos y sin tokens. Los 17 casos restantes requieren el modelo y se miden con las claves configuradas.
+Los 10 casos se resuelven en milisegundos y sin tokens. Los 18 casos restantes requieren el modelo y se miden con las claves configuradas.
 
 ## Calibrar el umbral del RAG
 
