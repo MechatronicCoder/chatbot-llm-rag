@@ -1,4 +1,4 @@
-/* TechStore · Asistente — Chat: hilo, burbujas, sugerencias, indicador de escritura, chips y formulario.
+/* Asistente de librería — Chat: hilo, burbujas, sugerencias, indicador de escritura, chips y formulario.
    Orden de carga en index.html: base, disposicion, chat, paneles, responsive, animaciones. */
 
 /* 5. Chat ------------------------------------------------------------------ */
@@ -156,6 +156,32 @@
 .puntos span:nth-child(3) {
   animation-delay: calc(var(--dur-puntos) * 0.3);
 }
+
+/* Tarjetas de libros mostrados en la respuesta */
+
+.libros {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--esp-2, 8px);
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.libro {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-linea);
+  border-radius: var(--radio-s);
+  background: var(--color-fondo, transparent);
+  animation: entrar-chip var(--dur-chip) var(--curva-salida) both;
+}
+
+.libro-titulo { color: var(--color-texto); }
+.libro-autor { color: var(--color-tenue); font-size: var(--texto-s); }
+.libro-datos { color: var(--color-ok-texto); font-size: var(--texto-s); }
 
 /* Chips de metadatos */
 

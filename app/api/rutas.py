@@ -1,7 +1,7 @@
 """Rutas HTTP de la API.
 
-Públicas: salud, catálogo, pedidos del cliente, documentos, chat y borrado de
-la conversación. De administración (requieren `X-Admin-Token` si está
+Públicas: salud, libros, categorías, pedidos del cliente, documentos, chat y
+borrado de la conversación. De administración (requieren `X-Admin-Token` si está
 configurado): historial guardado, logs, métricas y reporte de ventas.
 """
 
@@ -25,13 +25,16 @@ from app.api.dependencias import (
 )
 from app.api.esquemas import (
     ID_PATRON,
+    Categoria,
+    LibroDetalle,
+    ListaLibros,
     ListaPedidos,
-    ListaProductos,
     PeticionChat,
     RespuestaChatAPI,
     SesionBorrada,
 )
 from app.servicios.chat import ServicioChat
+from app.servicios.recomendador import resumen_libro
 
 router = APIRouter(prefix="/api")
 
@@ -66,6 +69,11 @@ def salud(estado: Estado) -> dict[str, Any]:
             "palabras_por_chunk": info["palabras_por_chunk"],
         }
         faqs = servicio.faq.info()
+    catalogo = (
+        servicio.recomendador.info()
+        if servicio is not None
+        else {"libros": 0, "motor": "sin indexar", "indexado": False, "aviso": None}
+    )
     configurado = servicio.llm.configurado if servicio else estado.ajustes.llm_configurado
     return {
         "estado": "ok" if estado.listo else "iniciando",
@@ -73,7 +81,13 @@ def salud(estado: Estado) -> dict[str, Any]:
         "uptime_s": int(time.time() - estado.arranque),
         "modelo": servicio.llm.modelo_principal if servicio else estado.ajustes.llm_model or "—",
         "modo": "real" if configurado else "demo",
+        "tienda": {
+            "nombre": estado.tienda.nombre,
+            "moneda": estado.tienda.moneda.simbolo,
+            "codigo_moneda": estado.tienda.moneda.codigo,
+        },
         "corpus": corpus,
+        "catalogo": catalogo,
         "faqs": faqs,
         "config": estado.ajustes.resumen(),
         **estado.bd.estadisticas(),
@@ -88,24 +102,45 @@ def vivo() -> dict[str, str]:
 
 @router.get("/health/ready", tags=["salud"])
 def listo(estado: Estado) -> JSONResponse:
-    """Readiness: el corpus está indexado y se pueden atender conversaciones."""
+    """Readiness: documentos y catálogo indexados; se pueden atender conversaciones."""
     if estado.listo:
         return JSONResponse({"estado": "listo"})
     return JSONResponse({"estado": "iniciando"}, status_code=status.HTTP_503_SERVICE_UNAVAILABLE)
 
 
 # ---------------------------------------------------------------------------
-# Catálogo, pedidos y documentos
+# Libros, pedidos y documentos
 # ---------------------------------------------------------------------------
-@router.get("/productos", response_model=ListaProductos, tags=["tienda"])
-def productos(
+@router.get("/libros", response_model=ListaLibros, tags=["tienda"])
+def libros(
     estado: Estado,
     consulta: Annotated[str, Query(max_length=100)] = "",
     categoria: Annotated[str | None, Query(max_length=40)] = None,
+    autor: Annotated[str | None, Query(max_length=100)] = None,
+    edad: Annotated[int | None, Query(ge=0, le=99)] = None,
     limite: Annotated[int, Query(ge=1, le=20)] = 20,
 ) -> dict[str, Any]:
-    items = estado.bd.buscar_productos(consulta, categoria, limite)
-    return {"total": len(items), "productos": items}
+    """Búsqueda por palabras en título, autor, editorial, género, temas e ISBN."""
+    items = estado.bd.buscar_libros(consulta, categoria, autor, edad, limite)
+    return {"total": len(items), "libros": [resumen_libro(lb) for lb in items]}
+
+
+@router.get(
+    "/libros/{isbn}",
+    response_model=LibroDetalle,
+    tags=["tienda"],
+    responses={404: {"description": "No hay un libro activo con ese ISBN"}},
+)
+def libro(estado: Estado, isbn: Annotated[str, Path(pattern=r"^[0-9-]{10,17}$")]) -> Any:
+    encontrado = estado.bd.obtener_libro(isbn)
+    if encontrado is None:
+        raise HTTPException(status_code=404, detail=f"No hay un libro con ISBN {isbn}.")
+    return encontrado
+
+
+@router.get("/categorias", response_model=list[Categoria], tags=["tienda"])
+def categorias(estado: Estado) -> list[dict[str, Any]]:
+    return estado.bd.categorias()
 
 
 @router.get("/pedidos/{usuario_id}", response_model=ListaPedidos, tags=["tienda"])
@@ -193,8 +228,9 @@ def ventas_csv(estado: Estado, usuario_id: Annotated[str | None, Query()] = None
     columnas = {
         "pedido_id": "pedido",
         "usuario_id": "usuario",
-        "codigo": "codigo",
-        "nombre": "producto",
+        "isbn": "isbn",
+        "titulo": "titulo",
+        "autor": "autor",
         "cantidad": "cantidad",
         "precio_unitario": "precio_unitario",
         "total": "total",

@@ -5,6 +5,7 @@
       ├─ 2. guardias (inyección / palabra prohibida) . ruta=filtro
       ├─ 3. clasificador de FAQs ..................... ruta=faq o escalar
       ├─ 4. LLM con herramientas ..................... ruta=directa, herramientas, accion
+      │     ├─ recomendar_libros -> híbrido .......... ruta=recomendacion
       │     └─ buscar_politica -> RAG con MMR ........ ruta=rag
       └─ 5. cierre: base de datos y evento turno.fin
 
@@ -19,6 +20,7 @@ import json
 import time
 from typing import Any
 
+from app.catalogo.carga import Tienda
 from app.core import seguridad
 from app.core.logs import RegistroEventos, nuevo_turno
 from app.llm.cliente import Mensaje, ModeloChat, SinProveedores
@@ -26,9 +28,11 @@ from app.persistencia.db import BaseDatos
 from app.servicios.faq import Decision, IndiceFAQ
 from app.servicios.herramientas import Herramientas
 from app.servicios.rag import BuscadorDocumentos
+from app.servicios.recomendador import Recomendador
 from app.servicios.turno import (
     MENSAJE_ESCALADO,
     RE_ACCION,
+    RE_BUSQUEDA,
     RE_SALUDO,
     Acumulado,
     AjustesChat,
@@ -49,19 +53,23 @@ class ServicioChat:
         bd: BaseDatos,
         registro: RegistroEventos,
         buscador: BuscadorDocumentos,
+        recomendador: Recomendador,
         llm: ModeloChat,
         faq: IndiceFAQ,
         prompt_sistema: str,
+        tienda: Tienda,
         ajustes: AjustesChat | None = None,
     ) -> None:
         self.bd = bd
         self.registro = registro
         self.buscador = buscador
+        self.recomendador = recomendador
         self.llm = llm
         self.faq = faq
         self.prompt_sistema = prompt_sistema.strip()
+        self.tienda = tienda
         self.ajustes = ajustes or AjustesChat()
-        self.herramientas = Herramientas(bd, buscador)
+        self.herramientas = Herramientas(bd, buscador, recomendador)
 
     # -- memoria de la sesión (vive en la base de datos) -----------------------
     def historial(self, session_id: str) -> list[Mensaje]:
@@ -117,11 +125,13 @@ class ServicioChat:
             )
 
         # 3. clasificador de FAQs (con guardia de acción)
-        accion = RE_ACCION.search(limpio)
+        motivo_forzado = None
+        if accion := RE_ACCION.search(limpio):
+            motivo_forzado = f"peticion de accion: {accion.group(0)!r}"
+        elif busqueda := RE_BUSQUEDA.search(limpio):
+            motivo_forzado = f"busqueda de libros: {busqueda.group(0)!r}"
         decision = self.faq.clasificar(
-            limpio,
-            forzar_llm=bool(accion),
-            motivo_forzado=f"peticion de accion: {accion.group(0)!r}" if accion else None,
+            limpio, forzar_llm=motivo_forzado is not None, motivo_forzado=motivo_forzado
         )
         self.registro.info(
             "clasificacion",
@@ -294,6 +304,7 @@ class ServicioChat:
             pedidos=acumulado.pedidos,
             pagos=acumulado.pagos,
             documentos=acumulado.documentos,
+            libros=acumulado.libros,
             modo="real",
             modelo=modelo,
             endpoint=proveedor,
@@ -313,8 +324,13 @@ class ServicioChat:
         aviso: str,
     ) -> RespuestaChat:
         """Sin modelo se responde solo con datos verificados: FAQ cercana o catálogo."""
-        texto, fuente, similitud = texto_demo(
-            self.bd, decision, mensaje, self.ajustes.faq_contexto_min
+        texto, fuente, similitud, libros = texto_demo(
+            self.bd,
+            self.recomendador,
+            decision,
+            mensaje,
+            self.ajustes.faq_contexto_min,
+            self.tienda,
         )
         return self._cerrar(
             texto,
@@ -326,6 +342,7 @@ class ServicioChat:
             herramientas=acumulado.usadas,
             pedidos=acumulado.pedidos,
             pagos=acumulado.pagos,
+            libros=libros,
             modo="demo",
             tokens=acumulado.tokens,
             aviso=aviso,

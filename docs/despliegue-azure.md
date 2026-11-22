@@ -224,7 +224,7 @@ for ($i = 1; $i -le 18; $i++) {
     Start-Sleep -Seconds 10
 }
 
-# Estado general: modo (real o demo), corpus indexado y parámetros, sin claves
+# Estado general: modo (real o demo), documentos y catálogo indexados y parámetros, sin claves
 curl.exe -s "$URL/api/health"
 
 # Endpoint protegido: requiere el encabezado X-Admin-Token
@@ -239,7 +239,7 @@ El workflow `CD` se ejecuta cuando el workflow `CI` termina con éxito en un pus
 
 La autenticación usa OpenID Connect: GitHub emite un token de corta duración que Entra ID acepta gracias a una credencial federada. No se guarda ninguna contraseña ni clave de Azure en GitHub.
 
-Requisitos previos: la Container App ya existe (fase 2 completada) y el archivo `.github/workflows/cd.yml` está en la rama `main`, porque los disparadores `workflow_run` solo se leen desde la rama por defecto.
+Requisitos previos: la Container App ya existe (fase 2 completada) y el archivo `.github/workflows/cd.yml` está en la rama por defecto del repositorio (`dev`), porque GitHub lee los disparadores `workflow_run` solo desde esa rama. Por la misma razón, la ejecución del CD figura sobre la rama por defecto aunque despliega el commit de `main` que pasó el CI.
 
 ### 1. Variables de trabajo
 
@@ -313,7 +313,7 @@ gh variable list --repo $REPO
 
 - Son variables de repositorio, no del environment: la condición del job se evalúa antes de entrar al environment y necesita leer `AZURE_CLIENT_ID`. Mientras esa variable esté vacía, el job se omite en lugar de fallar.
 - No son secretos: son identificadores. Lo que protege el acceso es la credencial federada, que solo acepta tokens de este repositorio y este environment.
-- Opcionalmente, en Settings > Environments > produccion se limita el environment a la rama `main` y se exige una aprobación manual antes de cada despliegue.
+- Para exigir una aprobación manual antes de cada despliegue se agrega un revisor en Settings > Environments > produccion > Required reviewers. No se limita el environment a la rama `main`: el CD corre sobre la rama por defecto y esa regla lo bloquearía.
 
 ### 6. Probar el workflow
 
@@ -396,7 +396,7 @@ Los precios cambian por región y con el tiempo, así que se consultan en la [ca
 
 Formas de bajar el costo:
 
-- `minReplicas = 0`. La app se apaga tras unos minutos sin solicitudes y no consume cómputo mientras está apagada. La primera solicitud después de apagarse espera el arranque completo (descarga de la imagen e indexado, más de un minuto). Además, cada apagado borra la base SQLite (pedidos, usuarios y conversaciones) y obliga a recalcular los embeddings del corpus, lo que genera llamadas extra a la API de embeddings. Sirve para una demo; no para guardar datos.
+- `minReplicas = 0`. La app se apaga tras unos minutos sin solicitudes y no consume cómputo mientras está apagada. La primera solicitud después de apagarse espera el arranque completo (descarga de la imagen e indexado, más de un minuto). Además, cada apagado borra la base SQLite (pedidos, usuarios y conversaciones) y obliga a recalcular los embeddings de los documentos y del catálogo, lo que genera llamadas extra a la API de embeddings. Sirve para una demo; no para guardar datos.
 
   Para que el cambio sea permanente se vuelve a ejecutar la fase 2 con `minReplicas=0` en `$parametros`. El atajo siguiente también funciona, pero la próxima ejecución de la fase 2 vuelve a aplicar el valor del parámetro:
 
@@ -463,8 +463,8 @@ az containerapp show --name $APP --resource-group $GRUPO --query properties.conf
 
 ### La sonda de readiness no pasa
 
-- Durante el primer minuto es normal: `/api/health/ready` responde 503 mientras se indexan los documentos.
-- Si sigue en 503, `/api/health` muestra el estado del corpus (`indexado`, `aviso`) y si la app está en modo real o demo. La causa más común es una clave, URL o modelo de embeddings incorrectos, o que el proveedor no responda. Los logs de consola muestran el error del indexado.
+- Durante el primer minuto es normal: `/api/health/ready` responde 503 mientras se indexan los documentos y el catálogo.
+- Si sigue en 503, `/api/health` muestra el estado de los documentos (`corpus`) y del catálogo (`catalogo`), cada uno con `indexado` y `aviso`, y si la app está en modo real o demo. La causa más común es una clave, URL o modelo de embeddings incorrectos, o que el proveedor no responda. Los logs de consola muestran el error del indexado.
 - Mientras la revisión nueva no esté lista, el tráfico sigue en la revisión anterior (si existe). En el primer despliegue la URL responde con error hasta que la revisión esté lista.
 
 ### Error por un secret vacío

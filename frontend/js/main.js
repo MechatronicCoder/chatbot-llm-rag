@@ -12,7 +12,15 @@ import { salud } from './api.js';
 import { iniciarChat } from './chat.js';
 import { iniciarPanel } from './panel.js';
 import { iniciarLogs } from './logs.js';
-import { crear, porId, ponerTexto, formatearCantidad, formatearDuracion, plural } from './util.js';
+import {
+  crear,
+  porId,
+  ponerTexto,
+  configurarMoneda,
+  formatearCantidad,
+  formatearDuracion,
+  plural,
+} from './util.js';
 
 const INTERVALO_LOGS_MS = 3000;
 const INTERVALO_SALUD_MS = 10000;
@@ -39,6 +47,13 @@ function datoMeta(etiqueta, valor, clase = '') {
 
 function pintarSalud(d) {
   const corpus = d?.corpus ?? {};
+  if (d?.tienda) {
+    configurarMoneda(d.tienda.moneda);
+    if (d.tienda.nombre) {
+      ponerTexto(porId('marca-nombre'), d.tienda.nombre);
+      document.title = `${d.tienda.nombre} · Asistente`;
+    }
+  }
 
   if (d?.estado === 'ok') {
     ponerIndicador('ok', 'En línea', `Activo desde hace ${formatearDuracion(d.uptime_s)}`);
@@ -48,7 +63,7 @@ function pintarSalud(d) {
 
   const indexado = corpus.indexado ? `listo${corpus.motor ? ` (${corpus.motor})` : ''}` : 'indexando…';
   const conteos = [
-    plural(formatearCantidad(d?.productos), 'producto'),
+    plural(formatearCantidad(d?.libros), 'libro'),
     plural(formatearCantidad(d?.pedidos), 'pedido'),
     plural(formatearCantidad(d?.pagos), 'pago'),
     plural(formatearCantidad(d?.mensajes), 'mensaje'),
@@ -64,7 +79,7 @@ function pintarSalud(d) {
     ]),
     crear('li', {
       texto: conteos,
-      atributos: { title: `${formatearCantidad(d?.usuarios)} usuarios · ${formatearCantidad(d?.unidades)} unidades` },
+      atributos: { title: `${formatearCantidad(d?.usuarios)} usuarios · ${formatearCantidad(d?.unidades)} ejemplares` },
     }),
   ];
   if (corpus.aviso) items.push(crear('li', { clase: 'aviso-corpus', texto: corpus.aviso }));

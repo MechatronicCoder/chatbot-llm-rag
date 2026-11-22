@@ -1,4 +1,4 @@
-"""Base de datos SQLite: catálogo, usuarios, pedidos, pagos y conversación.
+"""Base de datos SQLite: catálogo de libros, usuarios, pedidos, pagos y conversación.
 
 Reglas que se cumplen aquí y no en el modelo de lenguaje:
 
@@ -18,8 +18,9 @@ __all__ = ["METODOS_PAGO", "BaseDatos", "ErrorPedido"]
 
 
 class BaseDatos(RepositorioTienda, RepositorioConversacion):
-    """Punto de acceso único a la base: tienda y conversación sobre la misma conexión.
+    """Punto de acceso único a la base: catálogo, venta y conversación.
 
-    Cada repositorio vive en su propio módulo (`tienda.py`, `conversacion.py`);
-    esta clase los reúne para que el resto de la aplicación dependa de una sola.
+    Cada repositorio vive en su propio módulo (`catalogo.py`, `tienda.py`,
+    `conversacion.py`); esta clase los reúne para que el resto de la aplicación
+    dependa de una sola.
     """

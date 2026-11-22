@@ -1,6 +1,6 @@
 # 0006 Guardias y FAQ antes del modelo
 
-Estado: aceptada
+Estado: aceptada; ampliada por [0008](0008-recomendacion-hibrida.md) (las búsquedas de libros saltan el clasificador)
 Fecha: 2026-11-21
 
 ## Contexto

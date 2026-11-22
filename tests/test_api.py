@@ -12,6 +12,7 @@ from app.main import crear_app
 from app.persistencia.db import BaseDatos
 from app.servicios.rag import BuscadorDocumentos
 from tests.conftest import chunks_de_prueba, crear_ajustes, crear_servicio
+from tests.datos_prueba import ISBN_DRAGON, ISBN_MAGO, ISBN_SUMAS, LIBROS_PRUEBA
 from tests.dobles import ModeloFalso
 
 
@@ -23,6 +24,7 @@ def cliente_con(tmp_path: Path, **ajustes_extra: object) -> TestClient:
     buscador = BuscadorDocumentos(chunks_de_prueba()[:2])
     buscador.indexar()
     servicio = crear_servicio(ajustes, registro, bd, buscador, ModeloFalso(fallar=True))
+    servicio.recomendador.indexar()
     app = crear_app(ajustes, servicio=servicio, indexar_al_iniciar=False)
     return TestClient(app)
 
@@ -32,20 +34,28 @@ def cliente(tmp_path: Path) -> TestClient:
     return cliente_con(tmp_path)
 
 
+def chat(cliente: TestClient, mensaje: str, sesion: str = "s1") -> dict[str, object]:
+    cuerpo = {"mensaje": mensaje, "usuario_id": "u1", "session_id": sesion}
+    respuesta = cliente.post("/api/chat", json=cuerpo)
+    assert respuesta.status_code == 200
+    datos: dict[str, object] = respuesta.json()
+    return datos
+
+
 def test_health_resume_el_estado(cliente: TestClient) -> None:
     datos = cliente.get("/api/health").json()
-    assert datos["estado"] == "ok"
-    assert datos["modo"] == "demo"
+    assert datos["estado"] == "ok" and datos["modo"] == "demo"
+    assert datos["tienda"]["moneda"] == "S/" and datos["tienda"]["nombre"]
     assert datos["corpus"]["chunks"] == 2
-    assert datos["productos"] == 20
-    assert "rag_umbral" in datos["config"]
+    assert datos["catalogo"] == {"libros": 10, "motor": "tfidf", "indexado": True, "aviso": None}
+    assert datos["libros"] == len(LIBROS_PRUEBA)
+    assert "reco_pesos" in datos["config"]
 
 
 def test_health_no_expone_claves(tmp_path: Path) -> None:
     c = cliente_con(tmp_path, llm_api_key="sk-secreta-123", admin_token="token-admin-456")
     texto = c.get("/api/health").text
-    assert "sk-secreta-123" not in texto
-    assert "token-admin-456" not in texto
+    assert "sk-secreta-123" not in texto and "token-admin-456" not in texto
 
 
 def test_live_y_ready(cliente: TestClient) -> None:
@@ -54,76 +64,80 @@ def test_live_y_ready(cliente: TestClient) -> None:
 
 
 def test_ready_responde_503_mientras_arranca(tmp_path: Path) -> None:
-    ajustes = crear_ajustes(tmp_path)
-    app = crear_app(ajustes, indexar_al_iniciar=False)
+    app = crear_app(crear_ajustes(tmp_path), indexar_al_iniciar=False)
     assert TestClient(app).get("/api/health/ready").status_code == 503
 
 
-def test_productos_con_filtro(cliente: TestClient) -> None:
-    datos = cliente.get("/api/productos", params={"consulta": "laptops"}).json()
-    assert datos["total"] >= 1
-    assert datos["productos"][0]["categoria"] == "laptop"
+def test_libros_con_filtros(cliente: TestClient) -> None:
+    datos = cliente.get("/api/libros", params={"consulta": "magos"}).json()
+    assert datos["total"] == 1 and datos["libros"][0]["isbn"] == ISBN_MAGO
+    ninos = cliente.get("/api/libros", params={"edad": 5, "limite": 10}).json()
+    assert ISBN_SUMAS in [lb["isbn"] for lb in ninos["libros"]]
+    assert cliente.get("/api/libros", params={"edad": 200}).status_code == 422
+
+
+def test_ficha_de_un_libro(cliente: TestClient) -> None:
+    ficha = cliente.get(f"/api/libros/{ISBN_DRAGON}").json()
+    assert ficha["titulo"] == "La montaña del dragón" and ficha["temas"]
+    assert cliente.get("/api/libros/9780000000999").status_code == 404
+    assert cliente.get("/api/libros/no-es-isbn").status_code == 422
+
+
+def test_categorias(cliente: TestClient) -> None:
+    categorias = {c["categoria"]: c["libros"] for c in cliente.get("/api/categorias").json()}
+    assert categorias["novela"] == 4 and sum(categorias.values()) == len(LIBROS_PRUEBA)
 
 
 def test_politicas_lista_el_corpus(cliente: TestClient) -> None:
     datos = cliente.get("/api/politicas").json()
-    assert datos["chunks"] == 2
-    assert datos["documentos"] == ["politicas.pdf"]
+    assert datos["chunks"] == 2 and datos["documentos"] == ["politicas.md"]
 
 
 def test_chat_responde_y_guarda(cliente: TestClient) -> None:
-    r = cliente.post(
-        "/api/chat",
-        json={"mensaje": "¿cuánto cuesta el envío?", "usuario_id": "u1", "session_id": "s1"},
-    )
-    assert r.status_code == 200
-    datos = r.json()
-    assert datos["ruta"] == "faq"
-    assert datos["turno_id"]
-    assert datos["respuesta"]
+    datos = chat(cliente, "¿cuánto cuesta el envío?")
+    assert datos["ruta"] == "faq" and datos["turno_id"] and datos["respuesta"]
+    assert datos["libros"] == []
 
 
 def test_chat_valida_la_entrada(cliente: TestClient) -> None:
     assert cliente.post("/api/chat", json={"mensaje": ""}).status_code == 422
     malo = {"mensaje": "hola", "usuario_id": "../../etc/passwd"}
     assert cliente.post("/api/chat", json=malo).status_code == 422
+    largo = {"mensaje": "x" * 2500, "usuario_id": "u1", "session_id": "s1"}
+    respuesta = cliente.post("/api/chat", json=largo)
+    assert respuesta.status_code == 422 and "2000" in respuesta.json()["detail"]
 
 
 def test_pedidos_del_cliente(cliente: TestClient) -> None:
-    estado = cliente.app.state.estado  # type: ignore[attr-defined]
-    estado.bd.reservar_pedido("u1", "LAPTOP001", 1)
+    cliente.app.state.estado.bd.reservar_pedido("u1", ISBN_MAGO, 1)  # type: ignore[attr-defined]
     datos = cliente.get("/api/pedidos/u1").json()
-    assert datos["total"] == 1
-    assert datos["pendiente"] > 0
+    assert datos["total"] == 1 and datos["pendiente"] > 0
+    assert datos["pedidos"][0]["titulo"] == "La escuela de magos"
 
 
 def test_logs_metricas_y_filtro_por_turno(cliente: TestClient) -> None:
-    turno = cliente.post(
-        "/api/chat", json={"mensaje": "hola", "usuario_id": "u1", "session_id": "s1"}
-    ).json()["turno_id"]
+    turno = chat(cliente, "hola")["turno_id"]
     eventos = cliente.get("/api/logs", params={"n": 20}).json()
     assert any(e["evento"] == "turno.fin" for e in eventos["eventos"])
     filtrados = cliente.get("/api/logs", params={"turno": turno}).json()
-    assert filtrados["total"] >= 2
-    assert all(e["turno"] == turno for e in filtrados["eventos"])
+    assert filtrados["total"] >= 2 and all(e["turno"] == turno for e in filtrados["eventos"])
     assert cliente.get("/api/metricas").json()["turnos"] >= 1
 
 
 def test_borrar_sesion(cliente: TestClient) -> None:
-    cliente.post("/api/chat", json={"mensaje": "hola", "usuario_id": "u1", "session_id": "s2"})
+    chat(cliente, "hola", sesion="s2")
     assert cliente.delete("/api/sesiones/s2").json()["borrados"] == 2
     assert cliente.get("/api/sesion/s2").json()["total"] == 0
 
 
 def test_ventas_csv(cliente: TestClient) -> None:
     bd = cliente.app.state.estado.bd  # type: ignore[attr-defined]
-    pedido = bd.reservar_pedido("u1", "LAPTOP001", 1)
+    pedido = bd.reservar_pedido("u1", ISBN_MAGO, 1)
     bd.registrar_pago("u1", pedido["pedido_id"], "tarjeta")
     r = cliente.get("/api/ventas.csv")
-    assert r.status_code == 200
-    assert "text/csv" in r.headers["content-type"]
-    assert pedido["pedido_id"] in r.text
-    assert r.text.splitlines()[0].startswith("pedido;usuario")
+    assert r.status_code == 200 and "text/csv" in r.headers["content-type"]
+    assert r.text.splitlines()[0].startswith("pedido;usuario;isbn;titulo;autor")
+    assert pedido["pedido_id"] in r.text and "La escuela de magos" in r.text
 
 
 def test_admin_exige_token_si_esta_configurado(tmp_path: Path) -> None:
@@ -132,7 +146,7 @@ def test_admin_exige_token_si_esta_configurado(tmp_path: Path) -> None:
         assert c.get(ruta).status_code == 401
         assert c.get(ruta, headers={"X-Admin-Token": "otro"}).status_code == 401
         assert c.get(ruta, headers={"X-Admin-Token": "secreto-de-prueba"}).status_code == 200
-    assert c.get("/api/productos").status_code == 200  # lo público sigue abierto
+    assert c.get("/api/libros").status_code == 200  # lo público sigue abierto
 
 
 def test_limite_de_mensajes_por_minuto(tmp_path: Path) -> None:
@@ -141,8 +155,21 @@ def test_limite_de_mensajes_por_minuto(tmp_path: Path) -> None:
     assert c.post("/api/chat", json=cuerpo).status_code == 200
     assert c.post("/api/chat", json=cuerpo).status_code == 200
     tercera = c.post("/api/chat", json=cuerpo)
-    assert tercera.status_code == 429
-    assert int(tercera.headers["Retry-After"]) >= 1
+    assert tercera.status_code == 429 and int(tercera.headers["Retry-After"]) >= 1
+
+
+def test_el_limite_no_se_esquiva_falsificando_x_forwarded_for(tmp_path: Path) -> None:
+    """Detrás de un proxy confiable cuenta la IP que agrega el proxy (la última)."""
+    c = cliente_con(tmp_path, limite_chat_por_minuto=1, proxies_confiables=1)
+    cuerpo = {"mensaje": "¿cuánto cuesta el envío?", "usuario_id": "u1", "session_id": "s1"}
+    primera = c.post("/api/chat", json=cuerpo, headers={"X-Forwarded-For": "1.1.1.1, 9.9.9.9"})
+    assert primera.status_code == 200
+    falsa = {"X-Forwarded-For": "2.2.2.2, 9.9.9.9"}
+    assert c.post("/api/chat", json=cuerpo, headers=falsa).status_code == 429
+    assert (
+        c.post("/api/chat", json=cuerpo, headers={"X-Forwarded-For": "8.8.8.8"}).status_code == 200
+    )
+    assert c.post("/api/chat", json=cuerpo).status_code == 200  # sin cabecera: IP de la conexión
 
 
 def test_cabeceras_de_seguridad(cliente: TestClient) -> None:
@@ -152,40 +179,8 @@ def test_cabeceras_de_seguridad(cliente: TestClient) -> None:
     assert "Content-Security-Policy" not in cliente.get("/docs").headers
 
 
-def test_la_portada_sirve_el_frontend(cliente: TestClient) -> None:
-    r = cliente.get("/")
-    assert r.status_code == 200
-    assert "text/html" in r.headers["content-type"]
-
-
-def test_el_limite_no_se_esquiva_falsificando_x_forwarded_for(tmp_path: Path) -> None:
-    """Detrás de un proxy confiable cuenta la IP que agrega el proxy (la última)."""
-    c = cliente_con(tmp_path, limite_chat_por_minuto=1, proxies_confiables=1)
-    cuerpo = {"mensaje": "¿cuánto cuesta el envío?", "usuario_id": "u1", "session_id": "s1"}
-    primera = c.post("/api/chat", json=cuerpo, headers={"X-Forwarded-For": "1.1.1.1, 9.9.9.9"})
-    assert primera.status_code == 200
-    falsa = {"X-Forwarded-For": "2.2.2.2, 9.9.9.9"}  # el cliente cambia la entrada de la izquierda
-    assert c.post("/api/chat", json=cuerpo, headers=falsa).status_code == 429
-    otro = {"X-Forwarded-For": "8.8.8.8"}  # otra IP real no queda afectada
-    assert c.post("/api/chat", json=cuerpo, headers=otro).status_code == 200
-
-
-def test_mensaje_mas_largo_que_el_limite_del_servicio(cliente: TestClient) -> None:
-    cuerpo = {"mensaje": "x" * 2500, "usuario_id": "u1", "session_id": "s1"}
-    r = cliente.post("/api/chat", json=cuerpo)
-    assert r.status_code == 422
-    assert "2000" in r.json()["detail"]
-
-
-def test_sin_x_forwarded_for_se_usa_la_ip_de_la_conexion(tmp_path: Path) -> None:
-    c = cliente_con(tmp_path, limite_chat_por_minuto=1, proxies_confiables=1)
-    cuerpo = {"mensaje": "¿cuánto cuesta el envío?", "usuario_id": "u1", "session_id": "s1"}
-    assert c.post("/api/chat", json=cuerpo).status_code == 200
-    assert c.post("/api/chat", json=cuerpo).status_code == 429
-
-
-def test_los_modulos_del_frontend_se_sirven_como_javascript(cliente: TestClient) -> None:
-    r = cliente.get("/js/main.js")
-    assert r.status_code == 200
-    assert r.headers["content-type"].startswith("text/javascript")
+def test_la_portada_y_los_modulos_del_frontend(cliente: TestClient) -> None:
+    portada = cliente.get("/")
+    assert portada.status_code == 200 and "text/html" in portada.headers["content-type"]
+    assert cliente.get("/js/main.js").headers["content-type"].startswith("text/javascript")
     assert cliente.get("/css/base.css").headers["content-type"].startswith("text/css")

@@ -1,6 +1,6 @@
 # 0002 LLM y embeddings por API, sin GPU ni modelos locales
 
-Estado: aceptada
+Estado: aceptada; ampliada por [0008](0008-recomendacion-hibrida.md) (el catálogo también se indexa con embeddings)
 Fecha: 2026-11-21
 
 ## Contexto

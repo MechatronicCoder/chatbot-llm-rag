@@ -148,10 +148,28 @@ def leer_pdf(ruta: Path) -> list[tuple[int, str]]:
     return [(i + 1, pagina.extract_text() or "") for i, pagina in enumerate(lector.pages)]
 
 
+RE_TITULO_MD = re.compile(r"^#{1,6}\s", re.MULTILINE)
+RE_MARCAS_MD = re.compile(r"^(?:#{1,6}|[-*]|\d+\.)\s+", re.MULTILINE)
+
+
+def leer_markdown(ruta: Path) -> list[tuple[int, str]]:
+    """Cada sección (desde un título `#`) cuenta como una página, para poder citarla."""
+    texto = ruta.read_text(encoding="utf-8")
+    cortes = sorted({0, *(m.start() for m in RE_TITULO_MD.finditer(texto))})
+    secciones = [texto[a:b] for a, b in zip(cortes, [*cortes[1:], len(texto)], strict=True)]
+    limpias = [RE_MARCAS_MD.sub("", s).replace("**", "") for s in secciones if s.strip()]
+    return list(enumerate(limpias, start=1))
+
+
+LECTORES = {".pdf": leer_pdf, ".md": leer_markdown}
+
+
 def construir_chunks(carpeta: Path, parametros: ParametrosRAG) -> list[Chunk]:
+    """Fragmenta los PDF y Markdown de la carpeta; en Markdown, `pagina` es la sección."""
     chunks: list[Chunk] = []
-    for ruta in sorted(carpeta.glob("*.pdf")):
-        for pagina, texto in leer_pdf(ruta):
+    documentos = sorted(p for p in carpeta.iterdir() if p.suffix.lower() in LECTORES)
+    for ruta in documentos:
+        for pagina, texto in LECTORES[ruta.suffix.lower()](ruta):
             trozos = trocear(
                 texto, parametros.chunk_max_palabras, parametros.chunk_overlap_palabras
             )
