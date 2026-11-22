@@ -235,11 +235,11 @@ Si `/api/health` informa `"modo": "demo"`, la app arrancó sin un LLM configurad
 
 ## Despliegue continuo con GitHub Actions (OIDC)
 
-El workflow `CD` se ejecuta cuando el workflow `CI` termina con éxito en un push a `main`, o a mano desde la pestaña Actions. Construye la imagen en el runner de GitHub, la sube al registro con `docker push` (no usa `az acr build`, porque ACR Tasks puede no estar disponible en suscripciones de prueba), actualiza la Container App con la imagen etiquetada con el SHA del commit y espera hasta unos 3 minutos a que `/api/health/ready` responda 200 en la revisión nueva; si no, el job falla.
+El despliegue es el último job del workflow `CI`: corre solo en un push a `main`, es decir, cuando el dueño une un pull request, y solo si las pruebas y la imagen pasaron. Ese job llama a `.github/workflows/cd.yml`, que también se puede lanzar a mano desde `main` en la pestaña Actions. Construye la imagen en el runner de GitHub, la sube al registro con `docker push` (no usa `az acr build`, porque ACR Tasks puede no estar disponible en suscripciones de prueba), actualiza la Container App con la imagen etiquetada con el SHA del commit y espera hasta unos 3 minutos a que `/api/health/ready` responda 200 en la revisión nueva; si no, el job falla.
 
 La autenticación usa OpenID Connect: GitHub emite un token de corta duración que Entra ID acepta gracias a una credencial federada. No se guarda ninguna contraseña ni clave de Azure en GitHub.
 
-Requisitos previos: la Container App ya existe (fase 2 completada) y el archivo `.github/workflows/cd.yml` está en la rama por defecto del repositorio (`dev`), porque GitHub lee los disparadores `workflow_run` solo desde esa rama. Por la misma razón, la ejecución del CD figura sobre la rama por defecto aunque despliega el commit de `main` que pasó el CI.
+Requisito previo: la Container App ya existe (fase 2 completada). Si `main` recibe un push antes, el job de despliegue falla al actualizar una app que no existe.
 
 ### 1. Variables de trabajo
 
@@ -298,8 +298,12 @@ az role assignment create --assignee-object-id $SP_ID --assignee-principal-type 
 
 ### 5. Environment y variables en GitHub
 
+El environment se crea limitado a la rama `main`: un job que corra en cualquier otra rama no recibe credenciales de Azure, aunque alguien con permiso de escritura lance el workflow a mano o agregue uno propio en su rama.
+
 ```powershell
-gh api --method PUT "repos/$REPO/environments/produccion"
+'{"deployment_branch_policy":{"protected_branches":false,"custom_branch_policies":true}}' |
+  gh api --method PUT "repos/$REPO/environments/produccion" --input -
+gh api --method POST "repos/$REPO/environments/produccion/deployment-branch-policies" -f name=main -f type=branch
 
 gh variable set AZURE_CLIENT_ID       --repo $REPO --body $APP_ID
 gh variable set AZURE_TENANT_ID       --repo $REPO --body $TENANT
@@ -313,7 +317,7 @@ gh variable list --repo $REPO
 
 - Son variables de repositorio, no del environment: la condición del job se evalúa antes de entrar al environment y necesita leer `AZURE_CLIENT_ID`. Mientras esa variable esté vacía, el job se omite en lugar de fallar.
 - No son secretos: son identificadores. Lo que protege el acceso es la credencial federada, que solo acepta tokens de este repositorio y este environment.
-- Para exigir una aprobación manual antes de cada despliegue se agrega un revisor en Settings > Environments > produccion > Required reviewers. No se limita el environment a la rama `main`: el CD corre sobre la rama por defecto y esa regla lo bloquearía.
+- Para exigir además una aprobación manual antes de cada despliegue se agrega un revisor en Settings > Environments > produccion > Required reviewers.
 
 ### 6. Probar el workflow
 
@@ -322,7 +326,7 @@ gh workflow run cd.yml --repo $REPO --ref main
 gh run list --workflow cd.yml --repo $REPO --limit 3
 ```
 
-Después, cada push a `main` que pase CI despliega solo. Los pull requests no despliegan, aunque CI pase en ellos.
+Después, cada push a `main` que pase las pruebas y la imagen despliega solo. Los pull requests y los push a `dev` no despliegan: en ellos el job `Desplegar` aparece como omitido.
 
 ## Logs
 
@@ -493,7 +497,8 @@ El reinicio es necesario para que el contenedor lea el valor nuevo, y también b
 
 ### El workflow de CD no corre o falla
 
-- Job omitido (skipped): `AZURE_CLIENT_ID` está vacía, CI no terminó en éxito, CI se ejecutó por un pull request y no por un push a `main`, o el workflow de integración no se llama exactamente `CI`.
+- Job omitido (skipped): `AZURE_CLIENT_ID` está vacía, fallaron las pruebas o la imagen, o la ejecución no viene de un push a `main` (un pull request, un push a `dev` o un lanzamiento manual desde otra rama).
+- `Branch "..." is not allowed to deploy to produccion due to environment protection rules`: el job corrió en una rama distinta de `main`; es el comportamiento esperado.
 - `AADSTS70021: No matching federated identity record found`: el `subject` de la credencial federada no coincide con `repo:MechatronicCoder/chatbot-llm-rag:environment:produccion` (revisar dueño, nombre del repositorio y nombre del environment).
 - `AuthorizationFailed` al actualizar la app: falta el rol Contributor sobre el grupo de recursos o aún no se propagó.
 - La prueba de humo agota los intentos: el job imprime el estado de las revisiones y los últimos logs del sistema. Se revisa con las secciones anteriores.
