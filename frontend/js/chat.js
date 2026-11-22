@@ -1,13 +1,15 @@
 /**
  * chat.js — hilo de mensajes y formulario de envío.
  *
- * Pinta las burbujas del cliente y del asistente, los chips de metadatos de
- * cada respuesta, el bloque "ver respuesta completa" con el JSON, el
- * indicador de escritura y los errores. No conoce el panel ni los logs:
- * se comunica con ellos mediante las funciones que recibe en iniciarChat().
+ * Pinta las burbujas del cliente y del asistente, las tarjetas de los libros
+ * mostrados (libros.js), los chips de metadatos de cada respuesta, el bloque
+ * "ver respuesta completa" con el JSON, el indicador de escritura y los
+ * errores. No conoce el panel ni los logs: se comunica con ellos mediante las
+ * funciones que recibe en iniciarChat().
  */
 
 import { enviarMensaje, ErrorApi } from './api.js';
+import { tarjetasDeLibros } from './libros.js';
 import {
   crear,
   porId,
@@ -21,10 +23,10 @@ import {
 } from './util.js';
 
 const SUGERENCIAS = [
-  '¿Tienen laptops?',
-  'Quiero 2 Dell',
-  'Págala con tarjeta',
-  '¿Cuánto dura la garantía?',
+  'Un libro para que mi hijo de 5 años aprenda a sumar',
+  'Fantasía con un goblin de protagonista',
+  '¿Cuánto cuesta el envío?',
+  '¿Puedo cambiar un libro?',
 ];
 
 /** Si la respuesta llega antes de este tiempo no se muestra el indicador (evita un parpadeo). */
@@ -106,9 +108,10 @@ export function iniciarChat({ obtenerUsuario, alFiltrarTurno, alResponder } = {}
     );
     hilo.append(
       crear('div', { clase: 'bienvenida' }, [
-        crear('p', { clase: 'bienvenida-titulo', texto: 'Asistente de TechStore' }),
+        crear('p', { clase: 'bienvenida-titulo', texto: 'Tu librero virtual' }),
         crear('p', {
-          texto: 'Consulta el catálogo, arma un pedido, págalo o pregunta por envíos, garantías y devoluciones.',
+          texto: 'Cuéntame qué te gusta leer y te recomiendo libros del catálogo. También puedo '
+            + 'reservarlos, cobrarlos y responder dudas de envíos, cambios y devoluciones.',
         }),
         sugerencias,
       ]),
@@ -140,6 +143,8 @@ export function iniciarChat({ obtenerUsuario, alFiltrarTurno, alResponder } = {}
       texto,
     ]);
     if (d.aviso) nodo.append(crear('p', { clase: 'msg-aviso', texto: d.aviso }));
+    const libros = tarjetasDeLibros(d.libros);
+    if (libros) nodo.append(libros);
 
     const chips = chipsDe(d);
     if (chips.length) {
@@ -195,6 +200,12 @@ export function iniciarChat({ obtenerUsuario, alFiltrarTurno, alResponder } = {}
     return crear('li', { clase: ['dato', clase], texto, atributos: { title: titulo || null } });
   }
 
+  /** En Markdown la "página" es la sección del documento. */
+  function etiquetaPagina(doc) {
+    const esMarkdown = /\.md$/i.test(String(doc.documento ?? ''));
+    return `${esMarkdown ? 'secc.' : 'pág.'} ${doc.pagina ?? '—'}`;
+  }
+
   function nombreDocumento(ruta) {
     const base = String(ruta ?? '').split(/[\\/]/).pop() || 'documento';
     return base.replace(/\.[a-z0-9]+$/i, '').replace(/_/g, ' ');
@@ -242,7 +253,7 @@ export function iniciarChat({ obtenerUsuario, alFiltrarTurno, alResponder } = {}
     for (const doc of Array.isArray(d.documentos) ? d.documentos : []) {
       const titulo = `${doc.documento ?? ''}, página ${doc.pagina ?? '—'}${doc.chunk !== undefined ? `, fragmento ${doc.chunk}` : ''}`
         + (doc.texto ? `\n\n${resumir(doc.texto, 280)}` : '');
-      chips.push(chip(`${nombreDocumento(doc.documento)} · pág. ${doc.pagina ?? '—'} · ${formatearPuntaje(doc.score)}`, 'documento', titulo));
+      chips.push(chip(`${nombreDocumento(doc.documento)} · ${etiquetaPagina(doc)} · ${formatearPuntaje(doc.score)}`, 'documento', titulo));
     }
 
     for (const id of Array.isArray(d.pedidos) ? d.pedidos : []) chips.push(chip(`pedido ${id}`, 'pedido'));

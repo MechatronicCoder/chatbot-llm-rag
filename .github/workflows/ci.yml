@@ -34,6 +34,9 @@ jobs:
       - name: Máximo 400 líneas por archivo de código
         run: uv run python scripts/verificar_lineas.py
 
+      - name: Catálogo de libros válido
+        run: uv run python scripts/validar_catalogo.py
+
       - name: Formato
         run: uv run ruff format --check .
 

@@ -1,178 +1,705 @@
 {
-  "tienda": {
-    "nombre": "TechStore",
-    "descripcion": "Tienda de tecnología especializada en cómputo, periféricos y audio.",
-    "politicas": {
-      "envio": "Envío gratis en compras superiores a $200. Para compras menores, el costo es de $15. La entrega demora de 2 a 5 días hábiles.",
-      "devoluciones": "Se aceptan devoluciones dentro de los 15 días posteriores a la compra, con el empaque original, sin uso y con todos los accesorios. El reembolso se procesa en 5 a 7 días hábiles.",
-      "garantia": "Laptops y componentes tienen 1 año de garantía del fabricante; los periféricos, 6 meses. Cubre defectos de fábrica, no daños por mal uso.",
-      "pagos": "Se aceptan tarjeta de crédito/débito (card) y efectivo. Por ahora no hay financiamiento ni pagos en cuotas.",
-      "servicio_tecnico": "Diagnóstico gratuito, reparaciones con garantía y asesoría técnica. Citas al (555) 123-4567.",
-      "ubicacion": "Av. Tecnología 123, Centro Comercial Tech Plaza, Local 45. Lunes a viernes de 9:00 a 19:00; sábados de 10:00 a 18:00.",
-      "mayoreo": "Descuentos especiales en compras superiores a 10 unidades del mismo producto. Cotizaciones personalizadas.",
-      "ensamblado": "Servicio de armado de PC personalizada por $50, con los componentes que elija el cliente."
-    }
-  },
-  "productos": [
+  "nota": "Catálogo de ejemplo para desarrollo y demostración. Títulos y autores son reales; los ISBN son ficticios (prefijo 978-612-000, con dígito verificador válido), y precios, stock y valoraciones son inventados. Los títulos de autor 'Equipo editorial (ejemplo)' son ilustrativos. Reemplazar por el catálogo real.",
+  "libros": [
     {
-      "codigo": "LAPTOP001",
-      "nombre": "Laptop Dell Inspiron 15",
-      "categoria": "laptop",
-      "precio": 899.99,
-      "specs": "Intel Core i7, 16 GB RAM, 512 GB SSD, pantalla 15.6\"",
-      "stock": 15
+      "isbn": "9786120000014",
+      "titulo": "El principito",
+      "autor": "Antoine de Saint-Exupéry",
+      "editorial": "",
+      "anio": 1943,
+      "categoria": "infantil",
+      "genero": "fábula",
+      "temas": [
+        "amistad",
+        "infancia",
+        "imaginación",
+        "viajes"
+      ],
+      "protagonista": "un niño príncipe que viaja entre planetas",
+      "tono": "poético, tierno",
+      "edad_min": 8,
+      "sinopsis": "Un aviador perdido en el desierto conoce a un pequeño príncipe llegado de otro planeta, que le cuenta sus viajes y lo que aprendió sobre la amistad y lo esencial.",
+      "valoracion": 4.8,
+      "num_valoraciones": 320,
+      "precio": 39.9,
+      "stock": 14,
+      "similares": [
+        "9786120000151"
+      ],
+      "formato": "tapa blanda",
+      "idioma": "español"
     },
     {
-      "codigo": "LAPTOP002",
-      "nombre": "Laptop HP Pavilion Gaming",
-      "categoria": "laptop",
-      "precio": 1299.99,
-      "specs": "AMD Ryzen 7, 16 GB RAM, 1 TB SSD, RTX 3050, pantalla 15.6\"",
-      "stock": 8
+      "isbn": "9786120000021",
+      "titulo": "Donde viven los monstruos",
+      "autor": "Maurice Sendak",
+      "editorial": "Kalandraka",
+      "anio": 1963,
+      "categoria": "infantil",
+      "genero": "álbum ilustrado",
+      "temas": [
+        "imaginación",
+        "monstruos",
+        "emociones",
+        "aventura"
+      ],
+      "protagonista": "Max, un niño travieso",
+      "tono": "aventurero, tierno",
+      "edad_min": 3,
+      "edad_max": 7,
+      "sinopsis": "Max es enviado a su cuarto sin cenar y viaja en su imaginación a la isla donde viven los monstruos, que lo nombran su rey.",
+      "valoracion": 4.7,
+      "num_valoraciones": 150,
+      "precio": 49.9,
+      "stock": 8,
+      "similares": [
+        "9786120000038"
+      ],
+      "formato": "tapa blanda",
+      "idioma": "español"
     },
     {
-      "codigo": "LAPTOP003",
-      "nombre": "MacBook Air M2",
-      "categoria": "laptop",
-      "precio": 1499.99,
-      "specs": "Apple M2, 8 GB RAM, 256 GB SSD, pantalla 13.6\"",
-      "stock": 12
+      "isbn": "9786120000038",
+      "titulo": "El monstruo de colores",
+      "autor": "Anna Llenas",
+      "editorial": "Flamboyant",
+      "anio": 2012,
+      "categoria": "infantil",
+      "genero": "álbum ilustrado",
+      "temas": [
+        "emociones",
+        "colores",
+        "educación emocional"
+      ],
+      "protagonista": "un monstruo con las emociones revueltas",
+      "tono": "tierno",
+      "edad_min": 3,
+      "edad_max": 6,
+      "sinopsis": "Una niña ayuda al monstruo de colores a ordenar sus emociones: alegría, tristeza, rabia, miedo y calma, cada una con su color.",
+      "valoracion": 4.9,
+      "num_valoraciones": 410,
+      "precio": 54.9,
+      "stock": 20,
+      "similares": [
+        "9786120000021"
+      ],
+      "formato": "tapa blanda",
+      "idioma": "español"
     },
     {
-      "codigo": "MONITOR001",
-      "nombre": "Monitor LG UltraWide 29 pulgadas",
-      "categoria": "monitor",
-      "precio": 349.99,
-      "specs": "2560x1080, IPS, 75 Hz, HDMI/DisplayPort",
-      "stock": 20
+      "isbn": "9786120000045",
+      "titulo": "Matilda",
+      "autor": "Roald Dahl",
+      "editorial": "Loqueleo",
+      "anio": 1988,
+      "categoria": "infantil",
+      "genero": "humor",
+      "temas": [
+        "lectura",
+        "escuela",
+        "familia",
+        "poderes"
+      ],
+      "protagonista": "una niña lectora con poderes mentales",
+      "tono": "humorístico",
+      "edad_min": 8,
+      "edad_max": 12,
+      "sinopsis": "Matilda devora libros y descubre que puede mover objetos con la mente; con ese poder enfrenta a sus padres y a la terrible directora de su escuela.",
+      "valoracion": 4.8,
+      "num_valoraciones": 260,
+      "precio": 42.0,
+      "stock": 11,
+      "similares": [
+        "9786120000052"
+      ],
+      "formato": "tapa blanda",
+      "idioma": "español"
     },
     {
-      "codigo": "MONITOR002",
-      "nombre": "Monitor Samsung Gaming 27 pulgadas",
-      "categoria": "monitor",
-      "precio": 279.99,
-      "specs": "1920x1080, VA, 144 Hz, FreeSync",
-      "stock": 18
+      "isbn": "9786120000052",
+      "titulo": "Charlie y la fábrica de chocolate",
+      "autor": "Roald Dahl",
+      "editorial": "Loqueleo",
+      "anio": 1964,
+      "categoria": "infantil",
+      "genero": "humor",
+      "temas": [
+        "chocolate",
+        "familia",
+        "aventura",
+        "fantasía"
+      ],
+      "protagonista": "Charlie, un niño de familia pobre",
+      "tono": "humorístico",
+      "edad_min": 8,
+      "edad_max": 12,
+      "sinopsis": "Charlie consigue uno de los cinco boletos dorados para visitar la misteriosa fábrica de chocolate del señor Wonka.",
+      "valoracion": 4.7,
+      "num_valoraciones": 230,
+      "precio": 42.0,
+      "stock": 9,
+      "similares": [
+        "9786120000045"
+      ],
+      "formato": "tapa blanda",
+      "idioma": "español"
     },
     {
-      "codigo": "KEYBOARD001",
-      "nombre": "Teclado Mecánico Logitech G Pro",
-      "categoria": "teclado",
-      "precio": 129.99,
-      "specs": "Switches GX Blue, RGB, TKL",
-      "stock": 25
+      "isbn": "9786120000069",
+      "titulo": "Mis primeras sumas",
+      "autor": "Equipo editorial (ejemplo)",
+      "editorial": "",
+      "anio": 2022,
+      "categoria": "educativo",
+      "genero": "actividades",
+      "temas": [
+        "matemáticas",
+        "sumar",
+        "sumas",
+        "números",
+        "conteo"
+      ],
+      "protagonista": "",
+      "tono": "lúdico",
+      "edad_min": 4,
+      "edad_max": 6,
+      "sinopsis": "Cuaderno de actividades con stickers para aprender a sumar hasta diez jugando, con ejercicios cortos y dibujos para contar.",
+      "valoracion": 4.5,
+      "num_valoraciones": 60,
+      "precio": 29.9,
+      "stock": 25,
+      "similares": [
+        "9786120000076",
+        "9786120000083"
+      ],
+      "formato": "tapa blanda",
+      "idioma": "español"
     },
     {
-      "codigo": "KEYBOARD002",
-      "nombre": "Teclado Corsair K95 RGB",
-      "categoria": "teclado",
-      "precio": 199.99,
-      "specs": "Switches Cherry MX, RGB, teclas macro",
-      "stock": 10
+      "isbn": "9786120000076",
+      "titulo": "Cuentos para contar hasta diez",
+      "autor": "Equipo editorial (ejemplo)",
+      "editorial": "",
+      "anio": 2021,
+      "categoria": "educativo",
+      "genero": "cuentos",
+      "temas": [
+        "números",
+        "conteo",
+        "matemáticas",
+        "cuentos"
+      ],
+      "protagonista": "animales del bosque",
+      "tono": "tierno",
+      "edad_min": 3,
+      "edad_max": 5,
+      "sinopsis": "Diez cuentos breves en los que los animales del bosque cuentan frutas, estrellas y amigos para que los más pequeños aprendan los números.",
+      "precio": 34.9,
+      "stock": 12,
+      "similares": [
+        "9786120000069"
+      ],
+      "formato": "tapa blanda",
+      "idioma": "español"
     },
     {
-      "codigo": "MOUSE001",
-      "nombre": "Mouse Logitech MX Master 3",
-      "categoria": "mouse",
-      "precio": 99.99,
-      "specs": "Inalámbrico, 7 botones programables, 4000 DPI",
-      "stock": 30
+      "isbn": "9786120000083",
+      "titulo": "Aprendo a leer con sílabas",
+      "autor": "Equipo editorial (ejemplo)",
+      "editorial": "",
+      "anio": 2020,
+      "categoria": "educativo",
+      "genero": "actividades",
+      "temas": [
+        "lectura",
+        "sílabas",
+        "lectoescritura",
+        "leer"
+      ],
+      "protagonista": "",
+      "tono": "lúdico",
+      "edad_min": 4,
+      "edad_max": 6,
+      "sinopsis": "Método paso a paso para leer las primeras palabras uniendo sílabas, con lecturas cortas y actividades de repaso.",
+      "valoracion": 4.4,
+      "num_valoraciones": 45,
+      "precio": 32.0,
+      "stock": 18,
+      "similares": [
+        "9786120000069"
+      ],
+      "formato": "tapa blanda",
+      "idioma": "español"
     },
     {
-      "codigo": "MOUSE002",
-      "nombre": "Mouse Razer DeathAdder V3",
-      "categoria": "mouse",
-      "precio": 69.99,
-      "specs": "Gaming, 8 botones, 30000 DPI, RGB",
-      "stock": 22
+      "isbn": "9786120000090",
+      "titulo": "Mi primer atlas de animales",
+      "autor": "Equipo editorial (ejemplo)",
+      "editorial": "",
+      "anio": 2019,
+      "categoria": "educativo",
+      "genero": "divulgación",
+      "temas": [
+        "ciencia",
+        "animales",
+        "naturaleza",
+        "geografía"
+      ],
+      "protagonista": "",
+      "tono": "curioso",
+      "edad_min": 5,
+      "edad_max": 9,
+      "sinopsis": "Un recorrido ilustrado por los continentes para conocer dónde viven los animales, qué comen y cómo se adaptan a su entorno.",
+      "valoracion": 4.6,
+      "num_valoraciones": 80,
+      "precio": 59.9,
+      "stock": 7,
+      "similares": [],
+      "formato": "tapa blanda",
+      "idioma": "español"
     },
     {
-      "codigo": "GPU001",
-      "nombre": "Tarjeta gráfica NVIDIA RTX 4070 Ti",
-      "categoria": "componente",
-      "precio": 799.99,
-      "specs": "12 GB GDDR6X, PCIe 4.0",
-      "stock": 5
+      "isbn": "9786120000106",
+      "titulo": "Mis primeras palabras en inglés",
+      "autor": "Equipo editorial (ejemplo)",
+      "editorial": "",
+      "anio": 2023,
+      "categoria": "educativo",
+      "genero": "idiomas",
+      "temas": [
+        "inglés",
+        "idiomas",
+        "vocabulario"
+      ],
+      "protagonista": "",
+      "tono": "lúdico",
+      "edad_min": 4,
+      "edad_max": 7,
+      "sinopsis": "Vocabulario básico en inglés con ilustraciones de la casa, la escuela y los animales, pensado para leer en familia.",
+      "valoracion": 4.3,
+      "num_valoraciones": 30,
+      "precio": 36.9,
+      "stock": 15,
+      "similares": [
+        "9786120000083"
+      ],
+      "formato": "tapa blanda",
+      "idioma": "español"
     },
     {
-      "codigo": "GPU002",
-      "nombre": "Tarjeta gráfica AMD Radeon RX 7800 XT",
-      "categoria": "componente",
-      "precio": 649.99,
-      "specs": "16 GB GDDR6, PCIe 4.0",
-      "stock": 7
+      "isbn": "9786120000113",
+      "titulo": "Harry Potter y la piedra filosofal",
+      "autor": "J. K. Rowling",
+      "editorial": "Salamandra",
+      "anio": 1997,
+      "categoria": "juvenil",
+      "genero": "fantasía",
+      "temas": [
+        "magia",
+        "escuela",
+        "amistad",
+        "aventura"
+      ],
+      "protagonista": "un niño huérfano que descubre que es mago",
+      "tono": "aventurero",
+      "edad_min": 9,
+      "sinopsis": "Harry descubre en su undécimo cumpleaños que es mago e ingresa en el colegio Hogwarts, donde hace amigos y enfrenta un misterio peligroso.",
+      "valoracion": 4.9,
+      "num_valoraciones": 980,
+      "precio": 69.9,
+      "stock": 16,
+      "similares": [
+        "9786120000120",
+        "9786120000137"
+      ],
+      "formato": "tapa blanda",
+      "idioma": "español"
     },
     {
-      "codigo": "RAM001",
-      "nombre": "Memoria RAM Corsair Vengeance 32 GB",
-      "categoria": "componente",
-      "precio": 119.99,
-      "specs": "DDR4 3200 MHz, 2x16 GB, RGB",
-      "stock": 40
+      "isbn": "9786120000120",
+      "titulo": "Percy Jackson y el ladrón del rayo",
+      "autor": "Rick Riordan",
+      "editorial": "Salamandra",
+      "anio": 2005,
+      "categoria": "juvenil",
+      "genero": "fantasía",
+      "temas": [
+        "mitología griega",
+        "dioses",
+        "aventura",
+        "amistad"
+      ],
+      "protagonista": "un adolescente hijo de un dios griego",
+      "tono": "humorístico, aventurero",
+      "edad_min": 10,
+      "sinopsis": "Percy descubre que es hijo de Poseidón y debe recuperar el rayo robado de Zeus para evitar una guerra entre los dioses.",
+      "valoracion": 4.7,
+      "num_valoraciones": 540,
+      "precio": 64.9,
+      "stock": 10,
+      "similares": [
+        "9786120000113"
+      ],
+      "formato": "tapa blanda",
+      "idioma": "español"
     },
     {
-      "codigo": "SSD001",
-      "nombre": "SSD Samsung 980 PRO 1 TB",
-      "categoria": "almacenamiento",
-      "precio": 149.99,
-      "specs": "NVMe M.2, 7000 MB/s de lectura",
-      "stock": 35
+      "isbn": "9786120000137",
+      "titulo": "La historia interminable",
+      "autor": "Michael Ende",
+      "editorial": "Alfaguara",
+      "anio": 1979,
+      "categoria": "juvenil",
+      "genero": "fantasía",
+      "temas": [
+        "lectura",
+        "imaginación",
+        "aventura",
+        "fantasía"
+      ],
+      "protagonista": "Bastián, un niño lector",
+      "tono": "épico, reflexivo",
+      "edad_min": 10,
+      "sinopsis": "Bastián roba un libro misterioso y, al leerlo, descubre que la historia de Fantasia depende de él.",
+      "valoracion": 4.8,
+      "num_valoraciones": 310,
+      "precio": 79.9,
+      "stock": 6,
+      "similares": [
+        "9786120000151",
+        "9786120000113"
+      ],
+      "formato": "tapa blanda",
+      "idioma": "español"
     },
     {
-      "codigo": "SSD002",
-      "nombre": "SSD Kingston NV2 500 GB",
-      "categoria": "almacenamiento",
-      "precio": 49.99,
-      "specs": "NVMe M.2, 3500 MB/s de lectura",
-      "stock": 50
+      "isbn": "9786120000144",
+      "titulo": "Los juegos del hambre",
+      "autor": "Suzanne Collins",
+      "editorial": "Molino",
+      "anio": 2008,
+      "categoria": "juvenil",
+      "genero": "ciencia ficción",
+      "temas": [
+        "distopía",
+        "supervivencia",
+        "rebelión"
+      ],
+      "protagonista": "una joven que se ofrece a competir por su hermana",
+      "tono": "intenso",
+      "edad_min": 13,
+      "sinopsis": "En un país gobernado por un Capitolio cruel, Katniss se ofrece como voluntaria en un juego televisado del que solo un participante puede salir con vida.",
+      "valoracion": 4.7,
+      "num_valoraciones": 620,
+      "precio": 59.9,
+      "stock": 12,
+      "similares": [
+        "9786120000199"
+      ],
+      "formato": "tapa blanda",
+      "idioma": "español"
     },
     {
-      "codigo": "WEBCAM001",
-      "nombre": "Webcam Logitech C920",
-      "categoria": "webcam",
-      "precio": 79.99,
-      "specs": "1080p, 30 fps, micrófono estéreo",
-      "stock": 28
+      "isbn": "9786120000151",
+      "titulo": "Momo",
+      "autor": "Michael Ende",
+      "editorial": "Alfaguara",
+      "anio": 1973,
+      "categoria": "juvenil",
+      "genero": "fantasía",
+      "temas": [
+        "tiempo",
+        "amistad",
+        "imaginación"
+      ],
+      "protagonista": "una niña que sabe escuchar",
+      "tono": "poético, reflexivo",
+      "edad_min": 10,
+      "sinopsis": "Momo enfrenta a los hombres grises, que roban el tiempo de las personas de su ciudad.",
+      "valoracion": 4.6,
+      "num_valoraciones": 140,
+      "precio": 54.9,
+      "stock": 0,
+      "similares": [
+        "9786120000137",
+        "9786120000014"
+      ],
+      "formato": "tapa blanda",
+      "idioma": "español"
     },
     {
-      "codigo": "HEADSET001",
-      "nombre": "Audífonos HyperX Cloud II",
-      "categoria": "auriculares",
-      "precio": 99.99,
-      "specs": "Sonido 7.1, micrófono desmontable, USB",
-      "stock": 15
+      "isbn": "9786120000168",
+      "titulo": "Cien años de soledad",
+      "autor": "Gabriel García Márquez",
+      "editorial": "Penguin Random House",
+      "anio": 1967,
+      "categoria": "novela",
+      "genero": "realismo mágico",
+      "temas": [
+        "familia",
+        "Latinoamérica",
+        "historia"
+      ],
+      "protagonista": "la familia Buendía",
+      "tono": "épico",
+      "edad_min": 16,
+      "sinopsis": "La historia de siete generaciones de la familia Buendía en el pueblo de Macondo.",
+      "valoracion": 4.8,
+      "num_valoraciones": 700,
+      "precio": 74.9,
+      "stock": 9,
+      "similares": [
+        "9786120000175"
+      ],
+      "formato": "tapa blanda",
+      "idioma": "español"
     },
     {
-      "codigo": "HEADSET002",
-      "nombre": "Audífonos Sony WH-1000XM5",
-      "categoria": "auriculares",
-      "precio": 399.99,
-      "specs": "Bluetooth, cancelación de ruido, 30 h de batería",
-      "stock": 10
+      "isbn": "9786120000175",
+      "titulo": "La ciudad y los perros",
+      "autor": "Mario Vargas Llosa",
+      "editorial": "Alfaguara",
+      "anio": 1963,
+      "categoria": "novela",
+      "genero": "realismo",
+      "temas": [
+        "Perú",
+        "Lima",
+        "colegio militar",
+        "violencia"
+      ],
+      "protagonista": "cadetes de un colegio militar de Lima",
+      "tono": "crudo",
+      "edad_min": 16,
+      "sinopsis": "En un colegio militar de Lima, un grupo de cadetes vive entre la disciplina, la violencia y un secreto que cambia sus vidas.",
+      "valoracion": 4.6,
+      "num_valoraciones": 260,
+      "precio": 69.9,
+      "stock": 7,
+      "similares": [
+        "9786120000168"
+      ],
+      "formato": "tapa blanda",
+      "idioma": "español"
     },
     {
-      "codigo": "ROUTER001",
-      "nombre": "Router TP-Link AX3000",
-      "categoria": "redes",
-      "precio": 129.99,
-      "specs": "WiFi 6, doble banda, 4 antenas",
-      "stock": 20
+      "isbn": "9786120000182",
+      "titulo": "Don Quijote de la Mancha",
+      "autor": "Miguel de Cervantes",
+      "editorial": "",
+      "anio": 1605,
+      "categoria": "novela",
+      "genero": "clásico",
+      "temas": [
+        "caballería",
+        "humor",
+        "locura",
+        "aventura"
+      ],
+      "protagonista": "un hidalgo que se cree caballero andante",
+      "tono": "humorístico",
+      "edad_min": 14,
+      "sinopsis": "Alonso Quijano lee tantos libros de caballerías que sale al mundo como Don Quijote, acompañado de su escudero Sancho Panza.",
+      "valoracion": 4.5,
+      "num_valoraciones": 300,
+      "precio": 89.9,
+      "stock": 5,
+      "similares": [],
+      "formato": "tapa blanda",
+      "idioma": "español"
     },
     {
-      "codigo": "UPS001",
-      "nombre": "UPS APC 1500VA",
-      "categoria": "energia",
-      "precio": 249.99,
-      "specs": "900 W, 8 tomas, protección contra picos",
-      "stock": 12
+      "isbn": "9786120000199",
+      "titulo": "1984",
+      "autor": "George Orwell",
+      "editorial": "Debolsillo",
+      "anio": 1949,
+      "categoria": "novela",
+      "genero": "ciencia ficción",
+      "temas": [
+        "distopía",
+        "vigilancia",
+        "poder"
+      ],
+      "protagonista": "un funcionario que duda del régimen",
+      "tono": "oscuro",
+      "edad_min": 15,
+      "sinopsis": "Winston Smith vive bajo la vigilancia constante del Gran Hermano y empieza a rebelarse en secreto.",
+      "valoracion": 4.7,
+      "num_valoraciones": 520,
+      "precio": 49.9,
+      "stock": 13,
+      "similares": [
+        "9786120000144"
+      ],
+      "formato": "tapa blanda",
+      "idioma": "español"
     },
     {
-      "codigo": "CHAIR001",
-      "nombre": "Silla Gamer Secretlab Titan",
-      "categoria": "mobiliario",
-      "precio": 449.99,
-      "specs": "Cuero PU, reclinable, soporte lumbar",
-      "stock": 6
+      "isbn": "9786120000205",
+      "titulo": "La sombra del viento",
+      "autor": "Carlos Ruiz Zafón",
+      "editorial": "Planeta",
+      "anio": 2001,
+      "categoria": "novela",
+      "genero": "misterio",
+      "temas": [
+        "libros",
+        "Barcelona",
+        "secretos",
+        "amor"
+      ],
+      "protagonista": "un joven hijo de un librero",
+      "tono": "misterioso",
+      "edad_min": 15,
+      "sinopsis": "Daniel encuentra en el Cementerio de los Libros Olvidados una novela cuyo autor parece haber sido borrado de la historia.",
+      "valoracion": 4.7,
+      "num_valoraciones": 430,
+      "precio": 69.9,
+      "stock": 8,
+      "similares": [],
+      "formato": "tapa blanda",
+      "idioma": "español"
+    },
+    {
+      "isbn": "9786120000212",
+      "titulo": "El hobbit",
+      "autor": "J. R. R. Tolkien",
+      "editorial": "Minotauro",
+      "anio": 1937,
+      "categoria": "novela",
+      "genero": "fantasía",
+      "temas": [
+        "aventura",
+        "dragones",
+        "enanos",
+        "viaje"
+      ],
+      "protagonista": "un hobbit tranquilo que sale de aventura",
+      "tono": "aventurero",
+      "edad_min": 10,
+      "sinopsis": "Bilbo Bolsón acompaña a trece enanos y al mago Gandalf para recuperar un tesoro custodiado por el dragón Smaug.",
+      "valoracion": 4.8,
+      "num_valoraciones": 610,
+      "precio": 64.9,
+      "stock": 11,
+      "similares": [
+        "9786120000229",
+        "9786120000236"
+      ],
+      "formato": "tapa blanda",
+      "idioma": "español"
+    },
+    {
+      "isbn": "9786120000229",
+      "titulo": "El nombre del viento",
+      "autor": "Patrick Rothfuss",
+      "editorial": "Plaza & Janés",
+      "anio": 2007,
+      "categoria": "novela",
+      "genero": "fantasía",
+      "temas": [
+        "magia",
+        "música",
+        "universidad",
+        "venganza"
+      ],
+      "protagonista": "un músico y mago que cuenta su vida",
+      "tono": "épico, melancólico",
+      "edad_min": 15,
+      "sinopsis": "Kvothe narra cómo pasó de niño huérfano a estudiante de magia y leyenda, mientras busca a quienes mataron a su familia.",
+      "valoracion": 4.8,
+      "num_valoraciones": 480,
+      "precio": 84.9,
+      "stock": 6,
+      "similares": [
+        "9786120000243",
+        "9786120000212"
+      ],
+      "formato": "tapa blanda",
+      "idioma": "español"
+    },
+    {
+      "isbn": "9786120000236",
+      "titulo": "Goblin Quest",
+      "autor": "Jim C. Hines",
+      "editorial": "DAW Books",
+      "anio": 2006,
+      "categoria": "novela",
+      "genero": "fantasía",
+      "temas": [
+        "goblins",
+        "humor",
+        "aventura",
+        "criaturas fantásticas"
+      ],
+      "protagonista": "un goblin débil y miope arrastrado a una aventura",
+      "tono": "humorístico",
+      "edad_min": 14,
+      "idioma": "inglés",
+      "sinopsis": "Jig, un goblin pequeño y miope, es capturado por un grupo de aventureros que buscan un tesoro y debe sobrevivir a una misión que nadie esperaba que cumpliera.",
+      "valoracion": 4.2,
+      "num_valoraciones": 90,
+      "precio": 59.9,
+      "stock": 4,
+      "similares": [
+        "9786120000212"
+      ],
+      "formato": "tapa blanda"
+    },
+    {
+      "isbn": "9786120000243",
+      "titulo": "Mistborn: El imperio final",
+      "autor": "Brandon Sanderson",
+      "editorial": "Nova",
+      "anio": 2006,
+      "categoria": "novela",
+      "genero": "fantasía",
+      "temas": [
+        "magia",
+        "rebelión",
+        "robo",
+        "imperio"
+      ],
+      "protagonista": "una joven ladrona con poderes",
+      "tono": "épico",
+      "edad_min": 14,
+      "sinopsis": "En un imperio cubierto de ceniza, Vin descubre que puede quemar metales para obtener poderes y se une a un grupo que planea derrocar al Lord Legislador.",
+      "valoracion": 4.8,
+      "num_valoraciones": 450,
+      "precio": 79.9,
+      "stock": 9,
+      "similares": [
+        "9786120000229"
+      ],
+      "formato": "tapa blanda",
+      "idioma": "español"
+    },
+    {
+      "isbn": "9786120000250",
+      "titulo": "Toda Mafalda",
+      "autor": "Quino",
+      "editorial": "Ediciones de la Flor",
+      "anio": 1993,
+      "categoria": "comic",
+      "genero": "humor",
+      "temas": [
+        "humor",
+        "infancia",
+        "sociedad",
+        "historieta"
+      ],
+      "protagonista": "una niña preguntona y crítica",
+      "tono": "humorístico",
+      "edad_min": 10,
+      "sinopsis": "Recopilación de las tiras de Mafalda, la niña que cuestiona el mundo de los adultos con humor e ingenio.",
+      "valoracion": 4.9,
+      "num_valoraciones": 360,
+      "precio": 119.9,
+      "stock": 5,
+      "similares": [],
+      "formato": "tapa blanda",
+      "idioma": "español"
     }
   ]
 }

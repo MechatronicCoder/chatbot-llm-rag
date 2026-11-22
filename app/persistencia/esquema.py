@@ -2,19 +2,44 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from datetime import UTC, datetime
 from typing import Any
 
+# Se incrementa cada vez que cambia una tabla. Una base con otra versión se
+# reconstruye al arrancar: guarda datos de demostración, no históricos.
+ESQUEMA_VERSION = 2
+
+TABLAS = ("pagos", "pedidos", "mensajes", "usuarios", "libros", "productos")
+
 ESQUEMA = """
-create table if not exists productos (
-    codigo      text primary key,
-    nombre      text not null,
-    categoria   text not null,
-    precio      real not null,
-    specs       text not null,
-    stock       integer not null
+create table if not exists libros (
+    isbn             text primary key,
+    titulo           text not null,
+    autor            text not null,
+    editorial        text not null default '',
+    anio             integer,
+    categoria        text not null,
+    genero           text not null default '',
+    temas            text not null default '[]',     -- lista JSON
+    protagonista     text not null default '',
+    tono             text not null default '',
+    edad_min         integer,
+    edad_max         integer,
+    sinopsis         text not null default '',
+    formato          text not null default '',
+    paginas          integer,
+    idioma           text not null default 'español',
+    valoracion       real,
+    num_valoraciones integer not null default 0,
+    similares        text not null default '[]',     -- lista JSON de ISBN
+    precio           real not null,
+    stock            integer not null,
+    portada          text,
+    activo           integer not null default 1      -- 0: ya no está en el catálogo
 );
+create index if not exists idx_libros_categoria on libros(categoria);
 create table if not exists usuarios (
     id          text primary key,
     nombre      text,
@@ -24,7 +49,7 @@ create table if not exists usuarios (
 create table if not exists pedidos (
     id              text primary key,
     usuario_id      text not null references usuarios(id),
-    codigo          text not null references productos(codigo),
+    isbn            text not null references libros(isbn),
     cantidad        integer not null,
     precio_unitario real not null,
     total           real not null,
@@ -61,11 +86,18 @@ create index if not exists idx_mensajes_sesion on mensajes(sesion_id);
 create index if not exists idx_mensajes_turno on mensajes(turno_id);
 """
 
+# Columnas del libro que vienen del archivo del catálogo (todas menos `activo`).
+COLUMNAS_LIBRO = (
+    "isbn", "titulo", "autor", "editorial", "anio", "categoria", "genero", "temas",
+    "protagonista", "tono", "edad_min", "edad_max", "sinopsis", "formato", "paginas",
+    "idioma", "valoracion", "num_valoraciones", "similares", "precio", "stock", "portada",
+)  # fmt: skip
+
 METODOS_PAGO = ("tarjeta", "efectivo", "transferencia")
 
 
 class ErrorPedido(ValueError):
-    """Operación rechazada: producto inexistente, sin stock o pedido en otro estado."""
+    """Operación rechazada: libro inexistente, sin stock o pedido en otro estado."""
 
 
 def momento_actual() -> str:
@@ -73,30 +105,27 @@ def momento_actual() -> str:
 
 
 def raiz(palabra: str) -> str:
-    """'laptops' -> 'laptop', 'monitores' -> 'monitor' (suficiente para buscar)."""
+    """'novelas' -> 'novela', 'cuentos' -> 'cuento' (suficiente para buscar)."""
     for sufijo in ("es", "s"):
         if len(palabra) > 4 and palabra.endswith(sufijo):
             return palabra[: -len(sufijo)]
     return palabra
 
 
-def fila_a_producto(fila: sqlite3.Row) -> dict[str, Any]:
-    return {
-        "codigo": fila["codigo"],
-        "nombre": fila["nombre"],
-        "categoria": fila["categoria"],
-        "precio": fila["precio"],
-        "specs": fila["specs"],
-        "stock": fila["stock"],
-    }
+def fila_a_libro(fila: sqlite3.Row) -> dict[str, Any]:
+    libro = {columna: fila[columna] for columna in COLUMNAS_LIBRO}
+    libro["temas"] = json.loads(fila["temas"])
+    libro["similares"] = json.loads(fila["similares"])
+    return libro
 
 
 def fila_a_pedido(fila: sqlite3.Row) -> dict[str, Any]:
     return {
         "pedido_id": fila["id"],
         "usuario_id": fila["usuario_id"],
-        "codigo": fila["codigo"],
-        "nombre": fila["nombre"],
+        "isbn": fila["isbn"],
+        "titulo": fila["titulo"],
+        "autor": fila["autor"],
         "cantidad": fila["cantidad"],
         "precio_unitario": fila["precio_unitario"],
         "total": fila["total"],

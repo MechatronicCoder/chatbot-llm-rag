@@ -13,11 +13,16 @@ import time
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
+from app.catalogo.carga import Tienda
 from app.core.config import Settings
+from app.core.isbn import RE_ISBN, isbns_en
 from app.core.logs import RegistroEventos
 from app.persistencia.db import BaseDatos
 from app.servicios.faq import Decision
 from app.servicios.herramientas import ACCIONES, IDEMPOTENTES, Herramientas
+from app.servicios.recomendador import Recomendador, resumen_libro
+
+MAX_LIBROS_POR_TURNO = 6
 
 # Uno o varios saludos o cortesías seguidos ("hola, buenas tardes", "gracias, eso era todo").
 RE_SALUDO = re.compile(
@@ -27,13 +32,32 @@ RE_SALUDO = re.compile(
     re.IGNORECASE,
 )
 
-# Una acción sobre un pedido ("págala", "cancélalo", "PED-1A2B") no la responde
-# la FAQ: la decide el modelo con las herramientas, que es quien ve el historial.
+# Una acción sobre un pedido ("págalo", "lo quiero", "cancélalo", "PED-1A2B") no
+# la responde la FAQ: la decide el modelo con las herramientas, que ve el historial.
 RE_ACCION = re.compile(
-    r"\b(paga|págala|pagala|págalo|pagalo|cobra|cóbrala|cobrala|reserva|resérvala|"
-    r"reservala|cancela|cancélalo|cancelalo|compra|cómprala|comprala)\b|\bPED-[A-Z0-9]{4,}\b",
+    r"\b(paga|págala|pagala|págalo|pagalo|cobra|cóbrala|cobrala|cóbralo|cobralo|reserva|"
+    r"resérvala|reservala|resérvalo|reservalo|cancela|cancélalo|cancelalo|compra|cómprala|"
+    r"comprala|cómpralo|compralo|apártalo|apartalo|me lo llevo|me la llevo|lo quiero|"
+    r"la quiero|los quiero|quiero comprar|quiero reservar|quiero pedir|quiero el libro|"
+    r"quiero ese libro|quiero este libro)\b|\bPED-[A-Z0-9]{4,}\b|" + RE_ISBN.pattern,
+    # un ISBN-13 (con o sin guiones) es un libro concreto: lo resuelven las herramientas
     re.IGNORECASE,
 )
+
+# Buscar o pedir recomendación de un libro ("un libro para…", "libros de fantasía",
+# "recomiéndame", "busco") no lo responde la FAQ aunque se parezca a "quiero devolver
+# un libro": lo resuelven las herramientas. "Libro de reclamaciones" sí es FAQ.
+RE_BUSQUEDA = re.compile(
+    r"\b(busco|buscando|recomi[eé]nda(me|s)?|recomiendas|sug[ie][eé]re(me)?|sugieres)\b|"
+    r"\b(un|una|algún|algun|algo)\s+(libro|novela|cuento|cómic|comic)\b"
+    r"(?!\s+de\s+reclamaciones)\s*(para|de|sobre|que|como|parecid[oa]|similar|con)\b|"
+    r"\blibros\s+(de|sobre|para(?!\s+regalo)|como|parecidos|similares|con)\b|"
+    r"\b(parecid[oa]s?|similar(es)?)\s+a\b",
+    re.IGNORECASE,
+)
+
+# "para mi hijo de 5 años" -> 5 (solo para el modo demo; con modelo, lo deduce el LLM)
+RE_EDAD = re.compile(r"\b(\d{1,2})\s*años\b", re.IGNORECASE)
 
 MENSAJE_ESCALADO = (
     "Esa consulta la responde mejor un asesor humano; queda registrada. "
@@ -77,6 +101,7 @@ class RespuestaChat:
     pedidos: list[str] = field(default_factory=list)
     pagos: list[str] = field(default_factory=list)
     documentos: list[dict[str, Any]] = field(default_factory=list)
+    libros: list[dict[str, Any]] = field(default_factory=list)
     modo: str = "real"
     modelo: str = "—"
     endpoint: str = ""
@@ -99,12 +124,21 @@ class Acumulado:
     pedidos: list[str] = field(default_factory=list)
     pagos: list[str] = field(default_factory=list)
     documentos: list[dict[str, Any]] = field(default_factory=list)
+    libros: list[dict[str, Any]] = field(default_factory=list)
     tokens: list[int] = field(default_factory=lambda: [0, 0])
     cache: dict[str, dict[str, Any]] = field(default_factory=dict)
 
     def sumar_uso(self, uso: dict[str, int]) -> None:
         self.tokens[0] += uso.get("prompt_tokens", 0)
         self.tokens[1] += uso.get("completion_tokens", 0)
+
+    def agregar_libros(self, libros: list[dict[str, Any]]) -> None:
+        """Libros mostrados en el turno (para tarjetas en el frontend), sin repetir."""
+        vistos = {lb["isbn"] for lb in self.libros}
+        for libro in libros:
+            if libro["isbn"] not in vistos and len(self.libros) < MAX_LIBROS_POR_TURNO:
+                self.libros.append(libro)
+                vistos.add(libro["isbn"])
 
 
 def ruta_de(usadas: list[dict[str, Any]]) -> str:
@@ -113,6 +147,8 @@ def ruta_de(usadas: list[dict[str, Any]]) -> str:
         return "rag"
     if nombres & ACCIONES:
         return "accion"
+    if "recomendar_libros" in nombres:
+        return "recomendacion"
     return "herramientas" if nombres else "directa"
 
 
@@ -128,7 +164,11 @@ def resumir(resultado: dict[str, Any]) -> str:
         mejor = max((h["score"] for h in resultado["hallazgos"]), default=0)
         return f"{len(resultado['hallazgos'])} fragmentos · mejor {mejor:.3f}"
     if "encontrados" in resultado:
-        return f"{resultado['encontrados']} productos"
+        return f"{resultado['encontrados']} libros"
+    if "recomendaciones" in resultado:
+        return f"{len(resultado['recomendaciones'])} recomendaciones"
+    if "similares_disponibles" in resultado:
+        return f"ficha {resultado['isbn']}"
     if "pago_id" in resultado:
         return f"pago {resultado['pago_id']} · {resultado.get('monto')}"
     if "pedido_id" in resultado:
@@ -170,6 +210,18 @@ def ejecutar_llamada(
     registro.info(
         "herramienta.ejecutada", turno_id, herramienta=nombre, ok=ok, ms=ms, resumen=resumen
     )
+    if nombre == "buscar_libros" and resultado.get("libros"):
+        acumulado.agregar_libros(resultado["libros"])
+    if nombre == "recomendar_libros" and resultado.get("recomendaciones"):
+        acumulado.agregar_libros(resultado["recomendaciones"])
+        registro.info(
+            "recomendacion.generada",
+            turno_id,
+            isbn=",".join(r["isbn"] for r in resultado["recomendaciones"]),
+            motor=resultado["recomendaciones"][0]["motor"],
+        )
+    if nombre == "ficha_libro" and resultado.get("isbn"):
+        acumulado.agregar_libros([resumen_libro(resultado)])
     if nombre == "buscar_politica" and resultado.get("hallazgos"):
         acumulado.documentos = resultado["hallazgos"]
         registro.info(
@@ -200,28 +252,48 @@ def ejecutar_llamada(
     return resultado
 
 
-def texto_demo(
-    bd: BaseDatos, decision: Decision, mensaje: str, minimo_faq: float
-) -> tuple[str, str, float | None]:
-    """Sin modelo se responde solo con datos verificados: FAQ cercana o catálogo.
+def libros_para_demo(
+    bd: BaseDatos, recomendador: Recomendador, mensaje: str
+) -> list[dict[str, Any]]:
+    """Un ISBN se busca tal cual; lo demás pasa por el recomendador por contenido."""
+    if isbns_en(mensaje):
+        return [resumen_libro(lb) for lb in bd.buscar_libros(mensaje, limite=3)]
+    edad = int(coincidencia.group(1)) if (coincidencia := RE_EDAD.search(mensaje)) else None
+    vivos = {lb["isbn"]: lb for lb in bd.libros_activos()}
+    return recomendador.recomendar(mensaje, vivos, edad=edad, cantidad=3)
 
-    Devuelve `(texto, fuente, similitud)`.
+
+def texto_demo(
+    bd: BaseDatos,
+    recomendador: Recomendador,
+    decision: Decision,
+    mensaje: str,
+    minimo_faq: float,
+    tienda: Tienda,
+) -> tuple[str, str, float | None, list[dict[str, Any]]]:
+    """Sin modelo se responde solo con datos verificados: catálogo o FAQ cercana.
+
+    Primero el catálogo: "busco Harry Potter" debe encontrar el libro antes que
+    parecerse a la FAQ de pedidos especiales. Devuelve `(texto, fuente, similitud,
+    libros)`; los libros se muestran como tarjetas en el frontend.
     """
+    if libros := libros_para_demo(bd, recomendador, mensaje):
+        listado = "; ".join(
+            f"«{lb['titulo']}» de {lb['autor']}, {tienda.precio(lb['precio'])} · "
+            f"{lb['stock']} en stock"
+            for lb in libros
+        )
+        texto = f"Modo demo, sin modelo configurado. Del catálogo se confirma: {listado}."
+        return texto, "modo demo · catálogo", None, libros
     if decision.similitud >= minimo_faq:
         return (
             decision.faq_similar.respuesta,
             f"modo demo · FAQ cercana ({decision.faq_similar.id})",
             decision.similitud,
+            [],
         )
-    if productos := bd.buscar_productos(mensaje, limite=3):
-        listado = "; ".join(
-            f"{p['nombre']} ({p['codigo']}) ${p['precio']:.2f} · {p['stock']} en stock"
-            for p in productos
-        )
-        texto = f"Modo demo, sin modelo configurado. Del catálogo se confirma: {listado}."
-        return texto, "modo demo · catálogo", None
     texto = (
         "Modo demo, sin modelo configurado: se puede consultar el catálogo y los "
         "pedidos, pero no redactar respuestas libres."
     )
-    return texto, "modo demo", None
+    return texto, "modo demo", None, []

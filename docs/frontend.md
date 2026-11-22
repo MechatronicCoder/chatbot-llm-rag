@@ -1,13 +1,13 @@
 # Guía del frontend
 
-El frontend de TechStore es una página estática: HTML, CSS y JavaScript con módulos ES nativos, sin framework y sin paso de compilación. El backend sirve la carpeta `frontend/` en `/` mediante `StaticFiles(html=True)`, por lo que `index.html` se entrega en la raíz y todas las llamadas a la API son del mismo origen, con rutas absolutas (`/api/...`).
+El frontend del librero es una página estática: HTML, CSS y JavaScript con módulos ES nativos, sin framework y sin paso de compilación. El backend sirve la carpeta `frontend/` en `/` mediante `StaticFiles(html=True)`, por lo que `index.html` se entrega en la raíz y todas las llamadas a la API son del mismo origen, con rutas absolutas (`/api/...`).
 
 La interfaz tiene tres zonas:
 
 | Zona | Contenido |
 |---|---|
-| Conversación | Hilo de mensajes, chips de metadatos, respuesta completa en JSON, formulario de envío |
-| Panel del cliente | ID del cliente, recargar, borrar conversación, pedidos con totales, catálogo con búsqueda |
+| Conversación | Hilo de mensajes, tarjetas de libros, chips de metadatos, respuesta completa en JSON, formulario de envío |
+| Panel del cliente | ID del cliente, recargar, borrar conversación, pedidos con totales, catálogo de libros con búsqueda |
 | Log en vivo | Eventos del backend con filtros por nivel y por turno, línea de métricas, token de administración |
 
 ## Estructura de archivos
@@ -18,7 +18,7 @@ frontend/
 ├── css/
 │   ├── base.css          variables y estilos base
 │   ├── disposicion.css   columnas y controles
-│   ├── chat.css          hilo, burbujas, chips y formulario
+│   ├── chat.css          hilo, burbujas, tarjetas de libros, chips y formulario
 │   ├── paneles.css       panel lateral y panel de logs
 │   ├── responsive.css    ajustes por ancho de pantalla
 │   └── animaciones.css   animaciones y preferencias del sistema
@@ -27,7 +27,8 @@ frontend/
     ├── api.js          cliente HTTP, ErrorApi y token de administración
     ├── util.js         escape de HTML, formato, localStorage seguro, ayudas de DOM
     ├── chat.js         hilo, burbujas, chips, indicador de escritura, envío
-    ├── panel.js        cliente, pedidos y catálogo
+    ├── libros.js       tarjetas de los libros de cada respuesta
+    ├── panel.js        cliente, pedidos y catálogo de libros
     └── logs.js         log en vivo, filtros, métricas y formulario de token
 ```
 
@@ -35,23 +36,26 @@ frontend/
 
 | Módulo | Responsabilidad | Exporta |
 |---|---|---|
-| `util.js` | Funciones puras y ayudas de DOM. No depende de ningún otro módulo. | `escaparHtml`, `formatear`, `ponerHtmlFormateado`, `leerLocal`, `guardarLocal`, `borrarLocal`, `CLAVES`, `crear`, `porId`, `vaciar`, `ponerTexto`, `prefiereMenosMovimiento`, `cercaDelFinal`, `desplazarA`, `irAlFinal`, `haySeleccionDentro`, formateadores (`formatearPrecio`, `formatearMs`, `formatearHora`, `formatearDuracion`, `formatearPuntaje`, `formatearCantidad`, `plural`, `resumir`) |
-| `api.js` | Una función por endpoint, tiempo límite, cancelación, traducción de errores HTTP a mensajes legibles, cabecera `X-Admin-Token`. | `ErrorApi`, `segundosDeRetryAfter`, `salud`, `buscarProductos`, `pedidosDe`, `enviarMensaje`, `borrarSesion`, `leerLogs`, `leerMetricas`, `obtenerTokenAdmin`, `guardarTokenAdmin`, `borrarTokenAdmin` |
+| `util.js` | Funciones puras y ayudas de DOM. No depende de ningún otro módulo. | `escaparHtml`, `formatear`, `ponerHtmlFormateado`, `leerLocal`, `guardarLocal`, `borrarLocal`, `CLAVES`, `crear`, `porId`, `vaciar`, `ponerTexto`, `prefiereMenosMovimiento`, `cercaDelFinal`, `desplazarA`, `irAlFinal`, `haySeleccionDentro`, moneda (`configurarMoneda`), formateadores (`formatearPrecio`, `formatearMs`, `formatearHora`, `formatearDuracion`, `formatearPuntaje`, `formatearCantidad`, `plural`, `resumir`) |
+| `api.js` | Una función por endpoint, tiempo límite, cancelación, traducción de errores HTTP a mensajes legibles, cabecera `X-Admin-Token`. | `ErrorApi`, `segundosDeRetryAfter`, `salud`, `buscarLibros`, `pedidosDe`, `enviarMensaje`, `borrarSesion`, `leerLogs`, `leerMetricas`, `obtenerTokenAdmin`, `guardarTokenAdmin`, `borrarTokenAdmin` |
 | `chat.js` | Todo lo que ocurre dentro del hilo y del formulario de envío. | `iniciarChat({ obtenerUsuario, alFiltrarTurno, alResponder })` → `{ enviar, limpiar, anotar, marcarTurno }` |
+| `libros.js` | Tarjetas de los libros de una respuesta: título, autor, precio, stock, valoración y edad, siempre como texto. | `tarjetasDeLibros(libros)` → `<ul>` o `null` |
 | `panel.js` | Columna del cliente: id (guardado en localStorage), recargar, borrar conversación, pedidos y catálogo. | `iniciarPanel({ alCambiarUsuario, alRecargar, alBorrar })` → `{ usuario, cargarPedidos, cargarCatalogo }` |
 | `logs.js` | Panel de logs: refresco pausable, filtros, métricas, formulario de token ante 401. | `iniciarLogs({ alCambiarTurno })` → `{ refrescar, refrescarSiActivo, filtrarTurno, turnoActual }` |
-| `main.js` | Crea los tres módulos, los conecta mediante callbacks, pinta la cabecera desde `/api/health` y mantiene los temporizadores. | (nada; es el punto de entrada) |
+| `main.js` | Crea los tres módulos, los conecta mediante callbacks, pinta la cabecera desde `/api/health` (incluidos el nombre de la tienda, el título de la pestaña y la moneda) y mantiene los temporizadores. | (nada; es el punto de entrada) |
 
 ### Dependencias
 
 ```
-main.js ──► chat.js ─┐
-        ├─► panel.js ┼─► api.js ─► util.js
-        ├─► logs.js ─┘      ▲
-        └───────────────────┘ (y util.js)
+main.js   ─► chat.js, panel.js, logs.js, api.js, util.js
+chat.js   ─► libros.js, api.js, util.js
+panel.js  ─► api.js, util.js
+logs.js   ─► api.js, util.js
+libros.js ─► util.js
+api.js    ─► util.js
 ```
 
-Los módulos de interfaz no se importan entre sí. Cuando el chat necesita filtrar el log, llama a `alFiltrarTurno`, y `main.js` lo redirige a `logs.filtrarTurno`. Así cada módulo se puede leer y modificar sin conocer a los demás.
+Los módulos de interfaz (chat, panel y logs) no se importan entre sí; `libros.js` solo construye las tarjetas que usa el chat. Cuando el chat necesita filtrar el log, llama a `alFiltrarTurno`, y `main.js` lo redirige a `logs.filtrarTurno`. Así cada módulo se puede leer y modificar sin conocer a los demás.
 
 ## Ver los cambios en vivo
 
@@ -93,8 +97,8 @@ Todas las rutas son del mismo origen. Las respuestas son JSON.
 
 | Método y ruta | Función en `api.js` | Uso en la interfaz |
 |---|---|---|
-| `GET /api/health` | `salud()` | Cabecera: estado, modelo, modo, corpus, contadores, versión |
-| `GET /api/productos?consulta=&categoria=&limite=8` | `buscarProductos({ consulta, categoria, limite })` | Catálogo y búsqueda (con cancelación de la búsqueda anterior) |
+| `GET /api/health` | `salud()` | Cabecera: nombre de la tienda, moneda, estado, modelo, modo, corpus, contadores de libros y ejemplares, versión |
+| `GET /api/libros?consulta=&categoria=&limite=8` | `buscarLibros({ consulta, categoria, limite })` | Catálogo de libros y búsqueda por título, autor o ISBN (con cancelación de la búsqueda anterior) |
 | `GET /api/pedidos/{usuario_id}` | `pedidosDe(usuarioId)` | Lista de pedidos y totales pendiente/pagado |
 | `POST /api/chat` | `enviarMensaje({ mensaje, usuarioId, sessionId })` | Turno de conversación; `session_id` es el mismo id del cliente |
 | `DELETE /api/sesiones/{session_id}` | `borrarSesion(sessionId)` | Botón "Borrar conversación" |
@@ -109,6 +113,7 @@ Los endpoints de administración envían `X-Admin-Token` cuando hay un token gua
 |---|---|
 | `respuesta` | Texto de la burbuja (con `**negrita**` y saltos de línea) |
 | `aviso` | Nota ámbar bajo el texto |
+| `libros[]` | Una tarjeta por libro: título, autor y una línea con precio, stock (o "agotado"), valoración con votos y edad; la sinopsis va en el `title` |
 | `ruta`, `fuente` | Chip `ruta …` (la fuente va en el `title`) |
 | `modo` | Chip `modo …` (ámbar si es `demo`) |
 | `latencia_ms` | Chip `N ms` |
@@ -116,7 +121,7 @@ Los endpoints de administración envían `X-Admin-Token` cuando hay un token gua
 | `tokens` `[entrada, salida]` | Chip `tokens E/S` |
 | `faq_id`, `similitud` | Chip `FAQ id · similitud` |
 | `herramientas[]` | Un chip por herramienta: `nombre N ms`; rojo si `ok` es `false`; resumen y argumentos en el `title` |
-| `documentos[]` | Un chip por documento: `nombre · pág. N · score`; fragmento de texto en el `title` |
+| `documentos[]` | Un chip por documento: `nombre · pág. N · score` en un PDF o `nombre · secc. N · score` en un Markdown, donde cada sección cuenta como página; fragmento de texto en el `title` |
 | `pedidos[]`, `pagos[]` | Un chip verde por id |
 | `turno`, `turno_id` | Chip clicable `turno N · id` que filtra el log por `turno_id` |
 | (respuesta completa) | Bloque `<details>` "Ver respuesta completa" con el JSON formateado |
@@ -259,13 +264,13 @@ Al agregar una animación nueva: se define su duración como variable, se usan s
 
 ## Almacenamiento local
 
-Todas las lecturas y escrituras pasan por `leerLocal()` y `guardarLocal()`, que nunca lanzan errores (modo privado, almacenamiento bloqueado o cuota llena). Las claves están en `util.CLAVES`.
+Todas las lecturas y escrituras pasan por `leerLocal()` y `guardarLocal()`, que nunca lanzan errores (modo privado, almacenamiento bloqueado o cuota llena). Las claves están en `util.CLAVES`. Un navegador que usó una versión anterior conserva claves `techstore.*` que ya no se leen: el cliente vuelve al ID por defecto y el token de administración se pide de nuevo.
 
 | Clave | Contenido | Escribe |
 |---|---|---|
-| `techstore.usuario` | ID del cliente (también es el `session_id`) | `panel.js` |
-| `techstore.tokenAdmin` | Token para `X-Admin-Token` | `api.js` (desde `logs.js`) |
-| `techstore.nivelLogs` | Último nivel elegido en el filtro del log | `logs.js` |
+| `libreria.usuario` | ID del cliente (también es el `session_id`) | `panel.js` |
+| `libreria.tokenAdmin` | Token para `X-Admin-Token` | `api.js` (desde `logs.js`) |
+| `libreria.nivelLogs` | Último nivel elegido en el filtro del log | `logs.js` |
 
 ## Cómo agregar un componente nuevo
 
@@ -333,5 +338,7 @@ Lista de revisión manual con el backend en marcha:
 - Navegación completa con teclado: Tab llega a todos los controles, Enter envía, Shift+Enter agrega una línea.
 - Movimiento reducido emulado: nada se anima.
 - Mensajes enviados en ráfaga: aparece el aviso de límite con la cuenta regresiva.
+- Una recomendación muestra tarjetas con precio en la moneda de la tienda, stock, valoración y edad; un libro agotado dice "agotado".
+- La cabecera y el título de la pestaña muestran el nombre de `datos/tienda.json`.
 - Backend detenido: la cabecera pasa a "Sin conexión" y vuelve sola a "En línea" al reiniciarlo.
 - Con token de administración configurado: el panel de logs pide el token y, tras guardarlo, muestra los eventos.

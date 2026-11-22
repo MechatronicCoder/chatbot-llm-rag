@@ -10,6 +10,7 @@ from collections.abc import Callable
 from fastapi import Depends, Header, HTTPException, Request, status
 
 from app.api.limitador import LimitadorPeticiones
+from app.catalogo.carga import Tienda
 from app.core.config import Settings
 from app.core.logs import RegistroEventos
 from app.persistencia.db import BaseDatos
@@ -20,9 +21,9 @@ from app.servicios.fabrica import construir_servicio
 class EstadoApp:
     """Lo que vive mientras el proceso vive: configuración, base, registro y servicio.
 
-    El servicio de chat se construye una sola vez y con candado: leer los PDFs
-    y calcular embeddings cuesta, y dos peticiones simultáneas al arrancar no
-    deben construirlo dos veces.
+    El servicio de chat se construye una sola vez y con candado: leer los
+    documentos y calcular embeddings cuesta, y dos peticiones simultáneas al
+    arrancar no deben construirlo dos veces.
     """
 
     def __init__(
@@ -30,6 +31,7 @@ class EstadoApp:
         ajustes: Settings,
         registro: RegistroEventos,
         bd: BaseDatos,
+        tienda: Tienda,
         *,
         servicio: ServicioChat | None = None,
         fabrica: Callable[[], ServicioChat] | None = None,
@@ -37,6 +39,7 @@ class EstadoApp:
         self.ajustes = ajustes
         self.registro = registro
         self.bd = bd
+        self.tienda = tienda
         self.arranque = time.time()
         self.limitador = LimitadorPeticiones(ajustes.limite_chat_por_minuto)
         self._servicio = servicio
@@ -49,7 +52,10 @@ class EstadoApp:
 
     @property
     def listo(self) -> bool:
-        return self._servicio is not None and self._servicio.buscador.indexado
+        servicio = self._servicio
+        return (
+            servicio is not None and servicio.buscador.indexado and servicio.recomendador.indexado
+        )
 
     def obtener_servicio(self) -> ServicioChat:
         with self._candado:
@@ -58,7 +64,7 @@ class EstadoApp:
             return self._servicio
 
     def preparar(self) -> None:
-        """Construye el servicio e indexa el corpus (se ejecuta en segundo plano)."""
+        """Construye el servicio e indexa documentos y catálogo (en segundo plano)."""
         try:
             servicio = self.obtener_servicio()
             self.registro.info("corpus.indexando", chunks=len(servicio.buscador.chunks))
@@ -66,6 +72,14 @@ class EstadoApp:
             info = servicio.buscador.info()
             self.registro.info(
                 "corpus.listo", chunks=total, motor=info["motor"], aviso=info["aviso"]
+            )
+            servicio.recomendador.indexar()
+            catalogo = servicio.recomendador.info()
+            self.registro.info(
+                "catalogo.indexado",
+                libros=catalogo["libros"],
+                motor=catalogo["motor"],
+                aviso=catalogo["aviso"],
             )
         except Exception as exc:
             self.registro.error("corpus.error", motivo=f"{type(exc).__name__}: {exc}")

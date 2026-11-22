@@ -44,6 +44,7 @@ class Settings(BaseSettings):
     carpeta_datos: Path = RAIZ / "datos"
     db_path: Path = RAIZ / "var" / "tienda.db"
     cache_embeddings: Path = RAIZ / "var" / "embeddings.npz"
+    cache_embeddings_catalogo: Path = RAIZ / "var" / "embeddings_catalogo.npz"
 
     # -- logs -----------------------------------------------------------------
     log_archivo: Path = RAIZ / "var" / "logs" / "eventos.jsonl"
@@ -87,6 +88,14 @@ class Settings(BaseSettings):
     chunk_max_palabras: int = Field(default=150, ge=20, le=1000)
     chunk_overlap_palabras: int = Field(default=25, ge=0, le=200)
 
+    # -- recomendación de libros (híbrido: contenido + valoración) -------------
+    reco_candidatos: int = Field(default=20, ge=3, le=100)
+    reco_umbral: float = Field(default=0.25, ge=-1, le=1)
+    reco_umbral_tfidf: float = Field(default=0.03, ge=0, le=1)
+    reco_peso_similitud: float = Field(default=0.75, ge=0, le=1)
+    reco_peso_valoracion: float = Field(default=0.25, ge=0, le=1)
+    reco_votos_minimos: int = Field(default=20, ge=0, le=100000)
+
     # -- conversación ---------------------------------------------------------
     max_mensajes: int = Field(default=8, ge=0, le=50)
     max_vueltas: int = Field(default=3, ge=1, le=10)
@@ -99,7 +108,9 @@ class Settings(BaseSettings):
     content_security_policy: str = CSP_POR_DEFECTO
 
     # -- validaciones ---------------------------------------------------------
-    @field_validator("carpeta_datos", "db_path", "cache_embeddings", "log_archivo")
+    @field_validator(
+        "carpeta_datos", "db_path", "cache_embeddings", "cache_embeddings_catalogo", "log_archivo"
+    )
     @classmethod
     def _ruta_absoluta(cls, valor: Path) -> Path:
         """Las rutas relativas del `.env` se resuelven desde la raíz del repo."""
@@ -147,6 +158,8 @@ class Settings(BaseSettings):
             "rag_mmr_lambda": self.rag_mmr_lambda,
             "chunk": [self.chunk_max_palabras, self.chunk_overlap_palabras],
             "embeddings": self.embeddings_model if self.embeddings_configurados else None,
+            "reco_pesos": [self.reco_peso_similitud, self.reco_peso_valoracion],
+            "reco_votos_minimos": self.reco_votos_minimos,
             "limite_chat_por_minuto": self.limite_chat_por_minuto,
             "log_nivel": self.log_nivel,
         }

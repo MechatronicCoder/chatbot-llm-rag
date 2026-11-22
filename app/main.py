@@ -21,6 +21,7 @@ from fastapi.staticfiles import StaticFiles
 from app import __version__
 from app.api.dependencias import EstadoApp
 from app.api.rutas import admin, router
+from app.catalogo.carga import cargar_tienda
 from app.core.config import RAIZ, Settings, get_settings
 from app.core.logs import RegistroEventos
 from app.persistencia.db import BaseDatos
@@ -43,9 +44,10 @@ def crear_app(
 ) -> FastAPI:
     ajustes = ajustes or get_settings()
     registro = RegistroEventos.desde_config(ajustes)
+    tienda = cargar_tienda(ajustes.carpeta_datos / "tienda.json")
     bd = BaseDatos(ajustes.db_path, ajustes.carpeta_datos / "catalogo.json")
-    bd.inicializar()
-    estado = EstadoApp(ajustes, registro, bd, servicio=servicio)
+    bd.inicializar()  # valida y sincroniza el catálogo: con datos inválidos, no arranca
+    estado = EstadoApp(ajustes, registro, bd, tienda, servicio=servicio)
 
     @asynccontextmanager
     async def ciclo_de_vida(_: FastAPI) -> AsyncIterator[None]:
@@ -56,6 +58,13 @@ def crear_app(
             llm=ajustes.llm_configurado,
             embeddings=ajustes.embeddings_configurados,
         )
+        sincronizacion = bd.ultima_sincronizacion
+        registro.info(
+            "catalogo.sincronizado",
+            nuevos=sincronizacion.get("nuevos", 0),
+            actualizados=sincronizacion.get("actualizados", 0),
+            retirados=sincronizacion.get("retirados", 0),
+        )
         if indexar_al_iniciar:
             # El servidor abre al instante; el corpus se indexa en segundo plano.
             threading.Thread(target=estado.preparar, daemon=True, name="indexar-corpus").start()
@@ -64,7 +73,8 @@ def crear_app(
 
     app = FastAPI(
         title="chatbot-llm-rag",
-        description="Chatbot con FAQ, herramientas, RAG con MMR y registro por turno.",
+        description="Asistente de librería: FAQ, recomendación híbrida, venta por herramientas, "
+        "RAG con MMR y registro por turno.",
         version=__version__,
         lifespan=ciclo_de_vida,
     )

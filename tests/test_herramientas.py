@@ -1,134 +1,127 @@
-"""Herramientas (function calling) contra la base de datos."""
+"""Herramientas (function calling): catálogo, recomendación, fichas, pedidos y políticas."""
 
 from __future__ import annotations
 
 from app.servicios.chat import ServicioChat
 from app.servicios.herramientas import ESQUEMAS
+from tests.datos_prueba import (
+    ISBN_AGOTADO,
+    ISBN_CUENTOS,
+    ISBN_DRAGON,
+    ISBN_GOBLIN,
+    ISBN_MAGO,
+    ISBN_MITOS,
+    ISBN_POEMAS,
+    ISBN_SUMAS,
+)
 
 
-def test_buscar_productos_encuentra_plurales(servicio: ServicioChat) -> None:
-    r = servicio.herramientas.ejecutar("buscar_productos", {"consulta": "laptops"}, "alumno")
-    assert r["encontrados"] >= 1
-    assert all(p["categoria"] == "laptop" for p in r["productos"])
+def test_buscar_libros_por_titulo_autor_e_isbn(servicio: ServicioChat) -> None:
+    h = servicio.herramientas
+    por_titulo = h.ejecutar("buscar_libros", {"consulta": "escuela de magos"}, "a")
+    assert por_titulo["libros"][0]["isbn"] == ISBN_MAGO
+    por_autor = h.ejecutar("buscar_libros", {"consulta": "", "autor": "elena roca"}, "a")
+    assert [lb["isbn"] for lb in por_autor["libros"]] == [ISBN_DRAGON]
+    por_isbn = h.ejecutar("buscar_libros", {"consulta": f"isbn {ISBN_GOBLIN}"}, "a")
+    assert por_isbn["encontrados"] == 1 and por_isbn["libros"][0]["isbn"] == ISBN_GOBLIN
 
 
-def test_consultar_stock_devuelve_unidades(servicio: ServicioChat) -> None:
-    r = servicio.herramientas.ejecutar("consultar_stock", {"codigo": "LAPTOP001"}, "alumno")
-    assert r["codigo"] == "LAPTOP001"
-    assert r["stock"] > 0
-    assert r["precio"] > 0
+def test_buscar_libros_filtra_y_ordena(servicio: ServicioChat) -> None:
+    h = servicio.herramientas
+    ninos = h.ejecutar("buscar_libros", {"consulta": "", "edad": 5, "limite": 10}, "a")
+    assert {lb["isbn"] for lb in ninos["libros"]} == {ISBN_SUMAS, ISBN_CUENTOS}
+    novelas = h.ejecutar("buscar_libros", {"consulta": "", "categoria": "novela"}, "a")
+    valoraciones = [lb["valoracion"] for lb in novelas["libros"]]
+    assert valoraciones == sorted(valoraciones, reverse=True)
+    assert h.ejecutar("buscar_libros", {"consulta": "tablets"}, "a")["encontrados"] == 0
 
 
-def test_consultar_stock_de_codigo_inexistente(servicio: ServicioChat) -> None:
-    r = servicio.herramientas.ejecutar("consultar_stock", {"codigo": "NO-EXISTE"}, "alumno")
-    assert "error" in r
+def test_recomendar_libros(servicio: ServicioChat) -> None:
+    h = servicio.herramientas
+    r = h.ejecutar("recomendar_libros", {"necesidad": "aprender a sumar", "edad": "5"}, "a")
+    assert r["recomendaciones"][0]["isbn"] == ISBN_SUMAS
+    assert "puntaje" in r["recomendaciones"][0]
+    assert "error" in h.ejecutar("recomendar_libros", {"necesidad": "  "}, "a")
+    sin_nada = h.ejecutar("recomendar_libros", {"necesidad": "recetas de cocina"}, "a")
+    assert "no inventar" in sin_nada["error"]
+
+
+def test_ficha_con_similares_disponibles(servicio: ServicioChat) -> None:
+    ficha = servicio.herramientas.ejecutar("ficha_libro", {"isbn": ISBN_MAGO}, "a")
+    assert ficha["titulo"] == "La escuela de magos"
+    assert ficha["sinopsis"]
+    similares = [s["isbn"] for s in ficha["similares_disponibles"]]
+    assert similares == [ISBN_MITOS]  # el agotado no se sugiere
+    assert ISBN_AGOTADO in ficha["similares"]
+    assert "error" in servicio.herramientas.ejecutar("ficha_libro", {"isbn": "9780000000999"}, "a")
 
 
 def test_reservar_descuenta_stock(servicio: ServicioChat) -> None:
-    antes = servicio.bd.obtener_producto("LAPTOP001")["stock"]  # type: ignore[index]
-    r = servicio.herramientas.ejecutar(
-        "reservar_pedido", {"codigo": "LAPTOP001", "cantidad": 2}, "alumno"
+    r = servicio.herramientas.ejecutar("reservar_pedido", {"isbn": ISBN_MAGO, "cantidad": 2}, "a")
+    assert r["pedido_id"].startswith("PED-") and r["titulo"] == "La escuela de magos"
+    assert servicio.bd.obtener_libro(ISBN_MAGO)["stock"] == 6  # type: ignore[index]
+    falta = servicio.herramientas.ejecutar(
+        "reservar_pedido", {"isbn": ISBN_POEMAS, "cantidad": 50}, "a"
     )
-    assert r["pedido_id"].startswith("PED-")
-    assert r["estado"] == "reservado"
-    assert servicio.bd.obtener_producto("LAPTOP001")["stock"] == antes - 2  # type: ignore[index]
+    assert "Solo quedan 3" in falta["error"]
 
 
-def test_reservar_mas_de_lo_que_hay_falla_con_mensaje_claro(servicio: ServicioChat) -> None:
-    r = servicio.herramientas.ejecutar(
-        "reservar_pedido", {"codigo": "LAPTOP001", "cantidad": 5000}, "alumno"
-    )
-    assert "quedan" in r["error"].lower()
-
-
-def test_cobrar_marca_el_pedido_pagado(servicio: ServicioChat) -> None:
+def test_cobrar_una_vez_y_solo_lo_propio(servicio: ServicioChat) -> None:
     h = servicio.herramientas
-    pedido = h.ejecutar("reservar_pedido", {"codigo": "LAPTOP001", "cantidad": 1}, "a")
-    pago = h.ejecutar("cobrar_pedido", {"pedido_id": pedido["pedido_id"], "metodo": "tarjeta"}, "a")
-    assert pago["estado"] == "pagado"
-    assert pago["pago_id"].startswith("PAG-")
-
-
-def test_no_se_cobra_dos_veces(servicio: ServicioChat) -> None:
-    h = servicio.herramientas
-    pedido = h.ejecutar("reservar_pedido", {"codigo": "LAPTOP001", "cantidad": 1}, "a")
+    pedido = h.ejecutar("reservar_pedido", {"isbn": ISBN_DRAGON, "cantidad": 1}, "dueno")
     argumentos = {"pedido_id": pedido["pedido_id"], "metodo": "tarjeta"}
-    h.ejecutar("cobrar_pedido", argumentos, "a")
-    segundo = h.ejecutar("cobrar_pedido", argumentos, "a")
-    assert "pagado" in segundo["error"]
+    assert "otro cliente" in h.ejecutar("cobrar_pedido", argumentos, "intruso")["error"]
+    assert h.ejecutar("cobrar_pedido", argumentos, "dueno")["estado"] == "pagado"
+    assert "pagado" in h.ejecutar("cobrar_pedido", argumentos, "dueno")["error"]
+    consulta_ajena = h.ejecutar("consultar_pedido", {"pedido_id": pedido["pedido_id"]}, "intruso")
+    assert "error" in consulta_ajena and "dragón" not in str(consulta_ajena)
+    propia = h.ejecutar("consultar_pedido", {"pedido_id": pedido["pedido_id"]}, "dueno")
+    assert propia["estado"] == "pagado"
 
 
-def test_no_se_cobra_ni_se_consulta_el_pedido_de_otro(servicio: ServicioChat) -> None:
+def test_metodo_invalido_y_cancelaciones(servicio: ServicioChat) -> None:
     h = servicio.herramientas
-    pedido = h.ejecutar("reservar_pedido", {"codigo": "MONITOR001", "cantidad": 1}, "dueno")
-    cobro = h.ejecutar(
-        "cobrar_pedido", {"pedido_id": pedido["pedido_id"], "metodo": "tarjeta"}, "intruso"
-    )
-    assert "otro cliente" in cobro["error"]
-    consulta = h.ejecutar("consultar_pedido", {"pedido_id": pedido["pedido_id"]}, "intruso")
-    assert "error" in consulta
-    assert "MONITOR" not in str(consulta)
-
-
-def test_metodo_de_pago_invalido(servicio: ServicioChat) -> None:
-    h = servicio.herramientas
-    pedido = h.ejecutar("reservar_pedido", {"codigo": "MONITOR001", "cantidad": 1}, "a")
-    r = h.ejecutar("cobrar_pedido", {"pedido_id": pedido["pedido_id"], "metodo": "bitcoin"}, "a")
-    assert "error" in r
-
-
-def test_cancelar_devuelve_el_stock(servicio: ServicioChat) -> None:
-    h = servicio.herramientas
-    antes = servicio.bd.obtener_producto("MOUSE001")["stock"]  # type: ignore[index]
-    pedido = h.ejecutar("reservar_pedido", {"codigo": "MOUSE001", "cantidad": 3}, "a")
-    h.ejecutar("cancelar_pedido", {"pedido_id": pedido["pedido_id"]}, "a")
-    assert servicio.bd.obtener_producto("MOUSE001")["stock"] == antes  # type: ignore[index]
+    pedido = h.ejecutar("reservar_pedido", {"isbn": ISBN_SUMAS, "cantidad": 3}, "a")["pedido_id"]
+    assert "error" in h.ejecutar("cobrar_pedido", {"pedido_id": pedido, "metodo": "cripto"}, "a")
+    assert "otro cliente" in h.ejecutar("cancelar_pedido", {"pedido_id": pedido}, "b")["error"]
+    assert h.ejecutar("cancelar_pedido", {"pedido_id": pedido}, "a")["estado"] == "cancelado"
+    assert servicio.bd.obtener_libro(ISBN_SUMAS)["stock"] == 10  # type: ignore[index]
+    assert "No existe" in h.ejecutar("cancelar_pedido", {"pedido_id": "PED-NADA"}, "a")["error"]
 
 
 def test_buscar_politica_usa_el_rag(servicio: ServicioChat) -> None:
-    r = servicio.herramientas.ejecutar("buscar_politica", {"pregunta": "garantía"}, "a")
-    assert r["hallazgos"]
-    assert r["hallazgos"][0]["score"] > 0
+    h = servicio.herramientas
+    r = h.ejecutar("buscar_politica", {"pregunta": "¿puedo cambiar un libro?"}, "a")
+    assert r["hallazgos"][0]["id"] == "doc-cambios"
+    assert "error" in h.ejecutar("buscar_politica", {"pregunta": "receta de pizza"}, "a")
 
 
-def test_herramienta_desconocida_o_argumentos_malos_no_rompen(servicio: ServicioChat) -> None:
-    assert "error" in servicio.herramientas.ejecutar("borrar_todo", {}, "a")
-    r = servicio.herramientas.ejecutar("reservar_pedido", {"cantidad": "muchas"}, "a")
-    assert "error" in r
+def test_errores_de_uso_no_rompen(servicio: ServicioChat) -> None:
+    h = servicio.herramientas
+    assert "desconocida" in h.ejecutar("borrar_todo", {}, "a")["error"]
+    sin_cantidad = h.ejecutar("reservar_pedido", {"isbn": ISBN_SUMAS, "cantidad": None}, "a")
+    assert "Argumentos inválidos" in sin_cantidad["error"]
+    edad_rara = h.ejecutar("buscar_libros", {"consulta": "x", "edad": "muchos"}, "a")
+    assert "Argumentos inválidos" in edad_rara["error"]
 
 
-def test_los_esquemas_declaran_las_siete_herramientas() -> None:
+def test_error_inesperado_de_una_herramienta(servicio: ServicioChat, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    def explota(*_: object, **__: object) -> None:
+        raise RuntimeError("base caída")
+
+    monkeypatch.setattr(servicio.bd, "buscar_libros", explota)
+    r = servicio.herramientas.ejecutar("buscar_libros", {"consulta": "x"}, "a")
+    assert r == {"error": "RuntimeError: base caída"}
+
+
+def test_los_esquemas_declaran_las_ocho_herramientas() -> None:
     assert {e["name"] for e in ESQUEMAS} == {
-        "buscar_productos",
-        "consultar_stock",
+        "buscar_libros",
+        "recomendar_libros",
+        "ficha_libro",
         "reservar_pedido",
         "consultar_pedido",
         "cancelar_pedido",
         "cobrar_pedido",
         "buscar_politica",
     }
-
-
-def test_consultar_pedido_propio(servicio: ServicioChat) -> None:
-    h = servicio.herramientas
-    pedido = h.ejecutar("reservar_pedido", {"codigo": "MOUSE001", "cantidad": 1}, "a")
-    r = h.ejecutar("consultar_pedido", {"pedido_id": pedido["pedido_id"]}, "a")
-    assert r["estado"] == "reservado"
-
-
-def test_cancelar_inexistente_o_ajeno(servicio: ServicioChat) -> None:
-    h = servicio.herramientas
-    assert "No existe" in h.ejecutar("cancelar_pedido", {"pedido_id": "PED-NADA"}, "a")["error"]
-    pedido = h.ejecutar("reservar_pedido", {"codigo": "MOUSE001", "cantidad": 1}, "dueno")
-    ajeno = h.ejecutar("cancelar_pedido", {"pedido_id": pedido["pedido_id"]}, "intruso")
-    assert "otro cliente" in ajeno["error"]
-
-
-def test_argumentos_de_tipo_incorrecto(servicio: ServicioChat) -> None:
-    r = servicio.herramientas.ejecutar("reservar_pedido", {"codigo": "X", "cantidad": None}, "a")
-    assert "Argumentos inválidos" in r["error"]
-
-
-def test_politica_sin_resultados(servicio: ServicioChat) -> None:
-    r = servicio.herramientas.ejecutar("buscar_politica", {"pregunta": "receta de pizza"}, "a")
-    assert "No hay documentos" in r["error"]

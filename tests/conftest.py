@@ -1,30 +1,51 @@
-"""Entorno de pruebas aislado: base de datos y logs en una carpeta temporal, sin red."""
+"""Entorno de pruebas aislado: datos, base y logs en una carpeta temporal, sin red."""
 
 from __future__ import annotations
 
+import json
+import shutil
 from pathlib import Path
 
 import pytest
 
+from app.catalogo.carga import cargar_tienda
 from app.core.config import RAIZ, Settings
 from app.core.logs import RegistroEventos
 from app.persistencia.db import BaseDatos
 from app.servicios.chat import ServicioChat
+from app.servicios.fabrica import preparar_prompt
 from app.servicios.faq import IndiceFAQ
 from app.servicios.rag import BuscadorDocumentos, Chunk, ParametrosRAG
+from app.servicios.recomendador import Recomendador
 from app.servicios.turno import AjustesChat
+from tests.datos_prueba import LIBROS_PRUEBA
 from tests.dobles import ModeloFalso
 
-DATOS = RAIZ / "datos"
+DATOS_REALES = RAIZ / "datos"
+
+
+def crear_datos(destino: Path, libros: list[dict[str, object]] | None = None) -> Path:
+    """Carpeta de datos de prueba: FAQ, prompt y tienda reales; catálogo de prueba."""
+    destino.mkdir(parents=True, exist_ok=True)
+    for archivo in ("faq.json", "prompt_sistema.md", "tienda.json"):
+        shutil.copy(DATOS_REALES / archivo, destino / archivo)
+    catalogo = {"libros": LIBROS_PRUEBA if libros is None else libros}
+    (destino / "catalogo.json").write_text(json.dumps(catalogo, ensure_ascii=False), "utf-8")
+    return destino
 
 
 def crear_ajustes(tmp: Path, **extra: object) -> Settings:
     """Configuración de prueba: ignora el `.env` y cualquier clave del entorno."""
+    carpeta = tmp / "datos"
+    if not (carpeta / "catalogo.json").exists():
+        crear_datos(carpeta)
     base: dict[str, object] = {
         "entorno": "pruebas",
+        "carpeta_datos": carpeta,
         "db_path": tmp / "tienda.db",
         "log_archivo": tmp / "eventos.jsonl",
         "cache_embeddings": tmp / "embeddings.npz",
+        "cache_embeddings_catalogo": tmp / "embeddings_catalogo.npz",
         "log_consola": False,
         "llm_base_url": "",
         "llm_api_key": "",
@@ -49,46 +70,49 @@ def registro(ajustes: Settings) -> RegistroEventos:
     return RegistroEventos.desde_config(ajustes)
 
 
-@pytest.fixture()
-def bd(ajustes: Settings) -> BaseDatos:
-    base = BaseDatos(ajustes.db_path, DATOS / "catalogo.json")
+def crear_bd(ajustes: Settings) -> BaseDatos:
+    base = BaseDatos(ajustes.db_path, ajustes.carpeta_datos / "catalogo.json")
     base.inicializar(recargar_catalogo=True)
     return base
+
+
+@pytest.fixture()
+def bd(ajustes: Settings) -> BaseDatos:
+    return crear_bd(ajustes)
 
 
 def chunks_de_prueba() -> list[Chunk]:
     return [
         Chunk(
-            "doc-garantia",
-            "politicas.pdf",
+            "doc-envio",
+            "politicas.md",
             1,
             0,
-            "La garantía cubre defectos de fabricación durante un año desde la fecha de "
-            "entrega del producto.",
+            "El envío en Lima cuesta diez soles y es gratis en compras desde ciento veinte soles.",
         ),
         Chunk(
-            "doc-envio",
-            "politicas.pdf",
+            "doc-cambios",
+            "politicas.md",
             2,
-            1,
-            "El envío es gratis para compras superiores a doscientos dólares y demora de dos "
-            "a cinco días hábiles.",
+            0,
+            "Un libro se puede cambiar dentro de los siete días si está nuevo y sin uso, "
+            "con su comprobante de pago.",
         ),
         Chunk(
-            "doc-devolucion",
-            "manual.pdf",
+            "doc-defectos",
+            "politicas.md",
             3,
             0,
-            "Para devolver un producto debe estar sin uso, con su empaque original y dentro de "
-            "los treinta días desde la entrega.",
+            "Si el libro llega con páginas en blanco o mal impresas se cambia sin costo "
+            "dentro de los treinta días.",
         ),
         Chunk(
-            "doc-monitor",
+            "doc-reclamos",
             "manual.pdf",
             4,
             1,
-            "Para conectar un monitor externo use el cable VGA o HDMI y presione fn más f2 para "
-            "alternar la imagen de la pantalla.",
+            "El libro de reclamaciones permite registrar un reclamo; el proveedor responde "
+            "en un plazo máximo de quince días hábiles.",
         ),
     ]
 
@@ -100,7 +124,7 @@ def buscador() -> BuscadorDocumentos:
 
 def faq_de(ajustes: Settings) -> IndiceFAQ:
     return IndiceFAQ.desde_archivo(
-        DATOS / "faq.json",
+        ajustes.carpeta_datos / "faq.json",
         umbral=ajustes.faq_umbral,
         margen=ajustes.faq_margen,
         umbral_contexto=ajustes.faq_contexto_min,
@@ -114,13 +138,17 @@ def crear_servicio(
     buscador: BuscadorDocumentos,
     modelo: ModeloFalso,
 ) -> ServicioChat:
+    tienda = cargar_tienda(ajustes.carpeta_datos / "tienda.json")
+    plantilla = (ajustes.carpeta_datos / "prompt_sistema.md").read_text(encoding="utf-8")
     return ServicioChat(
         bd=bd,
         registro=registro,
         buscador=buscador,
+        recomendador=Recomendador(bd.libros_activos()),
         llm=modelo,
         faq=faq_de(ajustes),
-        prompt_sistema=(DATOS / "prompt_sistema.md").read_text(encoding="utf-8"),
+        prompt_sistema=preparar_prompt(plantilla, tienda),
+        tienda=tienda,
         ajustes=AjustesChat.desde_config(ajustes),
     )
 

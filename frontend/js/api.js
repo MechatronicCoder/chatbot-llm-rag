@@ -203,13 +203,13 @@ export function salud(opciones = {}) {
   return peticion('/api/health', opciones);
 }
 
-/** GET /api/productos?consulta=&categoria=&limite= */
-export function buscarProductos({ consulta = '', categoria = '', limite = 8 } = {}, opciones = {}) {
+/** GET /api/libros?consulta=&categoria=&limite= */
+export function buscarLibros({ consulta = '', categoria = '', limite = 8 } = {}, opciones = {}) {
   const parametros = new URLSearchParams();
   if (consulta.trim()) parametros.set('consulta', consulta.trim());
   if (categoria) parametros.set('categoria', categoria);
   parametros.set('limite', String(limite));
-  return peticion(`/api/productos?${parametros}`, opciones);
+  return peticion(`/api/libros?${parametros}`, opciones);
 }
 
 /** GET /api/pedidos/{usuario_id} */

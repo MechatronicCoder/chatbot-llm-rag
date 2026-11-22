@@ -224,7 +224,7 @@ for ($i = 1; $i -le 18; $i++) {
     Start-Sleep -Seconds 10
 }
 
-# Estado general: modo (real o demo), corpus indexado y parámetros, sin claves
+# Estado general: modo (real o demo), documentos y catálogo indexados y parámetros, sin claves
 curl.exe -s "$URL/api/health"
 
 # Endpoint protegido: requiere el encabezado X-Admin-Token
@@ -396,7 +396,7 @@ Los precios cambian por región y con el tiempo, así que se consultan en la [ca
 
 Formas de bajar el costo:
 
-- `minReplicas = 0`. La app se apaga tras unos minutos sin solicitudes y no consume cómputo mientras está apagada. La primera solicitud después de apagarse espera el arranque completo (descarga de la imagen e indexado, más de un minuto). Además, cada apagado borra la base SQLite (pedidos, usuarios y conversaciones) y obliga a recalcular los embeddings del corpus, lo que genera llamadas extra a la API de embeddings. Sirve para una demo; no para guardar datos.
+- `minReplicas = 0`. La app se apaga tras unos minutos sin solicitudes y no consume cómputo mientras está apagada. La primera solicitud después de apagarse espera el arranque completo (descarga de la imagen e indexado, más de un minuto). Además, cada apagado borra la base SQLite (pedidos, usuarios y conversaciones) y obliga a recalcular los embeddings de los documentos y del catálogo, lo que genera llamadas extra a la API de embeddings. Sirve para una demo; no para guardar datos.
 
   Para que el cambio sea permanente se vuelve a ejecutar la fase 2 con `minReplicas=0` en `$parametros`. El atajo siguiente también funciona, pero la próxima ejecución de la fase 2 vuelve a aplicar el valor del parámetro:
 
@@ -463,8 +463,8 @@ az containerapp show --name $APP --resource-group $GRUPO --query properties.conf
 
 ### La sonda de readiness no pasa
 
-- Durante el primer minuto es normal: `/api/health/ready` responde 503 mientras se indexan los documentos.
-- Si sigue en 503, `/api/health` muestra el estado del corpus (`indexado`, `aviso`) y si la app está en modo real o demo. La causa más común es una clave, URL o modelo de embeddings incorrectos, o que el proveedor no responda. Los logs de consola muestran el error del indexado.
+- Durante el primer minuto es normal: `/api/health/ready` responde 503 mientras se indexan los documentos y el catálogo.
+- Si sigue en 503, `/api/health` muestra el estado de los documentos (`corpus`) y del catálogo (`catalogo`), cada uno con `indexado` y `aviso`, y si la app está en modo real o demo. La causa más común es una clave, URL o modelo de embeddings incorrectos, o que el proveedor no responda. Los logs de consola muestran el error del indexado.
 - Mientras la revisión nueva no esté lista, el tráfico sigue en la revisión anterior (si existe). En el primer despliegue la URL responde con error hasta que la revisión esté lista.
 
 ### Error por un secret vacío

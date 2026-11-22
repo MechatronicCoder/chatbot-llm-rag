@@ -1,0 +1,8 @@
+{
+  "nombre": "Librería Letra Viva",
+  "descripcion": "Librería de libros infantiles, educativos, juveniles, novelas y cómics.",
+  "moneda": {
+    "simbolo": "S/",
+    "codigo": "PEN"
+  }
+}

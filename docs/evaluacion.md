@@ -1,32 +1,35 @@
 # Evaluación
 
-Las pruebas automáticas comprueban que el código hace lo que se espera con un modelo simulado. La evaluación mide otra cosa: cómo se comporta el asistente completo, con el modelo y los embeddings reales, frente a mensajes representativos de los clientes.
+Las pruebas automáticas comprueban que el código hace lo que se espera con un modelo simulado y un catálogo propio. La evaluación mide otra cosa: cómo se comporta el librero completo, con el modelo, los embeddings y el catálogo reales, frente a mensajes representativos de los clientes.
 
 ## Conjunto de casos
 
-`evaluacion/casos.json` tiene 23 casos en 7 categorías:
+`evaluacion/casos.json` tiene 27 casos en 8 categorías:
 
 | Categoría | Casos | Qué se espera |
 |---|---|---|
-| faq | 6 | Ruta `faq` y la FAQ correcta, también sin tildes |
-| seguridad | 3 | Ruta `filtro`, sin llamar al modelo |
+| faq | 7 | Ruta `faq` y la FAQ correcta, también sin tildes; "libros para regalo" sigue siendo FAQ |
+| seguridad | 3 | Ruta `filtro`, sin llamar al modelo, incluido un pedido de copia pirata |
 | cortesia | 2 | Ruta `directa`, sin herramientas |
-| catalogo | 4 | Ruta `herramientas`, incluido un producto que no existe |
+| catalogo | 3 | Ruta `herramientas` y el libro esperado, por título y por autor; un título que no está en el catálogo no se inventa |
+| recomendacion | 5 | Ruta `recomendacion` y el libro esperado entre los mostrados (sumar a los 5 años, fantasía con un goblin, magia a los 11 años, distopía); si falta la edad del lector, el librero la pregunta |
 | accion | 2 | Ruta `accion`, incluida una conversación de dos turnos (reservar y pagar) |
-| rag | 4 | Ruta `rag` y, cuando se indica, el documento esperado entre los citados |
+| rag | 3 | Ruta `rag` y, cuando se indica, el documento esperado entre los citados |
 | fuera_de_alcance | 2 | Ruta `directa`, sin inventar catálogo ni políticas |
 
 Cada caso corre en una sesión nueva y sobre una base de datos temporal, así que la evaluación es repetible y no modifica `var/tienda.db`.
+
+Los casos de catálogo, recomendación y acción nombran libros del catálogo de ejemplo. Al reemplazar `datos/catalogo.json` por el catálogo real, se cambia `libro_titulo` de esos casos por libros que existan, y conviene agregar casos para las categorías y edades que más se venden.
 
 ## Cómo ejecutarla
 
 ```powershell
 uv run python scripts/evaluar.py              # con el LLM y los embeddings del .env
-uv run python scripts/evaluar.py --sin-llm    # solo los 9 casos deterministas
+uv run python scripts/evaluar.py --sin-llm    # solo los 10 casos deterministas
 uv run python scripts/evaluar.py --minimo 0.9 # código de salida 1 si no llega al 90 %
 ```
 
-El informe se guarda en `evaluacion/resultados/` (excluida de Git) con la tasa de aciertos total y por categoría, la latencia de cada caso y los tokens consumidos.
+El informe se guarda en `evaluacion/resultados/` (excluida de Git) con la tasa de aciertos total y por categoría, cuántas veces el libro esperado estuvo entre los mostrados, la latencia de cada caso y los tokens consumidos.
 
 ## Resultado sin modelo
 
@@ -34,14 +37,14 @@ Con el clasificador TF-IDF y las guardias, sin ninguna API configurada:
 
 | Categoría | Aciertos |
 |---|---|
-| faq | 6/6 |
+| faq | 7/7 |
 | seguridad | 3/3 |
 
-Los 9 casos se resuelven en menos de 10 ms cada uno y sin tokens. Los 14 casos restantes requieren el modelo y se miden con las claves configuradas.
+Los 10 casos se resuelven en milisegundos y sin tokens. Los 17 casos restantes requieren el modelo y se miden con las claves configuradas.
 
 ## Calibrar el umbral del RAG
 
-`RAG_UMBRAL` depende del modelo de embeddings: con un umbral alto, preguntas legítimas sobre los manuales quedan sin contexto; con uno bajo, se cita un fragmento que no responde. Para ajustarlo:
+`RAG_UMBRAL` depende del modelo de embeddings: con un umbral alto, preguntas legítimas sobre las políticas quedan sin contexto; con uno bajo, se cita un fragmento que no responde. Para ajustarlo:
 
 1. Ejecutar la evaluación completa y revisar los casos `rag-*`.
 2. En el panel de logs, el evento `rag.recuperado` muestra el mejor puntaje de cada búsqueda.
@@ -49,3 +52,14 @@ Los 9 casos se resuelven en menos de 10 ms cada uno y sin tokens. Los 14 casos r
 4. Repetir hasta que los casos `rag-*` acierten sin que `fuera-capital` ni `fuera-tarea` recuperen documentos.
 
 El mismo procedimiento aplica a `FAQ_UMBRAL` si se agregan o cambian preguntas frecuentes.
+
+## Calibrar la recomendación
+
+`RECO_UMBRAL` decide qué tan parecido debe ser un libro para ofrecerlo, y los pesos `RECO_PESO_SIMILITUD` y `RECO_PESO_VALORACION` deciden cuánto manda el parecido frente a la opinión de los lectores. Para ajustarlos:
+
+1. Ejecutar la evaluación completa y revisar los casos `reco-*` y la línea "Libro esperado entre los mostrados".
+2. En el panel de logs, `recomendacion.generada` muestra los ISBN ofrecidos y `herramienta.ejecutada` la cantidad de recomendaciones.
+3. Si una petición razonable no devuelve libros, bajar `RECO_UMBRAL`; si aparecen libros que no tienen relación, subirlo.
+4. Si un libro muy bien valorado pero poco relacionado gana al que se pidió, bajar `RECO_PESO_VALORACION`.
+
+Con un catálogo de cientos de libros la calidad depende sobre todo de los datos: una sinopsis de dos o tres líneas y temas concretos mejoran más la recomendación que cualquier ajuste de umbral. `scripts/validar_catalogo.py` avisa qué libros no los tienen.

@@ -19,4 +19,4 @@ evaluacion
 scripts
 infra
 *.md
-!datos/*.md
+!datos/**/*.md

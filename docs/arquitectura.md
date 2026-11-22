@@ -1,33 +1,53 @@
 # Arquitectura
 
-Este documento describe los componentes, el flujo de un turno, el modelo de datos y los eventos del registro. La vista general y el stack están en el [README](../README.md).
+Este documento describe los componentes, el arranque, el flujo de un turno, el modelo de datos y los eventos del registro. La vista general y el stack están en el [README](../README.md).
 
 ## Componentes y responsabilidades
 
 | Módulo | Responsabilidad | Depende de |
 |---|---|---|
-| `app/main.py` | Fábrica de la app: middlewares de seguridad, rutas, frontend y ciclo de vida | todo lo demás |
+| `app/main.py` | Fábrica de la app: carga la tienda, sincroniza el catálogo, middlewares de seguridad, rutas, frontend y ciclo de vida | todo lo demás |
 | `app/api/rutas.py` | Endpoints HTTP públicos y de administración | `dependencias`, `esquemas` |
-| `app/api/dependencias.py` | Estado compartido (`EstadoApp`), token de administración, IP del cliente | `servicios.chat` |
+| `app/api/dependencias.py` | Estado compartido (`EstadoApp`), indexación en segundo plano, token de administración, IP del cliente | `servicios.chat` |
 | `app/api/limitador.py` | Límite de peticiones por cliente con ventana deslizante | nada |
+| `app/catalogo/modelo.py` | Esquema de un libro (`Libro`) con sus validaciones y el texto que se usa para buscarlo | pydantic, `core.isbn` |
+| `app/catalogo/carga.py` | Carga del catálogo y de la tienda; reúne todos los errores en un `ErrorCatalogo` y lista advertencias | `modelo` |
 | `app/core/config.py` | Lectura y validación del `.env` | pydantic-settings |
+| `app/core/isbn.py` | Normalización de ISBN, dígito verificador y detección en un texto | nada |
+| `app/core/texto.py` | Normalización de texto sin tildes ni signos | nada |
 | `app/core/logs.py` | Eventos por turno en consola y JSONL | `config` |
-| `app/core/seguridad.py` | Redacción, guardias y validación de salida (funciones puras) | nada |
+| `app/core/seguridad.py` | Redacción, guardias y validación de salida (funciones puras) | `core.isbn` |
 | `app/llm/cliente.py` | Chat compatible con OpenAI, herramientas y respaldo | httpx |
 | `app/llm/embeddings.py` | Embeddings por API, lotes y reintentos | httpx, numpy |
 | `app/persistencia/db.py` | `BaseDatos`: reúne los repositorios en un solo punto de acceso | `tienda`, `conversacion` |
-| `app/persistencia/esquema.py` | Tablas, errores de pedido y conversión de filas | sqlite3 |
-| `app/persistencia/conexion.py` | Conexión, creación del esquema y carga del catálogo | `esquema` |
-| `app/persistencia/tienda.py` | Productos, usuarios, pedidos y pagos con transacciones | `conexion` |
+| `app/persistencia/esquema.py` | Tablas, versión del esquema, errores de pedido y conversión de filas | sqlite3 |
+| `app/persistencia/conexion.py` | Conexión, reconstrucción por versión y sincronización del catálogo | `esquema`, `catalogo.carga` |
+| `app/persistencia/catalogo.py` | Libros activos, ficha por ISBN, búsqueda por palabras completas y categorías | `conexion` |
+| `app/persistencia/tienda.py` | Usuarios, pedidos y pagos con transacciones | `persistencia.catalogo` |
 | `app/persistencia/conversacion.py` | Mensajes de cada sesión y métricas por ruta | `conexion` |
 | `app/servicios/faq.py` | Clasificador TF-IDF de preguntas frecuentes | scikit-learn |
-| `app/servicios/rag.py` | Fragmentos, índice denso y TF-IDF, caché y MMR | pypdf, numpy, `llm.embeddings` |
-| `app/servicios/herramientas.py` | Esquemas y ejecución de las 7 herramientas | `db`, `rag` |
+| `app/servicios/rag.py` | Fragmentos de PDF y Markdown, índice denso y TF-IDF, caché y MMR | pypdf, numpy, `llm.embeddings` |
+| `app/servicios/recomendador.py` | Recomendador híbrido: similitud por contenido, valoración bayesiana y filtros | `rag`, `persistencia.catalogo` |
+| `app/servicios/esquemas_herramientas.py` | Las 8 herramientas que ve el modelo, cuáles son idempotentes y cuáles son acciones | nada |
+| `app/servicios/herramientas.py` | Ejecución de las herramientas | `db`, `rag`, `recomendador` |
 | `app/servicios/chat.py` | El turno completo, paso a paso | `turno`, `faq`, `rag`, `herramientas` |
-| `app/servicios/turno.py` | Ajustes, respuesta del turno, ejecución de herramientas con sus eventos y modo demo | `herramientas`, `db` |
-| `app/servicios/fabrica.py` | `construir_servicio`: arma el servicio real desde la configuración | todos los servicios |
+| `app/servicios/turno.py` | Ajustes, guardias de acción y búsqueda, respuesta del turno, ejecución de herramientas con sus eventos y modo demo | `herramientas`, `recomendador`, `db` |
+| `app/servicios/fabrica.py` | `construir_servicio`: arma el servicio real desde la configuración y `datos/` | todos los servicios |
 
 Las dependencias van en un solo sentido: la API conoce a los servicios, los servicios conocen a la persistencia y a los clientes de modelos, y nada de lo anterior conoce a FastAPI. Por eso el turno completo se prueba sin servidor HTTP, con un modelo simulado.
+
+## Herramientas
+
+| Herramienta | Tipo | Qué hace |
+|---|---|---|
+| `buscar_libros` | lectura | Busca por título, autor, saga o ISBN, con filtros de categoría y edad |
+| `recomendar_libros` | lectura | Recomienda por lo que describe el cliente, con filtros de edad y categoría; excluye los libros ya ofrecidos o leídos |
+| `ficha_libro` | lectura | Ficha completa y similares que siguen disponibles |
+| `buscar_politica` | lectura | RAG sobre las políticas y el manual del consumidor |
+| `consultar_pedido` | lectura | Estado de un pedido del cliente |
+| `reservar_pedido` | acción | Reserva ejemplares y descuenta stock |
+| `cobrar_pedido` | acción | Registra el pago de una reserva |
+| `cancelar_pedido` | acción | Cancela una reserva y devuelve el stock |
 
 ## Arranque
 
@@ -35,20 +55,24 @@ Las dependencias van en un solo sentido: la API conoce a los servicios, los serv
 sequenceDiagram
     participant U as uvicorn
     participant A as crear_app
+    participant D as SQLite
     participant H as Hilo de indexación
     participant E as API de embeddings
     U->>A: app.main:crear_app (--factory)
-    A->>A: valida configuración, crea SQLite y carga el catálogo
+    A->>A: valida configuración, tienda y catálogo
+    A->>D: reconstruye si cambió la versión del esquema
+    A->>D: sincroniza libros (nuevos, actualizados, retirados)
     A-->>U: la app atiende /api/health/live de inmediato
     A->>H: preparar() en segundo plano
-    H->>H: lee PDFs y arma 346 fragmentos
+    H->>H: lee datos/documentos (PDF y Markdown) y arma los fragmentos
     H->>E: vectores de los fragmentos (si no están en caché)
-    E-->>H: matriz normalizada
-    H->>H: índice TF-IDF de respaldo
+    H->>E: vectores de los libros del catálogo (si no están en caché)
+    E-->>H: matrices normalizadas
+    H->>H: índices TF-IDF de respaldo
     H-->>A: /api/health/ready pasa a 200
 ```
 
-Si la API de embeddings falla al indexar, el buscador queda con TF-IDF, la app pasa igual a lista y `/api/health` informa el motor usado y el aviso.
+Si el catálogo o la tienda tienen datos inválidos, la app no arranca y el error lista cada problema con el libro, el ISBN y el campo; la base no se toca. Si la API de embeddings falla al indexar, los documentos y el catálogo quedan con TF-IDF, la app pasa igual a lista y `/api/health` informa el motor usado y el aviso.
 
 ## Un turno de conversación
 
@@ -65,7 +89,7 @@ sequenceDiagram
     alt bloqueado
         S-->>C: respuesta de bloqueo (ruta filtro)
     end
-    S->>Q: clasificar
+    S->>Q: clasificar (salvo búsqueda de libros, acción o ISBN)
     alt FAQ con similitud suficiente
         Q-->>S: respuesta fija
         S-->>C: ruta faq, sin tokens
@@ -81,37 +105,61 @@ sequenceDiagram
     L-->>S: texto final
     S->>S: valida la salida
     S->>D: guarda el turno redactado con ruta, tokens y latencia
-    S-->>C: respuesta con metadatos del turno
+    S-->>C: respuesta con libros y metadatos del turno
 ```
 
 Detalles que importan:
 
 - El `usuario_id` de las herramientas viene de la sesión, nunca de los argumentos que propone el modelo.
 - Las herramientas de solo lectura repetidas dentro de un turno se ejecutan una vez.
+- Los libros que devuelven `buscar_libros`, `recomendar_libros` y `ficha_libro` se juntan, sin repetir, en el campo `libros` de la respuesta.
 - Si se agotan las vueltas, se hace una última llamada sin herramientas para cerrar la respuesta.
-- Si ningún proveedor responde, el turno se resuelve en modo demo con la FAQ más cercana o con el catálogo.
+- Si ningún proveedor responde, el turno se resuelve en modo demo: un ISBN se busca en el catálogo, lo demás pasa por el recomendador (con la edad del mensaje, si la tiene) y, si no hay libros, se usa la FAQ más cercana.
+
+## Recomendación
+
+```mermaid
+flowchart LR
+    P[Lo que pide el cliente] --> SIM[Hasta 20 candidatos sobre el umbral<br/>embeddings o TF-IDF]
+    SIM --> N[Similitud normalizada<br/>respecto del mejor candidato]
+    N --> F{Filtros duros}
+    F -->|activo, con stock, edad,<br/>categoría y no excluido| PUN[0.75 · similitud + 0.25 · bayesiana / 5]
+    V[valoracion y num_valoraciones] --> B[Valoración bayesiana]
+    B --> PUN
+    PUN --> R[Los 3 mejores<br/>hasta 5 si se piden]
+```
+
+El texto de cada libro combina título, autor, categoría, género, temas, protagonista, tono y sinopsis. El índice se arma una vez al arrancar; precio, stock y estado se leen de la base en cada recomendación, de modo que un libro agotado por una reserva deja de recomendarse al instante. Los pesos, el umbral de similitud y el mínimo de votos son variables `RECO_*` del `.env`. La justificación está en la [decisión 0008](decisiones/0008-recomendacion-hibrida.md).
 
 ## Modelo de datos
 
 ```mermaid
 erDiagram
-    productos ||--o{ pedidos : "se reserva en"
+    libros ||--o{ pedidos : "se reserva en"
     usuarios ||--o{ pedidos : "hace"
     pedidos ||--o{ pagos : "se cobra con"
     usuarios ||--o{ mensajes : "escribe"
-    productos {
-        text codigo PK
-        text nombre
+    libros {
+        text isbn PK
+        text titulo
+        text autor
         text categoria
+        text temas "lista JSON"
+        int edad_min
+        int edad_max
+        real valoracion
+        int num_valoraciones
+        text similares "lista JSON de ISBN"
         real precio
-        text specs
         int stock
+        int activo "0 si salió del catálogo"
     }
     pedidos {
         text id PK
         text usuario_id FK
-        text codigo FK
+        text isbn FK
         int cantidad
+        real precio_unitario
         real total
         text estado "reservado, pagado o cancelado"
     }
@@ -134,22 +182,29 @@ erDiagram
     }
 ```
 
-La reserva descuenta stock con `update ... where stock >= cantidad` dentro de una transacción `begin immediate`: dos reservas simultáneas no pueden vender la última unidad dos veces.
+La tabla `libros` tiene además editorial, año, género, protagonista, tono, sinopsis, formato, páginas, idioma y portada; la lista completa de campos está en el README, sección "Catálogo de libros".
+
+La reserva descuenta stock con `update ... where stock >= cantidad` dentro de una transacción `begin immediate`: dos reservas simultáneas no pueden vender el último ejemplar dos veces.
+
+La base guarda su versión en `pragma user_version`. Si al arrancar la versión no coincide con la del código, las tablas se reconstruyen: la base contiene datos de demostración, no históricos. La sincronización con el archivo del catálogo se explica en la [decisión 0009](decisiones/0009-catalogo-como-fuente-de-verdad.md).
 
 ## Registro de eventos
 
-Regla de diseño: un dato, un dueño. Lo que se consulta o suma (pedidos, tokens, latencia) vive en la base; lo que explica qué pasó vive en el log. Cada evento lleva el `turno_id`.
+Regla de diseño: un dato, un dueño. Lo que se consulta o suma (pedidos, tokens, latencia) vive en la base; lo que explica qué pasó vive en el log. Cada evento de un turno lleva el `turno_id`.
 
 | Evento | Nivel | Cuándo |
 |---|---|---|
 | `app.inicio` | INFO | Arranca la app (versión, entorno, si hay LLM y embeddings) |
-| `corpus.indexando`, `corpus.listo`, `corpus.error` | INFO o ERROR | Indexación de los PDFs |
+| `catalogo.sincronizado` | INFO | El catálogo se sincronizó con la base (nuevos, actualizados y retirados) |
+| `corpus.indexando`, `corpus.listo`, `corpus.error` | INFO o ERROR | Indexación de los documentos |
+| `catalogo.indexado` | INFO | El recomendador indexó el catálogo (libros, motor y aviso) |
 | `turno.inicio` | INFO | Llega un mensaje |
 | `dato.enmascarado` | INFO | Se redactó una tarjeta o clave |
-| `guardia.inyeccion`, `guardia.palabra_prohibida` | WARN | Mensaje bloqueado |
+| `guardia.inyeccion`, `guardia.palabra_prohibida` | WARN | Mensaje bloqueado por manipulación o por piratería |
 | `clasificacion`, `faq.hit`, `escalado` | INFO o WARN | Decisión del clasificador |
 | `llm.llamada`, `llm.lento` | INFO o WARN | Cada llamada al modelo y su latencia |
 | `herramienta.ejecutada` | INFO | Cada herramienta con resultado y duración |
+| `recomendacion.generada` | INFO | ISBN recomendados y motor usado |
 | `rag.recuperado` | INFO | Fragmentos elegidos, mejor puntaje y motor |
 | `pedido.creado`, `pedido.cobrado`, `pedido.cancelado` | INFO | Cambios en pedidos |
 | `salida.bloqueada`, `salida.redactada` | WARN o INFO | La validación de salida actuó |

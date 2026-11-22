@@ -1,23 +1,28 @@
 """Filtros de seguridad: datos sensibles, inyección de instrucciones y salida del LLM.
 
 Son funciones puras, sin dependencias de FastAPI ni del LLM, para que se puedan
-probar de forma aislada. Las listas de palabras son un ejemplo del caso de la
-tienda: en otro negocio se reemplazan por sus propias políticas de contenido.
+probar de forma aislada. Las listas de frases son las políticas de contenido de
+una librería: no se ayuda a conseguir copias no autorizadas de libros. No se
+bloquean temas (drogas, política, salud): una librería vende libros sobre ellos.
 """
 
 from __future__ import annotations
 
 import re
-import unicodedata
 from collections.abc import Iterable
 
+from app.core.isbn import isbn13_valido
+from app.core.texto import normalizar
 
-def normalizar(texto: str) -> str:
-    """Minúsculas, sin acentos y sin signos, para comparar palabras clave."""
-    sin_acentos = "".join(
-        c for c in unicodedata.normalize("NFD", texto.lower()) if unicodedata.category(c) != "Mn"
-    )
-    return re.sub(r"[^a-z0-9ñ ]+", " ", sin_acentos).strip()
+__all__ = [
+    "detectar_inyeccion",
+    "detectar_palabra_prohibida",
+    "normalizar",
+    "redactar_datos_sensibles",
+    "respuesta_bloqueo",
+    "tema_critico",
+    "validar_salida",
+]
 
 
 # ---------------------------------------------------------------------------
@@ -46,16 +51,27 @@ def detectar_inyeccion(texto: str) -> str | None:
 
 
 # ---------------------------------------------------------------------------
-# Palabras fuera de política
+# Frases fuera de política: copias no autorizadas (piratería)
 # ---------------------------------------------------------------------------
-PALABRAS_PROHIBIDAS = ["computech", "elecciones", "medicamentos", "pastillas", "drogas"]
-PALABRAS_SALIDA = ["computech", "pastillas", "medicina", "drogas"]
+# Se comparan ya normalizadas: "Z-Library" y "z library" son lo mismo.
+SITIOS_PIRATAS = ["libgen", "library genesis", "z library", "zlibrary", "anna s archive"]
+PALABRAS_PROHIBIDAS = [
+    "pdf gratis",
+    "epub gratis",
+    "descargar gratis",
+    "descarga gratis",
+    "libro pirata",
+    "piratear",
+    *SITIOS_PIRATAS,
+]
+# En la salida solo se bloquean los sitios: el bot sí puede decir "no ofrecemos PDF gratis".
+PALABRAS_SALIDA = list(SITIOS_PIRATAS)
 
 RESPUESTAS_BLOQUEO = [
-    "Lo siento, pero no puedo responder a esa consulta.",
-    "Por ahora no puedo ayudar con ese tema.",
-    "Lo siento, no tengo permitido responder ese tipo de consultas.",
-    "Esa consulta queda fuera de lo que puedo atender.",
+    "Lo siento, no puedo ayudar con eso. Sí puedo recomendarte libros de nuestro catálogo.",
+    "Esa consulta queda fuera de lo que puedo atender; puedo ayudarte a buscar un libro.",
+    "No puedo responder ese tipo de consultas, pero con gusto te ayudo a elegir un libro.",
+    "Por ahora no puedo ayudar con ese tema. ¿Buscas algún libro en particular?",
 ]
 
 
@@ -92,7 +108,10 @@ def redactar_datos_sensibles(texto: str) -> tuple[str, list[str]]:
     """
     hallazgos: list[str] = []
 
-    def _tarjeta(_: re.Match[str]) -> str:
+    def _tarjeta(match: re.Match[str]) -> str:
+        digitos = re.sub(r"\D", "", match.group(0))
+        if isbn13_valido(digitos):  # un ISBN no es una tarjeta: se conserva
+            return match.group(0)
         hallazgos.append("tarjeta")
         return "[TARJETA REDACTADA]"
 
