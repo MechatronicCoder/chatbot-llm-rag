@@ -145,7 +145,7 @@ mensaje
 | Ruta | Cuándo ocurre | ¿Usa el LLM? |
 |---|---|---|
 | `filtro` | Intento de manipular las instrucciones o de conseguir copias piratas | No |
-| `faq` | La pregunta coincide con una FAQ con similitud suficiente | No |
+| `faq` | La pregunta coincide con una FAQ con similitud suficiente y comparte con ella al menos una palabra con contenido | No |
 | `escalar` | Tema crítico (pagos, reclamos, denuncias) sin FAQ parecida | No |
 | `directa` | Saludos, preguntas de aclaración (por ejemplo, la edad) o temas ajenos | Sí |
 | `herramientas` | Búsqueda por título, autor o ISBN, fichas y estado de pedidos | Sí |
@@ -153,6 +153,8 @@ mensaje
 | `accion` | Reserva, cobro o cancelación de un pedido | Sí |
 | `rag` | Preguntas sobre políticas o derechos del consumidor | Sí |
 | `demo` | No hay modelo configurado o todos los proveedores fallaron | No |
+
+La similitud sola engaña: "¿cómo puedo programar una calculadora en Python?" se parece a "¿cómo puedo pagar?" (0.56) por las palabras que no dicen nada del tema. Por eso una FAQ solo responde si además comparte con el mensaje una palabra con contenido ("pagar", "envío", "tarjeta"); si no, el mensaje va al modelo, que lo trata como un tema ajeno.
 
 Una frase como "quiero un libro para…" se parece mucho a "quiero devolver un libro". Por eso una guardia reconoce las búsquedas de libros ("un libro para", "libros de", "recomiéndame", "busco", "parecido a") y las envía al modelo sin pasar por la FAQ. "Libro de reclamaciones" y "libros para regalo" siguen siendo preguntas frecuentes.
 
@@ -461,14 +463,14 @@ Las pruebas no llaman a ninguna API: el modelo, los embeddings y los proveedores
 
 ## Evaluación
 
-Además de las pruebas, `evaluacion/casos.json` define 37 casos (FAQ, seguridad, cortesía, catálogo, recomendación, acciones, carrito, RAG, seguimiento, pase a una persona y preguntas fuera de alcance) con la ruta esperada y, cuando corresponde, la FAQ, el documento, el libro que debe aparecer o el estado del pedido.
+Además de las pruebas, `evaluacion/casos.json` define 41 casos (FAQ, seguridad, cortesía, catálogo, recomendación, acciones, carrito, RAG, seguimiento, pase a una persona y preguntas fuera de alcance) con la ruta esperada y, cuando corresponde, la FAQ, el documento, el libro que debe aparecer o el estado del pedido.
 
 ```powershell
 uv run python scripts/evaluar.py             # con el modelo del .env
 uv run python scripts/evaluar.py --sin-llm   # solo los casos que no usan el modelo
 ```
 
-El informe se guarda en `evaluacion/resultados/` con la tasa de aciertos por categoría, el acierto del libro esperado, la latencia y los tokens. Sin modelo configurado, los 10 casos de FAQ y seguridad aciertan la ruta (10/10); con `qwen-plus`, el conjunto completo da 37/37. Los casos de catálogo, recomendación y acción nombran libros del catálogo actual: si el catálogo cambia, se actualizan. La metodología y cómo calibrar `RAG_UMBRAL` y `RECO_UMBRAL` están en [docs/evaluacion.md](docs/evaluacion.md).
+El informe se guarda en `evaluacion/resultados/` con la tasa de aciertos por categoría, el acierto del libro esperado, la latencia y los tokens. Sin modelo configurado, los 10 casos de FAQ y seguridad aciertan la ruta (10/10); con `qwen-plus`, el conjunto completo da 41/41. Los casos de catálogo, recomendación y acción nombran libros del catálogo actual: si el catálogo cambia, se actualizan. La metodología y cómo calibrar `RAG_UMBRAL` y `RECO_UMBRAL` están en [docs/evaluacion.md](docs/evaluacion.md).
 
 ## Seguridad
 

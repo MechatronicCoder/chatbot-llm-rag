@@ -24,6 +24,23 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.pipeline import FeatureUnion
 
 from app.core.seguridad import tema_critico
+from app.core.texto import normalizar
+
+# Palabras que no dicen de qué trata una pregunta. Sin esta lista, "¿cómo puedo programar
+# una calculadora?" se parecía a "¿cómo puedo pagar?" (0.56) y recibía los medios de pago.
+PALABRAS_SIN_TEMA = frozenset(
+    {
+        "como", "puedo", "puede", "pueden", "podria", "quiero", "quisiera", "necesito", "saber",
+        "dime", "cual", "cuales", "cuanto", "cuanta", "cuantos", "cuantas", "donde", "cuando",
+        "quien", "para", "porque", "sobre", "algun", "alguna", "hacer", "hacen", "hago", "tiene",
+        "tienen", "tengo", "esta", "estan", "esto", "este", "libro", "libros",
+    }
+)  # fmt: skip
+
+
+def temas(texto: str) -> set[str]:
+    """Raíces (5 letras) de las palabras que dicen de qué trata un texto: envíos -> envio."""
+    return {p[:5] for p in normalizar(texto).split() if len(p) >= 4 and p not in PALABRAS_SIN_TEMA}
 
 
 @dataclass(frozen=True)
@@ -103,10 +120,12 @@ class IndiceFAQ:
 
         self.textos: list[str] = []
         self.propietarios: list[FAQ] = []
+        self._temas: dict[str, set[str]] = {}
         for faq in faqs:
             for texto in (faq.pregunta, *faq.variaciones):
                 self.textos.append(texto)
                 self.propietarios.append(faq)
+                self._temas.setdefault(faq.id, set()).update(temas(texto))
 
         self._union = FeatureUnion(
             [
@@ -176,7 +195,10 @@ class IndiceFAQ:
                 motivo=motivo_forzado or "se fuerza el modelo",
                 **comun,
             )
-        if mejor >= self.umbral and (mejor - segunda) >= self.margen:
+        # Además del parecido, la FAQ tiene que tratar del mismo tema: al menos una palabra
+        # con contenido en común ("pagar", "envío", "tarjeta").
+        mismo_tema = bool(temas(texto) & self._temas[mejor_faq.id])
+        if mejor >= self.umbral and (mejor - segunda) >= self.margen and mismo_tema:
             return Decision(
                 ruta="faq",
                 faq=mejor_faq,
