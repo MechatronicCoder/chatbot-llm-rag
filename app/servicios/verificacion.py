@@ -71,10 +71,12 @@ ETIQUETAS = frozenset(
     {
         "precio", "stock", "stock disponible", "formato", "valoracion", "isbn", "subtotal",
         "envio", "total", "sinopsis", "autor", "editorial", "paginas", "edad", "respuesta",
+        "pedido", "carrito", "pago", "envio a provincias", "envio a lima metropolitana",
     }
 )  # fmt: skip
 # "S/ 59.90", "S/1,234.50", "S/ 59,90", "S/. 59.90"
 RE_MONTO = re.compile(r"S/\.?\s?(\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d+(?:[.,]\d{1,2})?)")
+RE_MONTO_COMPLETO = re.compile(r"S/\.?\s?[\d.,]+")
 RE_NUMERO = re.compile(r"\d+(?:[.,]\d{1,2})?")
 NOTA = "[Revisión interna; no la menciones al cliente] "
 
@@ -129,9 +131,13 @@ def titulos_ajenos(texto: str, bd: BaseDatos) -> list[str]:
     ajenos = []
     for marca in RE_DESTACADO.finditer(texto):
         frase = next(g for g in marca.groups() if g).strip()
-        limpia = normalizar(frase)
+        # "**S/ 73.30**" o "**PED-65CC85F3**" no son títulos: sin montos ni ids, tiene que
+        # quedar al menos una palabra de cuatro letras ("**Total: S/ 73.30**" -> "Total").
+        sin_cifras = RE_ID.sub("", RE_MONTO_COMPLETO.sub("", frase)).strip(" :·-")
+        limpia = normalizar(sin_cifras)
         etiqueta = frase.endswith(":") or texto[marca.end() : marca.end() + 1] == ":"
-        if not limpia or not frase[0].isupper() or etiqueta or limpia in ETIQUETAS:
+        palabra = re.search(r"[^\W\d_]{4,}", sin_cifras)
+        if not palabra or not frase[0].isupper() or etiqueta or limpia in ETIQUETAS:
             continue
         if not any(f" {limpia} " in c or c in f" {limpia} " for c in normalizados):
             ajenos.append(frase)

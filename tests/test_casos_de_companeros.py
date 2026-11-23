@@ -83,3 +83,16 @@ def test_un_precio_escrito_con_punto_tambien_se_verifica(bd: BaseDatos) -> None:
     from app.servicios.verificacion import montos_sin_respaldo
 
     assert montos_sin_respaldo("Cuesta S/. 999.99", bd, "ana", "") == ["999.99"]
+
+
+def test_los_montos_y_los_ids_en_negrita_no_son_titulos(bd: BaseDatos) -> None:
+    """En la evaluación, "**S/ 73.30**" se tomó por un título y el bot negó tener Elantris."""
+    texto = (
+        "Tu carrito **PED-65CC85F3**: **1 × *La escuela de magos* (Rosa Varita)**: S/ 69.90. "
+        "**Envío a provincias**: S/ 18.00. **Total: S/ 87.90**. Te faltan **S/ 130.10** para "
+        "el envío gratis; tienes **S/ 87.90** en el carrito y el stock alcanza."
+    )
+    assert titulos_ajenos(texto, bd) == []
+    problema = revisar_respuesta(texto, Acumulado(), bd, "ana", "¿cuánto me falta?")
+    # el id y los montos inventados se revisan con sus propias reglas, no como "libros"
+    assert problema is not None and not problema.motivo.startswith("nombra libros")
