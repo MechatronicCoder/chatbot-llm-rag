@@ -80,10 +80,19 @@ def test_umbral_configurable(
 
 
 def test_el_contexto_de_faq_llega_al_modelo(servicio_con_modelo: ServicioChat) -> None:
-    """Si la FAQ no gana pero se parece, el modelo la recibe como contexto verificado."""
+    """Si la FAQ no gana pero se parece, el modelo la recibe como contexto verificado.
+
+    Va al final del mensaje del cliente y no en el de sistema: así el prefijo del prompt
+    no cambia entre turnos y el proveedor lo sirve de su caché.
+    """
     servicio_con_modelo.responder("¿y si quiero pagar en cuotas sin intereses?", "a", "s-ctx")
-    sistema = servicio_con_modelo.llm.llamadas[0]["mensajes"][0]["content"]  # type: ignore[attr-defined]
-    assert "Preguntas frecuentes verificadas" in sistema
+    mensajes = servicio_con_modelo.llm.llamadas[0]["mensajes"]  # type: ignore[attr-defined]
+    assert "Preguntas frecuentes" not in mensajes[0]["content"]
+    assert mensajes[0]["content"] == servicio_con_modelo.prompt_sistema
+    assert mensajes[-1]["content"].startswith("¿y si quiero pagar en cuotas sin intereses?")
+    assert "preguntas frecuentes verificadas" in mensajes[-1]["content"]
+    guardado = servicio_con_modelo.bd.mensajes_de("s-ctx")[0]["contenido_redactado"]
+    assert "preguntas frecuentes" not in guardado  # el historial guarda solo lo que escribió
 
 
 def test_una_base_de_faqs_vacia_es_un_error() -> None:

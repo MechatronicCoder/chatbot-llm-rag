@@ -4,7 +4,7 @@ Las pruebas automáticas comprueban que el código hace lo que se espera con un 
 
 ## Conjunto de casos
 
-`evaluacion/casos.json` tiene 36 casos en 10 categorías:
+`evaluacion/casos.json` tiene 37 casos en 11 categorías:
 
 | Categoría | Casos | Qué se espera |
 |---|---|---|
@@ -16,6 +16,7 @@ Las pruebas automáticas comprueban que el código hace lo que se espera con un 
 | accion | 2 | Ruta `accion` y el pedido en el estado esperado, incluida una conversación de dos turnos (armar el carrito y pagar) |
 | carrito | 3 | Ruta `accion` y el carrito con la cantidad de libros esperada: varios libros a la vez, quitar uno y preguntar cuánto falta para el envío gratis |
 | rag | 3 | Ruta `rag` y, cuando se indica, el documento esperado entre los citados |
+| escalado | 1 | Un cliente que pide hablar con una persona recibe el contacto y el turno queda con ruta `escalar` |
 | seguimiento | 1 | Una pregunta que depende de la anterior ("¿cuánto cuesta el envío a Lima?" y luego "¿y a provincias?") la responde el modelo con el historial y menciona la tarifa correcta |
 | fuera_de_alcance | 2 | Ruta `directa`, sin inventar catálogo ni políticas |
 
@@ -42,7 +43,7 @@ Con el clasificador TF-IDF y las guardias, sin ninguna API configurada:
 | faq | 7/7 |
 | seguridad | 3/3 |
 
-Los 10 casos se resuelven en milisegundos y sin tokens. Los 26 casos restantes requieren el modelo y se miden con las claves configuradas.
+Los 10 casos se resuelven en milisegundos y sin tokens. Los 27 casos restantes requieren el modelo y se miden con las claves configuradas.
 
 ## Resultado con modelo
 
@@ -84,3 +85,12 @@ El mismo procedimiento aplica a `FAQ_UMBRAL` si se agregan o cambian preguntas f
 4. Si un libro muy bien valorado pero poco relacionado gana al que se pidió, bajar `RECO_PESO_VALORACION`.
 
 Con un catálogo de cientos de libros la calidad depende sobre todo de los datos: una sinopsis de dos o tres líneas y temas concretos mejoran más la recomendación que cualquier ajuste de umbral. `scripts/validar_catalogo.py` avisa qué libros no los tienen.
+
+## Cuando algo falla en modo real
+
+Cada fallo que se ve con el modelo real deja dos rastros, para que no vuelva sin que nadie lo note:
+
+1. Un caso en `casos.json` con el mensaje tal como lo escribió el cliente y un `id` que dice qué pasó (`reco-mensaje-partido`, `carrito-envio-gratis`, `seguimiento-envio`).
+2. Una prueba en `tests/` que reproduce la respuesta equivocada con el modelo simulado (`ModeloFalso`) y comprueba que el sistema la corrige. El nombre de la prueba cuenta el caso, como `test_recomendar_de_memoria_se_corrige_con_el_catalogo` o `test_los_relacionados_no_impiden_agregar_el_libro_pedido`.
+
+Recién con los dos en rojo se corrige el prompt, la verificación o el código, y se vuelve a correr la evaluación completa: un arreglo para un caso puede romper otro, como pasó cuando los libros relacionados de la búsqueda hicieron fallar los casos de venta.

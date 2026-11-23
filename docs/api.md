@@ -140,6 +140,6 @@ Invoke-WebRequest "http://localhost:8000/api/ventas.csv" -Headers $h -OutFile ve
 | Ruta | Respuesta |
 |---|---|
 | `/api/logs?n=&nivel=&turno=` | `{nivel_minimo, total, eventos}`, del más nuevo al más viejo |
-| `/api/metricas` | Turnos por ruta, tokens totales y de las últimas 24 horas (`tokens_24h`, lo que mide el tope `LLM_TOKENS_POR_DIA`), latencia p50 y p95 |
+| `/api/metricas` | Turnos por ruta, tokens totales y de las últimas 24 horas (`tokens_24h`, lo que mide el tope `LLM_TOKENS_POR_DIA`), latencia p50 y p95; con `PRECIO_*_USD_MILLON` configurados, también `costo_estimado_usd`, que no descuenta los tokens servidos de la caché del proveedor |
 | `/api/sesion/{session_id}` | Mensajes guardados (siempre redactados) |
 | `/api/ventas.csv?usuario_id=` | Una fila por libro vendido en pedidos pagados, separada por `;`, con las columnas pedido, usuario, isbn, titulo, autor, cantidad, precio_unitario, importe, envio_pedido, total_pedido, estado y creado_en |

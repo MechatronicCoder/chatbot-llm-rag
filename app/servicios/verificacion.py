@@ -32,6 +32,12 @@ RE_PAGADO = re.compile(
     re.IGNORECASE,
 )
 RE_CANCELADO = re.compile(r"\bcancelad[oa]s?\b", re.IGNORECASE)
+# "ya quité El Silmarillion", "lo agregué", "carrito actualizado"
+RE_CARRITO_CAMBIADO = re.compile(
+    r"\b(?:quit[eé]|quitamos|agregu[eé]|agregamos|añad[ií]|añadimos|actualic[eé]|"
+    r"actualizamos|carrito actualizado)\b",
+    re.IGNORECASE,
+)
 # "algo de terror…", "algún libro…": pedidos que RE_BUSQUEDA no cubre
 RE_ALGO = re.compile(r"\b(?:algo|alg[uú]n)\b", re.IGNORECASE)
 # "quiero el libro Drácula", "me llevo el primero": pedir un libro concreto (no buscar uno)
@@ -160,6 +166,14 @@ def revisar_respuesta(
             + "No se canceló nada: no llamaste a cancelar_pedido. Si el cliente pidió "
             "cancelar, llámala ahora con el id exacto del pedido.",
             respaldo="Todavía no cancelé el pedido. ¿Me confirmas cuál quieres cancelar?",
+        )
+    if RE_CARRITO_CAMBIADO.search(texto) and "actualizar_carrito" not in usadas:
+        return Problema(
+            motivo="afirma un cambio en el carrito que no hizo",
+            instruccion=NOTA
+            + "El carrito no cambió: no llamaste a actualizar_carrito. Si el cliente pidió "
+            "agregar o quitar un libro, llámala ahora con la cantidad final de cada uno.",
+            respaldo="Todavía no cambié el carrito. ¿Me confirmas qué libro y cuántos ejemplares?",
         )
     if sueltos := montos_sin_respaldo(texto, bd, usuario_id, mensaje):
         carrito = acumulado.carrito

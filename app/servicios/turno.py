@@ -43,7 +43,9 @@ RE_ACCION = re.compile(
     r"quiero ese libro|quiero este libro|agrega|agrégalo|agregalo|añade|añádelo|añadelo|quita|"
     r"quítalo|quitalo)\b|\bPED-[A-Z0-9]{4,}\b|"
     # el carrito o el pedido propio: la FAQ no los conoce ("¿cuánto me falta para el envío gratis?")
-    r"\b(?:mi|el) (?:carrito|pedido)\b|\bme falta\b|" + RE_ISBN.pattern,
+    r"\b(?:mi|el) (?:carrito|pedido)\b|\bme falta\b|"
+    # pedir una persona es una acción: la resuelve derivar_a_persona, con el contacto
+    r"\bhablar con (?:una persona|alguien|un asesor|un humano|un encargado)\b|" + RE_ISBN.pattern,
     # un ISBN-13 (con o sin guiones) es un libro concreto: lo resuelven las herramientas
     re.IGNORECASE,
 )
@@ -169,6 +171,8 @@ class Acumulado:
 
 def ruta_de(usadas: list[dict[str, Any]]) -> str:
     nombres = {u["nombre"] for u in usadas}
+    if "derivar_a_persona" in nombres:
+        return "escalar"
     if "buscar_politica" in nombres:
         return "rag"
     if nombres & ACCIONES:
@@ -316,6 +320,8 @@ def ejecutar_llamada(
             pago=resultado["pago_id"],
             pedido=resultado.get("pedido_id"),
         )
+    if nombre == "derivar_a_persona" and ok:  # aviso: alguien del equipo tiene que atenderlo
+        registro.aviso("derivacion.solicitada", turno_id, motivo=resultado["motivo"][:120])
     if nombre == "cancelar_pedido" and resultado.get("estado") == "cancelado":
         registro.info("pedido.cancelado", turno_id, pedido=resultado.get("pedido_id"))
     return resultado

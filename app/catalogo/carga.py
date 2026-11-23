@@ -41,6 +41,15 @@ class ZonaEnvio(BaseModel):
     gratis_desde: Decimal | None = Field(default=None, ge=0, max_digits=8, decimal_places=2)
 
 
+class Contacto(BaseModel):
+    """Cómo hablar con una persona del equipo (lo usa `derivar_a_persona`)."""
+
+    model_config = ConfigDict(extra="forbid")
+    telefono: str = Field(min_length=1, max_length=40)
+    correo: str = Field(min_length=3, max_length=80)
+    horario: str = Field(min_length=1, max_length=120)
+
+
 class Tienda(BaseModel):
     """Identidad de la tienda: se usa en el prompt, en los textos y en el frontend."""
 
@@ -50,6 +59,7 @@ class Tienda(BaseModel):
     moneda: Moneda
     # Zonas de envío ("lima", "provincias"): el código calcula el envío, no el modelo.
     envio: dict[str, ZonaEnvio] = Field(min_length=1)
+    contacto: Contacto | None = None
 
     def precio(self, valor: float | Decimal) -> str:
         return f"{self.moneda.simbolo} {valor:,.2f}"

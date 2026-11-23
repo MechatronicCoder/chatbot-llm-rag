@@ -16,5 +16,10 @@
       "costo": 18.0,
       "gratis_desde": 200.0
     }
+  },
+  "contacto": {
+    "telefono": "(01) 000-0000",
+    "correo": "atencion@ejemplo.pe",
+    "horario": "lunes a sábado de 10:00 a 20:00 y domingos de 11:00 a 18:00"
   }
 }

@@ -33,7 +33,7 @@ Este documento describe los componentes, el arranque, el flujo de un turno, el m
 | `app/servicios/faq.py` | Clasificador TF-IDF de preguntas frecuentes | scikit-learn |
 | `app/servicios/rag.py` | Fragmentos de PDF y Markdown, índice denso y TF-IDF, caché y MMR | pypdf, numpy, `llm.embeddings` |
 | `app/servicios/recomendador.py` | Recomendador híbrido: similitud por contenido, valoración bayesiana y filtros | `rag`, `persistencia.catalogo` |
-| `app/servicios/esquemas_herramientas.py` | Las 9 herramientas que ve el modelo, cuáles son idempotentes y cuáles son acciones | nada |
+| `app/servicios/esquemas_herramientas.py` | Las 10 herramientas que ve el modelo, cuáles son idempotentes y cuáles son acciones | nada |
 | `app/servicios/herramientas.py` | Ejecución de las herramientas | `db`, `rag`, `recomendador` |
 | `app/servicios/chat.py` | El turno completo, paso a paso | `turno`, `faq`, `rag`, `herramientas` |
 | `app/servicios/contexto.py` | Lo que ve el modelo (prompt, FAQ cercanas, historial y mensaje) y el candado por sesión: dos mensajes de la misma conversación se atienden en orden, nunca a la vez | `db`, `faq` |
@@ -57,6 +57,7 @@ Las dependencias van en un solo sentido: la API conoce a los servicios, los serv
 | `reservar_pedido` | acción | Reserva el carrito: descuenta el stock de todas las líneas y fija los montos |
 | `cobrar_pedido` | acción | Cobra un pedido reservado, o reserva y cobra un carrito; se rechaza si el total cambió en el mismo turno |
 | `cancelar_pedido` | acción | Cancela un carrito o una reserva y devuelve el stock |
+| `derivar_a_persona` | escalado | Registra el motivo y devuelve el teléfono, el correo y el horario de atención de `tienda.json`; el turno queda con ruta `escalar` |
 
 La búsqueda corrige errores de tipeo con `difflib`, pero con cuidado, porque corregir de más cambia el pedido del cliente por otro libro. Una palabra que no está en el catálogo se cambia por la más parecida solo si:
 - el parecido es de 0.75 o más (con 0.68, probado sobre el catálogo real, "cocina" pasaba a "conan");
@@ -64,6 +65,10 @@ La búsqueda corrige errores de tipeo con `difflib`, pero con cuidado, porque co
 - después de corregir, todas las palabras de la consulta existen en el catálogo y aparecen juntas en un mismo libro.
 
 Así "el silmarilion" encuentra El Silmarillion y "brandon sandersen" a Brandon Sanderson, pero "harry poter" o "garcia marques", que no están, no se convierten en otros libros.
+
+## Orden del prompt y caché
+
+Qwen reutiliza de su caché el prefijo de un pedido que ya vio, y esos tokens se cobran más baratos. Por eso lo que cambia en cada turno va al final: el mensaje de sistema (prompt y, si hay, el resumen de la conversación), las herramientas y el historial forman un prefijo fijo, y las preguntas frecuentes cercanas viajan pegadas al mensaje del cliente, marcadas como contexto interno. Medido con `qwen-plus`: con las FAQ al final del mensaje de sistema se servían de caché 3 968 de 5 727 tokens (69 %); con las FAQ en el mensaje del cliente, 5 632 de 5 728 (98 %). Un segundo mensaje de sistema en medio de la conversación no sirve: anuló la caché (0 tokens). El historial guarda solo lo que escribió el cliente, sin esa nota.
 
 ## Arranque
 
@@ -250,6 +255,7 @@ Regla de diseño: un dato, un dueño. Lo que se consulta o suma (pedidos, tokens
 | `salida.no_verificada` | WARN | La respuesta del modelo afirmaba algo que no pasó (id, pago, cancelación o cita); se pidió corrección |
 | `degradacion` | WARN | Sin proveedor o con el tope diario de tokens alcanzado: modo demo |
 | `resumen.actualizado`, `resumen.fallo` | INFO o WARN | Se resumió lo que salió de la ventana del historial (mensajes cubiertos y tokens), o el modelo falló y quedó el resumen anterior |
+| `derivacion.solicitada` | WARN | El modelo pasó la atención a una persona; el motivo queda en el log para que alguien lo atienda |
 | `limite.superado` | WARN | Un cliente superó el límite por minuto |
 | `acceso.correcto`, `acceso.cerrado` | INFO | Inicio y cierre de sesión del acceso de la demo |
 | `acceso.fallido`, `acceso.bloqueado` | WARN | Usuario o clave incorrectos (sin registrar la clave) o demasiados intentos |

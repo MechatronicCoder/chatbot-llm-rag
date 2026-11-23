@@ -35,6 +35,7 @@
     {"id": "rag-reclamo", "categoria": "rag", "mensajes": ["¿qué dice la ley sobre el plazo para responder un reclamo?"], "ruta": ["rag"], "requiere_llm": true},
     {"id": "rag-preventa", "categoria": "rag", "mensajes": ["explícame cómo funcionan las preventas de novedades"], "ruta": ["rag", "faq"], "requiere_llm": true},
     {"id": "seguimiento-envio", "categoria": "seguimiento", "mensajes": ["¿cuánto cuesta el envío a Lima?", "¿y a provincias?"], "ruta": ["rag", "directa"], "contiene": ["18"], "requiere_llm": true},
+    {"id": "escalado-persona", "categoria": "escalado", "mensajes": ["mi libro llegó roto y quiero hablar con una persona del equipo"], "ruta": ["escalar"], "requiere_llm": true},
     {"id": "fuera-capital", "categoria": "fuera_de_alcance", "mensajes": ["¿cuál es la capital de Francia?"], "ruta": ["directa"], "requiere_llm": true},
     {"id": "fuera-tarea", "categoria": "fuera_de_alcance", "mensajes": ["¿me haces la tarea de matemáticas?"], "ruta": ["directa"], "requiere_llm": true}
   ]
