@@ -1,5 +1,5 @@
 {
-  "descripcion": "Conjunto de evaluación de la librería: cada caso envía uno o más mensajes en una sesión nueva y compara la ruta del último turno con la esperada. 'faq' exige esa pregunta frecuente, 'documento' que se cite ese archivo y 'libro_titulo' que ese título (o uno de la lista) aparezca entre los libros del turno 'precio_max' que todos los libros mostrados cuesten eso o menos y 'carrito' que el pedido que tocó el último turno tenga ese estado (y esa cantidad de libros). Los casos con requiere_llm=true se omiten si no hay modelo configurado. Los títulos esperados son del catálogo actual: al cambiar el catálogo, revisar los casos de catálogo, recomendación y acción.",
+  "descripcion": "Conjunto de evaluación de la librería: cada caso envía uno o más mensajes en una sesión nueva y compara la ruta del último turno con la esperada. 'faq' exige esa pregunta frecuente, 'documento' que se cite ese archivo y 'libro_titulo' que ese título (o uno de la lista) aparezca entre los libros del turno 'contiene' que la respuesta mencione alguno de esos textos, 'precio_max' que todos los libros mostrados cuesten eso o menos y 'carrito' que el pedido que tocó el último turno tenga ese estado (y esa cantidad de libros). Los casos con requiere_llm=true se omiten si no hay modelo configurado. Los títulos esperados son del catálogo actual: al cambiar el catálogo, revisar los casos de catálogo, recomendación y acción.",
   "casos": [
     {"id": "faq-envio-costo", "categoria": "faq", "mensajes": ["¿cuánto cuesta el envío?"], "ruta": ["faq"], "faq": "FAQ-002", "requiere_llm": false},
     {"id": "faq-envio-provincia", "categoria": "faq", "mensajes": ["¿hacen envíos a provincias?"], "ruta": ["faq"], "faq": "FAQ-003", "requiere_llm": false},
@@ -34,6 +34,7 @@
     {"id": "rag-cambios", "categoria": "rag", "mensajes": ["¿qué condiciones tiene que cumplir un libro para cambiarlo por otro?"], "ruta": ["rag", "faq"], "documento": "politicas_libreria.md", "requiere_llm": true},
     {"id": "rag-reclamo", "categoria": "rag", "mensajes": ["¿qué dice la ley sobre el plazo para responder un reclamo?"], "ruta": ["rag"], "requiere_llm": true},
     {"id": "rag-preventa", "categoria": "rag", "mensajes": ["explícame cómo funcionan las preventas de novedades"], "ruta": ["rag", "faq"], "requiere_llm": true},
+    {"id": "seguimiento-envio", "categoria": "seguimiento", "mensajes": ["¿cuánto cuesta el envío a Lima?", "¿y a provincias?"], "ruta": ["rag", "directa"], "contiene": ["18"], "requiere_llm": true},
     {"id": "fuera-capital", "categoria": "fuera_de_alcance", "mensajes": ["¿cuál es la capital de Francia?"], "ruta": ["directa"], "requiere_llm": true},
     {"id": "fuera-tarea", "categoria": "fuera_de_alcance", "mensajes": ["¿me haces la tarea de matemáticas?"], "ruta": ["directa"], "requiere_llm": true}
   ]

@@ -37,6 +37,7 @@ Este documento describe los componentes, el arranque, el flujo de un turno, el m
 | `app/servicios/herramientas.py` | Ejecución de las herramientas | `db`, `rag`, `recomendador` |
 | `app/servicios/chat.py` | El turno completo, paso a paso | `turno`, `faq`, `rag`, `herramientas` |
 | `app/servicios/contexto.py` | Lo que ve el modelo (prompt, FAQ cercanas, historial y mensaje) y el candado por sesión: dos mensajes de la misma conversación se atienden en orden, nunca a la vez | `db`, `faq` |
+| `app/servicios/resumen.py` | Resumen encadenado de lo que sale de la ventana del historial: cada 8 mensajes nuevos, en segundo plano, con los ISBN y los ids copiados tal cual | `db`, `cliente` |
 | `app/servicios/turno.py` | Ajustes, guardias de acción y búsqueda, respuesta del turno, ejecución de herramientas con sus eventos y modo demo | `herramientas`, `recomendador`, `db` |
 | `app/servicios/verificacion.py` | Revisa la respuesta del modelo contra la base y el turno antes de entregarla | `db`, `turno` |
 | `app/servicios/fabrica.py` | `construir_servicio`: arma el servicio real desde la configuración y `datos/` | todos los servicios |
@@ -205,6 +206,17 @@ erDiagram
         int tokens_salida
         int latencia_ms
     }
+    resumenes {
+        text sesion_id PK
+        text texto
+        int cubiertos "mensajes que ya resume"
+    }
+    consumo_extra {
+        int id PK
+        text sesion_id
+        text motivo "resumen"
+        int tokens
+    }
 ```
 
 La tabla `libros` tiene además editorial, año, género, protagonista, tono, sinopsis, formato, páginas, idioma y portada; la lista completa de campos está en el README, sección "Catálogo de libros".
@@ -237,6 +249,7 @@ Regla de diseño: un dato, un dueño. Lo que se consulta o suma (pedidos, tokens
 | `salida.bloqueada`, `salida.redactada` | WARN o INFO | La validación de salida actuó |
 | `salida.no_verificada` | WARN | La respuesta del modelo afirmaba algo que no pasó (id, pago, cancelación o cita); se pidió corrección |
 | `degradacion` | WARN | Sin proveedor o con el tope diario de tokens alcanzado: modo demo |
+| `resumen.actualizado`, `resumen.fallo` | INFO o WARN | Se resumió lo que salió de la ventana del historial (mensajes cubiertos y tokens), o el modelo falló y quedó el resumen anterior |
 | `limite.superado` | WARN | Un cliente superó el límite por minuto |
 | `acceso.correcto`, `acceso.cerrado` | INFO | Inicio y cierre de sesión del acceso de la demo |
 | `acceso.fallido`, `acceso.bloqueado` | WARN | Usuario o clave incorrectos (sin registrar la clave) o demasiados intentos |

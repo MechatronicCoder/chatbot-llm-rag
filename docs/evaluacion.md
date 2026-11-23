@@ -4,7 +4,7 @@ Las pruebas automáticas comprueban que el código hace lo que se espera con un 
 
 ## Conjunto de casos
 
-`evaluacion/casos.json` tiene 35 casos en 9 categorías:
+`evaluacion/casos.json` tiene 36 casos en 10 categorías:
 
 | Categoría | Casos | Qué se espera |
 |---|---|---|
@@ -16,6 +16,7 @@ Las pruebas automáticas comprueban que el código hace lo que se espera con un 
 | accion | 2 | Ruta `accion` y el pedido en el estado esperado, incluida una conversación de dos turnos (armar el carrito y pagar) |
 | carrito | 3 | Ruta `accion` y el carrito con la cantidad de libros esperada: varios libros a la vez, quitar uno y preguntar cuánto falta para el envío gratis |
 | rag | 3 | Ruta `rag` y, cuando se indica, el documento esperado entre los citados |
+| seguimiento | 1 | Una pregunta que depende de la anterior ("¿cuánto cuesta el envío a Lima?" y luego "¿y a provincias?") la responde el modelo con el historial y menciona la tarifa correcta |
 | fuera_de_alcance | 2 | Ruta `directa`, sin inventar catálogo ni políticas |
 
 Cada caso corre en una sesión nueva y sobre una base de datos temporal, así que la evaluación es repetible y no modifica `var/tienda.db`.
@@ -41,7 +42,7 @@ Con el clasificador TF-IDF y las guardias, sin ninguna API configurada:
 | faq | 7/7 |
 | seguridad | 3/3 |
 
-Los 10 casos se resuelven en milisegundos y sin tokens. Los 25 casos restantes requieren el modelo y se miden con las claves configuradas.
+Los 10 casos se resuelven en milisegundos y sin tokens. Los 26 casos restantes requieren el modelo y se miden con las claves configuradas.
 
 ## Resultado con modelo
 

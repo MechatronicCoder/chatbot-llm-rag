@@ -63,6 +63,16 @@ RE_BUSQUEDA = re.compile(
     re.IGNORECASE,
 )
 
+# Una pregunta de seguimiento ("¿y para 12 años?", "¿y en tapa dura?", "y a provincias")
+# depende del mensaje anterior: la FAQ, que solo ve el mensaje, la respondería sin contexto.
+RE_SEGUIMIENTO = re.compile(r"^[\s¿¡]*(?:y|e|pero|entonces|tambi[eé]n)\b", re.IGNORECASE)
+
+
+def es_seguimiento(mensaje: str) -> bool:
+    """Un mensaje corto que empieza con "y", "pero", "entonces"…: continúa el anterior."""
+    return bool(RE_SEGUIMIENTO.search(mensaje)) and len(mensaje.split()) <= 8
+
+
 # "para mi hijo de 5 años" -> 5 (solo para el modo demo; con modelo, lo deduce el LLM)
 RE_EDAD = re.compile(r"\b(\d{1,2})\s*años\b", re.IGNORECASE)
 

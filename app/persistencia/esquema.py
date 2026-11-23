@@ -9,9 +9,12 @@ from typing import Any
 
 # Se incrementa cada vez que cambia una tabla. Una base con otra versión se
 # reconstruye al arrancar: guarda datos de demostración, no históricos.
-ESQUEMA_VERSION = 3
+ESQUEMA_VERSION = 4
 
-TABLAS = ("pagos", "pedido_lineas", "pedidos", "mensajes", "usuarios", "libros", "productos")
+TABLAS = (
+    "pagos", "pedido_lineas", "pedidos", "mensajes", "resumenes", "consumo_extra", "usuarios",
+    "libros", "productos",
+)  # fmt: skip
 
 ESQUEMA = """
 create table if not exists libros (
@@ -95,6 +98,21 @@ create table if not exists mensajes (
 );
 create index if not exists idx_mensajes_sesion on mensajes(sesion_id);
 create index if not exists idx_mensajes_turno on mensajes(turno_id);
+-- Resumen encadenado de lo que ya no entra en la ventana del historial.
+create table if not exists resumenes (
+    sesion_id       text primary key,
+    texto           text not null,
+    cubiertos       integer not null,       -- mensajes de la sesión que ya resume
+    actualizado_en  text not null
+);
+-- Tokens que no son de un turno (los resúmenes): también cuentan para el tope diario.
+create table if not exists consumo_extra (
+    id          integer primary key autoincrement,
+    sesion_id   text not null,
+    motivo      text not null,
+    tokens      integer not null,
+    creado_en   text not null
+);
 """
 
 # Columnas del libro que vienen del archivo del catálogo (todas menos `activo`).

@@ -108,6 +108,8 @@ class Settings(BaseSettings):
     # -- conversación ---------------------------------------------------------
     max_mensajes: int = Field(default=8, ge=0, le=50)
     max_vueltas: int = Field(default=3, ge=1, le=10)
+    # Resumen encadenado de lo que sale de la ventana de MAX_MENSAJES (en segundo plano).
+    resumen_activo: bool = True
     limite_mensaje: int = Field(default=2000, ge=10, le=20000)
 
     # -- protección del servicio publicado ------------------------------------

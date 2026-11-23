@@ -273,6 +273,7 @@ chatbot-llm-rag/
 │   └── servicios/            Lógica del producto
 │       ├── chat.py           El turno completo, paso a paso
 │       ├── contexto.py       Prompt, historial y candado por sesión
+│       ├── resumen.py        Resumen encadenado de las conversaciones largas
 │       ├── turno.py          Ajustes, guardias de acción y búsqueda, herramientas y modo demo
 │       ├── fabrica.py        Arma el servicio real a partir de la configuración
 │       ├── faq.py            Clasificador de preguntas frecuentes
@@ -366,6 +367,7 @@ Todas las variables están documentadas en [.env.example](.env.example). Las pri
 | `RECO_UMBRAL`, `RECO_UMBRAL_TFIDF` | Similitud mínima para recomendar un libro, con embeddings y con TF-IDF | 0.25 y 0.03 |
 | `RECO_PESO_SIMILITUD`, `RECO_PESO_VALORACION` | Peso del parecido con lo pedido y de la valoración | 0.75 y 0.25 |
 | `RECO_VOTOS_MINIMOS` | Votos a partir de los cuales una valoración pesa más que la media del catálogo | 20 |
+| `MAX_MENSAJES`, `RESUMEN_ACTIVO` | Mensajes del historial que ve el modelo; lo anterior le llega como resumen encadenado | 8 y activo |
 | `LIMITE_CHAT_POR_MINUTO` | Mensajes por minuto por IP | 20 |
 | `ADMIN_TOKEN` | Protege logs, métricas, historial y ventas | vacío en local; obligatorio en producción |
 | `ACCESO_USUARIO`, `ACCESO_CLAVE_HASH` | Usuario y hash de la clave del acceso de la demo; el hash se genera con `uv run python scripts/hash_clave.py` | vacíos en local (sin login); obligatorios en producción |
@@ -457,7 +459,7 @@ Las pruebas no llaman a ninguna API: el modelo, los embeddings y los proveedores
 
 ## Evaluación
 
-Además de las pruebas, `evaluacion/casos.json` define 35 casos (FAQ, seguridad, cortesía, catálogo, recomendación, acciones, carrito, RAG y preguntas fuera de alcance) con la ruta esperada y, cuando corresponde, la FAQ, el documento, el libro que debe aparecer o el estado del pedido.
+Además de las pruebas, `evaluacion/casos.json` define 36 casos (FAQ, seguridad, cortesía, catálogo, recomendación, acciones, carrito, RAG, seguimiento y preguntas fuera de alcance) con la ruta esperada y, cuando corresponde, la FAQ, el documento, el libro que debe aparecer o el estado del pedido.
 
 ```powershell
 uv run python scripts/evaluar.py             # con el modelo del .env

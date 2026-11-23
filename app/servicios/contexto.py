@@ -1,8 +1,11 @@
 """Lo que ve el modelo en cada turno: prompt del sistema, historial y mensaje.
 
-El historial vive en la base y se guarda siempre redactado. Un saludo no arrastra
+El historial vive en la base y se guarda siempre redactado. Lo que ya salió de la
+ventana del historial llega como resumen (`resumen.py`). Un saludo no arrastra
 preguntas frecuentes al prompt; cualquier otro mensaje recibe las FAQ cercanas
-como contexto, para que el modelo no improvise lo que ya está respondido.
+como contexto, para que el modelo no improvise lo que ya está respondido. Una
+pregunta de seguimiento ("¿y a provincias?") las busca junto con el mensaje
+anterior del cliente, que es el que dice de qué se habla.
 
 También aquí, el candado por sesión: la API atiende varias peticiones a la vez y
 dos mensajes de la misma conversación no deben armar su historial en paralelo,
@@ -17,6 +20,7 @@ import zlib
 from app.llm.cliente import Mensaje
 from app.persistencia.db import BaseDatos
 from app.servicios.faq import IndiceFAQ
+from app.servicios.turno import es_seguimiento
 
 CANDADOS = 64  # cantidad fija: dos sesiones pueden compartir uno, nunca crece la memoria
 
@@ -53,8 +57,15 @@ def mensajes_iniciales(
     limite: int,
 ) -> list[Mensaje]:
     sistema = prompt_sistema
+    previos = historial(bd, session_id, limite)
+    if resumen := bd.resumen_de(session_id):
+        sistema += f"\n\nResumen de la conversación anterior, que ya no ves:\n{resumen['texto']}"
     if not saludo:
-        contexto = faq.contexto(mensaje)
+        consulta = mensaje
+        if es_seguimiento(mensaje):
+            anterior = next((m["content"] for m in reversed(previos) if m["role"] == "user"), "")
+            consulta = f"{anterior} {mensaje}"
+        contexto = faq.contexto(consulta)
         if contexto:
             sistema += (
                 "\n\nPreguntas frecuentes verificadas que pueden servir "
@@ -62,6 +73,6 @@ def mensajes_iniciales(
             )
     return [
         {"role": "system", "content": sistema},
-        *historial(bd, session_id, limite),
+        *previos,
         {"role": "user", "content": mensaje},
     ]
