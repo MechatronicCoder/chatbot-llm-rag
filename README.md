@@ -444,6 +444,7 @@ uv run pre-commit install     # revisa todo lo anterior antes de cada commit
 Las pruebas no llaman a ninguna API: el modelo, los embeddings y los proveedores HTTP se simulan, y usan un catálogo propio, de modo que cambiar el catálogo de la tienda no las rompe. Cubren:
 
 - catálogo: ISBN-13, validación de cada campo, reporte de todos los errores, advertencias y sincronización con la base;
+- búsqueda: errores de tipeo en títulos y autores sin corregir de más, presupuesto y libros relacionados cuando hay pocos resultados;
 - recomendador: filtros de edad, categoría y stock, valoración bayesiana, caída a TF-IDF;
 - seguridad: redacción (sin tocar un ISBN), guardias de manipulación y piratería, validación de salida, token de administración, límite por IP;
 - clasificador de FAQ, su umbral y la guardia de búsquedas de libros;

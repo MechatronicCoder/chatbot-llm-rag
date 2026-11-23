@@ -47,8 +47,8 @@ Las dependencias van en un solo sentido: la API conoce a los servicios, los serv
 
 | Herramienta | Tipo | Qué hace |
 |---|---|---|
-| `buscar_libros` | lectura | Busca por título, autor, saga o ISBN, con filtros de categoría y edad |
-| `recomendar_libros` | lectura | Recomienda por lo que describe el cliente, con filtros de edad y categoría; excluye los libros ya ofrecidos o leídos |
+| `buscar_libros` | lectura | Busca por título, autor, saga o ISBN, con filtros de categoría, edad y presupuesto. Tolera errores de tipeo (`correcciones`) y, si encuentra menos de tres libros, agrega `relacionados` del recomendador |
+| `recomendar_libros` | lectura | Recomienda por lo que describe el cliente, con filtros de edad, categoría y presupuesto; excluye los libros ya ofrecidos o leídos |
 | `ficha_libro` | lectura | Ficha completa y similares que siguen disponibles |
 | `buscar_politica` | lectura | RAG sobre las políticas y el manual del consumidor |
 | `consultar_pedido` | lectura | Estado, líneas y montos de un pedido del cliente |
@@ -56,6 +56,13 @@ Las dependencias van en un solo sentido: la API conoce a los servicios, los serv
 | `reservar_pedido` | acción | Reserva el carrito: descuenta el stock de todas las líneas y fija los montos |
 | `cobrar_pedido` | acción | Cobra un pedido reservado, o reserva y cobra un carrito; se rechaza si el total cambió en el mismo turno |
 | `cancelar_pedido` | acción | Cancela un carrito o una reserva y devuelve el stock |
+
+La búsqueda corrige errores de tipeo con `difflib`, pero con cuidado, porque corregir de más cambia el pedido del cliente por otro libro. Una palabra que no está en el catálogo se cambia por la más parecida solo si:
+- el parecido es de 0.75 o más (con 0.68, probado sobre el catálogo real, "cocina" pasaba a "conan");
+- empieza con la misma letra y difiere en una letra de largo como máximo;
+- después de corregir, todas las palabras de la consulta existen en el catálogo y aparecen juntas en un mismo libro.
+
+Así "el silmarilion" encuentra El Silmarillion y "brandon sandersen" a Brandon Sanderson, pero "harry poter" o "garcia marques", que no están, no se convierten en otros libros.
 
 ## Arranque
 

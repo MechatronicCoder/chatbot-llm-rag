@@ -264,8 +264,8 @@ def ejecutar_llamada(
     registro.info(
         "herramienta.ejecutada", turno_id, herramienta=nombre, ok=ok, ms=ms, resumen=resumen
     )
-    if nombre == "buscar_libros" and resultado.get("libros"):
-        acumulado.agregar_libros(resultado["libros"])
+    if nombre == "buscar_libros":
+        acumulado.agregar_libros(resultado.get("libros", []) + resultado.get("relacionados", []))
     if nombre == "recomendar_libros" and resultado.get("recomendaciones"):
         acumulado.agregar_libros(resultado["recomendaciones"])
         registro.info(

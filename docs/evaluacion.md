@@ -4,15 +4,15 @@ Las pruebas automáticas comprueban que el código hace lo que se espera con un 
 
 ## Conjunto de casos
 
-`evaluacion/casos.json` tiene 32 casos en 9 categorías:
+`evaluacion/casos.json` tiene 35 casos en 9 categorías:
 
 | Categoría | Casos | Qué se espera |
 |---|---|---|
 | faq | 7 | Ruta `faq` y la FAQ correcta, también sin tildes; "libros para regalo" sigue siendo FAQ |
 | seguridad | 3 | Ruta `filtro`, sin llamar al modelo, incluido un pedido de copia pirata |
 | cortesia | 2 | Ruta `directa`, sin herramientas |
-| catalogo | 3 | Ruta `herramientas` y el libro esperado, por título (Dune) y por autor (Mary Shelley); un título que no está en el catálogo no se inventa |
-| recomendacion | 7 | Ruta `recomendacion` y uno de los libros esperados entre los mostrados (gatos para un niño de 9 años, misterio en una isla, terror para 13 años, robots detectives, distopía, y un pedido escrito por partes con dos opciones: "comedia o política"); si falta la edad del lector, el librero la pregunta |
+| catalogo | 5 | Ruta `herramientas` y el libro esperado, por título (Dune) y por autor (Mary Shelley), también mal escritos ("el silmarilion", "brandon sandersen"); un título que no está en el catálogo no se inventa |
+| recomendacion | 8 | Ruta `recomendacion` y uno de los libros esperados entre los mostrados (gatos para un niño de 9 años, misterio en una isla, terror para 13 años, robots detectives, distopía, y un pedido escrito por partes con dos opciones: "comedia o política"); con presupuesto, ningún libro mostrado lo supera; si falta la edad del lector, el librero la pregunta |
 | accion | 2 | Ruta `accion` y el pedido en el estado esperado, incluida una conversación de dos turnos (armar el carrito y pagar) |
 | carrito | 3 | Ruta `accion` y el carrito con la cantidad de libros esperada: varios libros a la vez, quitar uno y preguntar cuánto falta para el envío gratis |
 | rag | 3 | Ruta `rag` y, cuando se indica, el documento esperado entre los citados |
@@ -41,7 +41,7 @@ Con el clasificador TF-IDF y las guardias, sin ninguna API configurada:
 | faq | 7/7 |
 | seguridad | 3/3 |
 
-Los 10 casos se resuelven en milisegundos y sin tokens. Los 22 casos restantes requieren el modelo y se miden con las claves configuradas.
+Los 10 casos se resuelven en milisegundos y sin tokens. Los 25 casos restantes requieren el modelo y se miden con las claves configuradas.
 
 ## Resultado con modelo
 
