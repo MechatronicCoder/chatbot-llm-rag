@@ -21,6 +21,7 @@ from app.core.isbn import RE_ISBN
 from app.core.logs import RegistroEventos
 from app.llm.cliente import ModeloChat, SinProveedores
 from app.persistencia.db import BaseDatos
+from app.servicios.contexto import RUTA_FILTRO
 
 MINIMO_NUEVOS = 8
 RE_DATO = re.compile(r"\b(?:PED|PAG)-[0-9A-Z]{4,16}\b|" + RE_ISBN.pattern, re.IGNORECASE)
@@ -96,6 +97,7 @@ class Resumidor:
         lineas = "\n".join(
             f"{'Cliente' if m['rol'] == 'user' else 'Librero'}: {m['contenido_redactado']}"
             for m in nuevos
+            if m.get("ruta") != RUTA_FILTRO  # lo que frenó una guardia no se retoma
         )
         anterior = previo["texto"].split(DATOS)[0].strip()
         pedido = (f"Resumen anterior:\n{anterior}\n\n" if anterior else "") + lineas

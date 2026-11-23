@@ -39,7 +39,9 @@ Este documento describe los componentes, el arranque, el flujo de un turno, el m
 | `app/servicios/contexto.py` | Lo que ve el modelo (prompt, FAQ cercanas, historial y mensaje) y el candado por sesión: dos mensajes de la misma conversación se atienden en orden, nunca a la vez | `db`, `faq` |
 | `app/servicios/resumen.py` | Resumen encadenado de lo que sale de la ventana del historial: cada 8 mensajes nuevos, en segundo plano, con los ISBN y los ids copiados tal cual | `db`, `cliente` |
 | `app/servicios/turno.py` | Ajustes, guardias de acción y búsqueda, respuesta del turno, ejecución de herramientas con sus eventos y modo demo | `herramientas`, `recomendador`, `db` |
-| `app/servicios/verificacion.py` | Revisa la respuesta del modelo contra la base y el turno antes de entregarla | `db`, `turno` |
+| `app/servicios/verificacion.py` | Revisa la respuesta del modelo contra la base y el turno antes de entregarla | `db`, `turno`, `mundo_cerrado` |
+| `app/servicios/mundo_cerrado.py` | Lo que existe: catálogo cerrado, agotados, datos de cada libro, orden del catálogo y alcance (ADR 0014) | `db`, `lectura` |
+| `app/servicios/lectura.py` | Lectura de la respuesta por cláusulas, nombres propios y vocabulario del catálogo | `db` |
 | `app/servicios/fabrica.py` | `construir_servicio`: arma el servicio real desde la configuración y `datos/` | todos los servicios |
 
 Las dependencias van en un solo sentido: la API conoce a los servicios, los servicios conocen a la persistencia y a los clientes de modelos, y nada de lo anterior conoce a FastAPI. Por eso el turno completo se prueba sin servidor HTTP, con un modelo simulado.
@@ -138,7 +140,7 @@ Detalles que importan:
 - Los libros que devuelven `buscar_libros`, `recomendar_libros` y `ficha_libro` se juntan, sin repetir, en el campo `libros` de la respuesta.
 - Si se agotan las vueltas, se hace una última llamada sin herramientas para cerrar la respuesta.
 - Si ningún proveedor responde, el turno se resuelve en modo demo: un ISBN se busca en el catálogo, lo demás pasa por el recomendador (con la edad del mensaje, si la tiene) y, si no hay libros, se usa la FAQ más cercana.
-- Antes de entregar la respuesta del modelo, `verificacion.py` la compara con lo que pasó de verdad: todo id `PED-…` o `PAG-…` debe existir para ese cliente, un pago o una cancelación que la respuesta afirme deben estar en la base o haberse hecho en el turno, una cita de política exige haber llamado a `buscar_politica`, y si el cliente ya dijo qué busca y la edad del lector, responder con una pregunta sin haber recomendado no pasa. Si algo no cuadra, el modelo recibe una corrección y tiene una vuelta más; si vuelve a fallar, el cliente recibe un mensaje seguro en lugar de la respuesta.
+- Antes de entregar la respuesta del modelo, `verificacion.py` la compara con lo que pasó de verdad: todo id `PED-…` o `PAG-…` debe existir para ese cliente, un pago o una cancelación que la respuesta afirme deben estar en la base o haberse hecho en el turno, una cita de política exige haber llamado a `buscar_politica`, y si el cliente ya dijo qué busca y la edad del lector, responder con una pregunta sin haber recomendado no pasa. Además, `mundo_cerrado.py` exige que todo lo que la respuesta dice tener esté en el catálogo, que no ofrezca agotados, que el precio, la valoración y el stock de cada libro sean los suyos, que "los mejor valorados" salgan del catálogo ordenado y que no nombre nada que no esté en el catálogo ni en lo que el modelo leyó en el turno (ADR 0014). Si algo no cuadra, el modelo recibe una corrección y tiene una vuelta más; si vuelve a fallar, el cliente recibe un mensaje seguro en lugar de la respuesta.
 - La respuesta se guarda en el historial con una línea final `[Referencias del turno: …]` con los ISBN y pedidos del turno. El cliente no la ve; sirve para que en el turno siguiente el modelo use los identificadores exactos ("me llevo el primero", "págalo").
 
 ## Recomendación
