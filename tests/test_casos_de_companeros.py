@@ -45,7 +45,7 @@ def test_los_titulos_del_catalogo_las_etiquetas_y_los_generos_no_cuentan(bd: Bas
     texto = (
         "**La escuela de magos**, de **Rosa Varita**, en **Librería Letra Viva**. "
         "Hay **ciencia ficción**. **Precio**: S/ 69.90. **Envío a Lima:** gratis. "
-        "*Libro Inventado* y «Otro Inventado»."
+        "*Libro Inventado*, de Ana Pérez y «Otro Inventado» de Luis Soto."
     )
     assert titulos_ajenos(texto, bd) == ["Libro Inventado", "Otro Inventado"]
 

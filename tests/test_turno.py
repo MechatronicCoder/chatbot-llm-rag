@@ -166,7 +166,7 @@ def test_un_saludo_no_recibe_herramientas(
     servicio_con_modelo.responder("hola, buenas tardes", "a", "s-saludo")
     assert modelo.llamadas[-1]["herramientas"] is None
     servicio_con_modelo.responder("¿tienen libros de fantasía?", "a", "s-tools")
-    assert len(modelo.llamadas[-1]["herramientas"]) == 10
+    assert len(modelo.llamadas[-1]["herramientas"]) == 9
 
 
 def test_una_herramienta_repetida_se_reutiliza(
@@ -230,7 +230,7 @@ def test_el_razonamiento_vuelve_junto_a_las_herramientas(
     assert modelo.llamadas[1]["mensajes"][-2]["reasoning_content"] == "hay que mirar el stock"
 
 
-def test_cobro_y_cancelacion_por_herramientas(
+def test_el_modelo_cancela_pero_no_cobra(
     servicio_con_modelo: ServicioChat, modelo: ModeloFalso
 ) -> None:
     bd = servicio_con_modelo.bd
@@ -244,15 +244,14 @@ def test_cobro_y_cancelacion_por_herramientas(
                 llamada("ficha_libro", isbn="9780000000999"),
             ]
         ),
-        respuesta("Hecho."),
+        respuesta("Cancelé uno; el otro lo pagas con el botón «Pagar»."),
     ]
     r = servicio_con_modelo.responder(f"cobra {a_cobrar} y cancela {a_cancelar}", "cli", "s-acc")
-    assert r.ruta == "accion" and len(r.pagos) == 1
+    assert r.ruta == "accion" and not r.pagos
+    assert bd.consultar_pedido(a_cobrar)["estado"] == "reservado"  # type: ignore[index]
     resumenes = [h["resumen"] for h in r.herramientas]
-    assert any(s.startswith("pago PAG-") for s in resumenes)
-    assert any(s.startswith("error:") for s in resumenes)
-    eventos = eventos_del_turno(servicio_con_modelo, r.turno_id)
-    assert "pedido.cobrado" in eventos and "pedido.cancelado" in eventos
+    assert any("desconocida" in s for s in resumenes)
+    assert "pedido.cancelado" in eventos_del_turno(servicio_con_modelo, r.turno_id)
 
 
 def test_tema_critico_sin_faq_parecida_se_escala(servicio_con_modelo: ServicioChat) -> None:

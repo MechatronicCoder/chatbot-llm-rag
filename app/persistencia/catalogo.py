@@ -182,5 +182,10 @@ class RepositorioCatalogo(Conexion):
             puntuados = [t for t in puntuados if t[0] == len(palabras)]
             if not puntuados:
                 cambios = {k: v for k, v in cambios.items() if k not in corregidas}
+        # Un agotado solo aparece si es justo el libro pedido (tiene todas las palabras), para
+        # decir que está agotado; como opción entre otras no sirve, porque no se puede comprar.
+        puntuados = [
+            t for t in puntuados if t[2]["stock"] > 0 or (palabras and t[0] == len(palabras))
+        ]
         puntuados.sort(key=lambda t: (t[0], t[1]), reverse=True)
         return [libro for *_, libro in puntuados[:limite]], cambios

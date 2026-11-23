@@ -280,7 +280,7 @@ chatbot-llm-rag/
 │       ├── fabrica.py        Arma el servicio real a partir de la configuración
 │       ├── faq.py            Clasificador de preguntas frecuentes
 │       ├── recomendador.py   Recomendador híbrido de libros
-│       ├── esquemas_herramientas.py  Las 10 herramientas que ve el modelo
+│       ├── esquemas_herramientas.py  Las 9 herramientas que ve el modelo (ninguna cobra)
 │       ├── herramientas.py   Ejecución de las herramientas
 │       └── rag.py            Fragmentación (PDF y Markdown), índice, caché y MMR
 ├── datos/                    Contenido del negocio (se cambia sin tocar código)
@@ -463,14 +463,14 @@ Las pruebas no llaman a ninguna API: el modelo, los embeddings y los proveedores
 
 ## Evaluación
 
-Además de las pruebas, `evaluacion/casos.json` define 41 casos (FAQ, seguridad, cortesía, catálogo, recomendación, acciones, carrito, RAG, seguimiento, pase a una persona y preguntas fuera de alcance) con la ruta esperada y, cuando corresponde, la FAQ, el documento, el libro que debe aparecer o el estado del pedido.
+Además de las pruebas, `evaluacion/casos.json` define 44 casos (FAQ, seguridad, cortesía, catálogo, recomendación, acciones, carrito, RAG, seguimiento, pase a una persona y preguntas fuera de alcance) con la ruta esperada y, cuando corresponde, la FAQ, el documento, el libro que debe aparecer o el estado del pedido.
 
 ```powershell
 uv run python scripts/evaluar.py             # con el modelo del .env
 uv run python scripts/evaluar.py --sin-llm   # solo los casos que no usan el modelo
 ```
 
-El informe se guarda en `evaluacion/resultados/` con la tasa de aciertos por categoría, el acierto del libro esperado, la latencia y los tokens. Sin modelo configurado, los 10 casos de FAQ y seguridad aciertan la ruta (10/10); con `qwen-plus`, el conjunto completo da 41/41. Los casos de catálogo, recomendación y acción nombran libros del catálogo actual: si el catálogo cambia, se actualizan. La metodología y cómo calibrar `RAG_UMBRAL` y `RECO_UMBRAL` están en [docs/evaluacion.md](docs/evaluacion.md).
+El informe se guarda en `evaluacion/resultados/` con la tasa de aciertos por categoría, el acierto del libro esperado, la latencia y los tokens. Sin modelo configurado, los 10 casos de FAQ y seguridad aciertan la ruta (10/10); con `qwen-plus`, el conjunto completo da 44/44. Los casos de catálogo, recomendación y acción nombran libros del catálogo actual: si el catálogo cambia, se actualizan. La metodología y cómo calibrar `RAG_UMBRAL` y `RECO_UMBRAL` están en [docs/evaluacion.md](docs/evaluacion.md).
 
 ## Seguridad
 
@@ -525,6 +525,7 @@ Cada decisión importante está documentada con su contexto, las alternativas y 
 - [0010 Solo main despliega](docs/decisiones/0010-solo-main-despliega.md)
 - [0011 Acceso de demo con usuario y clave](docs/decisiones/0011-acceso-de-demo.md)
 - [0012 Carrito con montos calculados por el sistema](docs/decisiones/0012-carrito-y-montos-en-centimos.md)
+- [0013 El cliente paga con un botón y la tienda guarda solo marca y 4 dígitos](docs/decisiones/0013-el-cliente-paga-con-un-boton.md)
 
 ## Flujo de trabajo del equipo
 

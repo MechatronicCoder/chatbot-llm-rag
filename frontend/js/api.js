@@ -258,6 +258,25 @@ export function pedidosDe(usuarioId, opciones = {}) {
   return peticion(`/api/pedidos/${encodeURIComponent(usuarioId)}`, opciones);
 }
 
+/** POST /api/pedidos/{pedido_id}/pago — pago simulado que confirma el cliente con el botón */
+export function pagarPedido({ pedidoId, usuarioId, metodo, tarjetaId = null }, opciones = {}) {
+  return peticion(`/api/pedidos/${encodeURIComponent(pedidoId)}/pago`, {
+    ...opciones,
+    metodo: 'POST',
+    cuerpo: { usuario_id: usuarioId, metodo, tarjeta_id: tarjetaId },
+  });
+}
+
+/** GET /api/tarjetas/{usuario_id} — tarjetas guardadas (solo marca y últimos 4 dígitos) */
+export function tarjetasDe(usuarioId, opciones = {}) {
+  return peticion(`/api/tarjetas/${encodeURIComponent(usuarioId)}`, opciones);
+}
+
+/** POST /api/tarjetas — el servidor valida el número y guarda solo marca y 4 dígitos */
+export function guardarTarjeta({ usuarioId, numero }, opciones = {}) {
+  return peticion('/api/tarjetas', { ...opciones, metodo: 'POST', cuerpo: { usuario_id: usuarioId, numero } });
+}
+
 /** POST /api/chat */
 export function enviarMensaje({ mensaje, usuarioId, sessionId = usuarioId }, opciones = {}) {
   return peticion('/api/chat', {

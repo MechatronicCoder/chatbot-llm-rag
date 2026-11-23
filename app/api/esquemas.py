@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -134,6 +134,40 @@ class Pedido(BaseModel):
     total: float
     falta_para_envio_gratis: float | None = None
     creado_en: str
+
+
+class PeticionPago(BaseModel):
+    usuario_id: str = Field(pattern=ID_PATRON)
+    metodo: Literal["tarjeta", "efectivo", "transferencia"]
+    tarjeta_id: str | None = Field(None, description="Obligatoria con tarjeta: una guardada")
+
+
+class Tarjeta(BaseModel):
+    id: str
+    marca: str
+    ultimos4: str
+    etiqueta: str = Field(description='Por ejemplo "Visa •••• 4242"')
+
+
+class ListaTarjetas(BaseModel):
+    usuario_id: str
+    tarjetas: list[Tarjeta]
+
+
+class PeticionTarjeta(BaseModel):
+    usuario_id: str = Field(pattern=ID_PATRON)
+    # Sin validaciones de largo aquí: un error de validación devolvería el número tal cual.
+    numero: str = Field(description="Se valida y se descarta: solo se guardan marca y 4 dígitos")
+
+
+class RespuestaPago(BaseModel):
+    pago_id: str
+    metodo: str
+    tarjeta: str | None = None
+    monto: float
+    estado: str
+    pedido: Pedido
+    resumen: str = Field(description="El pedido ya pagado, redactado por el sistema")
 
 
 class ListaPedidos(BaseModel):

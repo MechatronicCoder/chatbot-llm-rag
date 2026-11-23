@@ -33,6 +33,15 @@ RE_PAGADO = re.compile(
     re.IGNORECASE,
 )
 RE_CANCELADO = re.compile(r"\bcancelad[oa]s?\b", re.IGNORECASE)
+# Plazos y envíos que solo dicen las políticas: "24 horas hábiles", "1 a 3 días útiles",
+# "guía de envío", "comprobante … a tu correo".
+RE_PLAZO = re.compile(
+    r"\b\d+\s*(?:a\s*\d+\s*)?(?:d[ií]as?|horas?)\s+(?:h[aá]biles|[uú]tiles|laborables|calendario)\b"
+    r"|\bgu[ií]a de (?:env[ií]o|seguimiento)\b|\bn[uú]mero de seguimiento\b"
+    r"|\bcomprobante\b[^.\n]{0,60}\bcorreo\b",
+    re.IGNORECASE,
+)
+RE_ORACION = re.compile(r"(?<=[.!?])\s+")
 # "ya quité El Silmarillion", "lo agregué", "carrito actualizado"
 RE_CARRITO_CAMBIADO = re.compile(
     r"\b(?:quit[eé]|quitamos|agregu[eé]|agregamos|añad[ií]|añadimos|actualic[eé]|"
@@ -45,7 +54,7 @@ RE_ALGO = re.compile(r"\b(?:algo|alg[uú]n)\b", re.IGNORECASE)
 RE_COMPRA = re.compile(
     r"\b(?:quiero|me llevo|me lo llevo|dame|compro|comprar|agrega|añade)\b", re.IGNORECASE
 )
-PEDIDOS = {"actualizar_carrito", "reservar_pedido", "cobrar_pedido"}
+PEDIDOS = {"actualizar_carrito", "reservar_pedido"}
 # el libro es para un menor: preguntar la edad antes de recomendar es lo correcto
 RE_MENOR = re.compile(
     r"\b(?:hij[oa]s?|niñ[oa]s?|sobrin[oa]s?|niet[oa]s?|alumn[oa]s?|adolescentes?|beb[eé]s?)\b",
@@ -67,6 +76,21 @@ RE_DATOS_CATALOGO = re.compile(
 RE_DESTACADO = re.compile(
     r"\*\*([^*\n]{2,90})\*\*|(?<![*\w])\*([^*\n]{2,90})\*(?![*\w])|«([^»\n]{2,90})»|“([^”\n]{2,90})”"
 )
+# Lo que sigue a un título cuando el modelo lo presenta como libro: ", de J. K. Rowling".
+RE_AUTOR = re.compile(r"\s*,?\s*(?:de|por)\s+[A-ZÁÉÍÓÚÑ]")
+# El mensaje del cliente habla de libros ("dime por qué El alquimista tiene buena valoración").
+RE_SOBRE_LIBROS = re.compile(
+    r"\b(?:libros?|novelas?|cuentos?|t[ií]tulos?|autora?|sagas?|leer|le[ií]|valoraci[oó]n|"
+    r"rese[ñn]as?|comprar|adivina)\b",
+    re.IGNORECASE,
+)
+# Medios de pago y zonas que el modelo pone en negrita y nunca son libros.
+NO_LIBROS = frozenset(
+    {
+        "tarjeta", "tarjetas", "efectivo", "transferencia", "transferencia bancaria", "yape",
+        "plin", "contra entrega", "efectivo contra entrega", "lima", "provincias", "pagar",
+    }
+)  # fmt: skip
 ETIQUETAS = frozenset(
     {
         "precio", "stock", "stock disponible", "formato", "valoracion", "isbn", "subtotal",
@@ -117,17 +141,22 @@ def montos_sin_respaldo(texto: str, bd: BaseDatos, usuario_id: str, mensaje: str
     return [m for m in dict.fromkeys(escritos) if _centimos(m) not in conocidos]
 
 
-def titulos_ajenos(texto: str, bd: BaseDatos) -> list[str]:
-    """Títulos destacados en la respuesta que no son libros, autores ni zonas de la tienda.
+def titulos_ajenos(texto: str, bd: BaseDatos, mensaje: str = "") -> list[str]:
+    """Libros que la respuesta nombra y que no están en el catálogo.
 
-    "**Harry Potter y la piedra filosofal**" no está en el catálogo: si el modelo lo ofrece
-    con su stock y su valoración, los inventó. Las etiquetas ("**Precio**:"), los géneros
-    en minúscula y los nombres del catálogo no cuentan.
+    "**Harry Potter y la piedra filosofal**, de J. K. Rowling" no está en el catálogo: si
+    el modelo lo ofrece con su stock y su valoración, los inventó. Solo cuenta como libro
+    lo destacado que viene con su autor ("*Título*, de Autor") o que nombró el cliente: en
+    la demo, "**Tarjeta**", "**Efectivo**" y "**Transferencia bancaria**" se tomaron por
+    libros y la corrección hizo que el bot negara tener un libro que sí tenía.
     """
     conocidos = {bd.tienda.nombre, *(z.nombre for z in bd.tienda.envio.values())}
     for libro in bd.libros_activos():
         conocidos |= {libro["titulo"], libro["autor"]}
     normalizados = [f" {normalizar(c)} " for c in conocidos]
+    # lo que nombra el cliente cuenta como libro solo si su mensaje habla de libros: en la demo,
+    # "con transferencia bancaria" llevó al bot a decir "no tenemos el libro Transferencia…"
+    pedido = f" {normalizar(mensaje)} " if RE_SOBRE_LIBROS.search(mensaje) else ""
     ajenos = []
     for marca in RE_DESTACADO.finditer(texto):
         frase = next(g for g in marca.groups() if g).strip()
@@ -137,8 +166,11 @@ def titulos_ajenos(texto: str, bd: BaseDatos) -> list[str]:
         limpia = normalizar(sin_cifras)
         etiqueta = frase.endswith(":") or texto[marca.end() : marca.end() + 1] == ":"
         palabra = re.search(r"[^\W\d_]{4,}", sin_cifras)
-        if not palabra or not frase[0].isupper() or etiqueta or limpia in ETIQUETAS:
+        if not palabra or not frase[0].isupper() or etiqueta or limpia in ETIQUETAS | NO_LIBROS:
             continue
+        con_autor = RE_AUTOR.match(texto, marca.end())
+        if not (con_autor or f" {limpia} " in pedido):
+            continue  # destacado, pero nada dice que sea un libro
         if not any(f" {limpia} " in c or c in f" {limpia} " for c in normalizados):
             ajenos.append(frase)
     return list(dict.fromkeys(ajenos))
@@ -176,7 +208,7 @@ def revisar_respuesta(
     # "Es Harry Potter… ¿te muestro su ficha, stock y valoración?" sin haber consultado nada:
     # el libro no está en el catálogo y sus datos serían inventados.
     sin_consultar = not acumulado.usadas and not otro_medio and RE_DATOS_CATALOGO.search(texto)
-    if sin_consultar and (ajenos := titulos_ajenos(texto, bd)):
+    if sin_consultar and (ajenos := titulos_ajenos(texto, bd, mensaje)):
         return Problema(
             motivo=f"nombra libros que no están en el catálogo: {', '.join(ajenos)}",
             instruccion=NOTA + f"Nombraste {', '.join(ajenos)} como si estuviera en el "
@@ -215,13 +247,15 @@ def revisar_respuesta(
         )
     usadas = {u["nombre"] for u in acumulado.usadas if u.get("ok", True)}
     estados = {(bd.consultar_pedido(i) or {}).get("estado") for i in ids if i.startswith("PED-")}
-    if RE_PAGADO.search(texto) and "cobrar_pedido" not in usadas and "pagado" not in estados:
+    # El bot no cobra: paga el cliente con el botón de la tarjeta del pedido.
+    if RE_PAGADO.search(texto) and "pagado" not in estados:
         return Problema(
             motivo="afirma un pago que no se registró",
             instruccion=NOTA
-            + "El pago no se registró: no llamaste a cobrar_pedido. Si el cliente pidió "
-            "pagar, llámala ahora con el id exacto del pedido.",
-            respaldo="Todavía no registré el pago. ¿Lo pago con tarjeta, efectivo o transferencia?",
+            + "El pedido no está pagado y tú no puedes cobrar: el cliente paga eligiendo el "
+            "método y pulsando «Pagar» en la tarjeta del pedido. Díselo, sin decir que ya pagó.",
+            respaldo="Todavía no está pagado. Para pagar, elige el método y pulsa «Pagar» en la "
+            "tarjeta del pedido.",
         )
     if (
         RE_CANCELADO.search(texto)
@@ -264,5 +298,15 @@ def revisar_respuesta(
             "solo con lo que devuelva, citando el documento y la sección o página.",
             respaldo="Para darte la condición exacta tengo que revisar nuestras políticas. "
             "¿Me repites la consulta?",
+        )
+    # "te enviaremos el comprobante y la guía en 24 horas hábiles; llega en 2 días útiles"
+    if RE_PLAZO.search(texto) and "buscar_politica" not in usadas:
+        sin_plazos = " ".join(o for o in RE_ORACION.split(texto) if not RE_PLAZO.search(o))
+        return Problema(
+            motivo="promete plazos o comprobantes sin consultar las políticas",
+            instruccion=NOTA + "Prometiste plazos, comprobantes o seguimiento que no "
+            "consultaste. Quítalos, o llama a buscar_politica y usa solo lo que devuelva.",
+            respaldo=sin_plazos.strip()
+            or "Los plazos de entrega están en nuestras políticas. ¿Quieres que te los cuente?",
         )
     return None

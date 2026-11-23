@@ -29,10 +29,17 @@ from app.api.esquemas import (
     LibroDetalle,
     ListaLibros,
     ListaPedidos,
+    ListaTarjetas,
     PeticionChat,
+    PeticionPago,
+    PeticionTarjeta,
     RespuestaChatAPI,
+    RespuestaPago,
     SesionBorrada,
+    Tarjeta,
 )
+from app.catalogo.cotizacion import resumen
+from app.persistencia.db import ErrorPedido
 from app.servicios.chat import ServicioChat
 from app.servicios.recomendador import resumen_libro
 
@@ -153,6 +160,49 @@ def pedidos(estado: Estado, usuario_id: IdRuta) -> dict[str, Any]:
         "pagado": round(sum(p["total"] for p in items if p["estado"] == "pagado"), 2),
         "pedidos": items,
     }
+
+
+@router.post(
+    "/pedidos/{pedido_id}/pago",
+    response_model=RespuestaPago,
+    tags=["tienda"],
+    responses={409: {"description": "El pedido no se puede cobrar (ver el detalle)"}},
+)
+def pagar_pedido(
+    estado: Estado,
+    pedido_id: Annotated[str, Path(pattern=r"^PED-[A-Za-z0-9]{4,16}$")],
+    peticion: PeticionPago,
+) -> dict[str, Any]:
+    """Pago simulado de la demo. Lo confirma el cliente con el botón de la tarjeta del
+    pedido, después de ver el total: el modelo no puede cobrar."""
+    try:
+        pago = estado.bd.registrar_pago(
+            peticion.usuario_id, pedido_id, peticion.metodo, peticion.tarjeta_id
+        )
+    except ErrorPedido as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    pedido = estado.bd.consultar_pedido(pago["pedido_id"]) or {}
+    estado.registro.info("pedido.cobrado", pago=pago["pago_id"], pedido=pago["pedido_id"])
+    return {**pago, "pedido": pedido, "resumen": resumen(pedido, estado.bd.tienda)}
+
+
+@router.get("/tarjetas/{usuario_id}", response_model=ListaTarjetas, tags=["tienda"])
+def tarjetas(estado: Estado, usuario_id: IdRuta) -> dict[str, Any]:
+    """Tarjetas guardadas del cliente, para elegir una al pagar (solo marca y 4 dígitos)."""
+    return {"usuario_id": usuario_id, "tarjetas": estado.bd.tarjetas_de(usuario_id)}
+
+
+@router.post("/tarjetas", response_model=Tarjeta, tags=["tienda"])
+def guardar_tarjeta(estado: Estado, peticion: PeticionTarjeta) -> dict[str, Any]:
+    """Valida el número, guarda marca y últimos 4 dígitos y descarta el resto."""
+    try:
+        tarjeta = estado.bd.guardar_tarjeta(peticion.usuario_id, peticion.numero)
+    except ErrorPedido as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)
+        ) from exc
+    estado.registro.info("tarjeta.guardada", tarjeta=tarjeta["etiqueta"])
+    return tarjeta
 
 
 @router.get("/politicas", tags=["tienda"])
