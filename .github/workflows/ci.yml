@@ -8,9 +8,11 @@ on:
 permissions:
   contents: read
 
+# En las ramas de trabajo una ejecución nueva cancela la anterior; en main no, para
+# no cortar un despliegue a medias.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   calidad:
@@ -83,3 +85,14 @@ jobs:
           done
           docker logs app
           exit 1
+
+  # Solo en un push a main (es decir, cuando el dueño une un pull request) y solo si
+  # las pruebas y la imagen pasaron. En pull requests y en dev este job se omite.
+  desplegar:
+    name: Desplegar
+    needs: [calidad, imagen]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      id-token: write
+      contents: read
+    uses: ./.github/workflows/cd.yml
