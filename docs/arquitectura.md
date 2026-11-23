@@ -32,6 +32,7 @@ Este documento describe los componentes, el arranque, el flujo de un turno, el m
 | `app/servicios/herramientas.py` | Ejecución de las herramientas | `db`, `rag`, `recomendador` |
 | `app/servicios/chat.py` | El turno completo, paso a paso | `turno`, `faq`, `rag`, `herramientas` |
 | `app/servicios/turno.py` | Ajustes, guardias de acción y búsqueda, respuesta del turno, ejecución de herramientas con sus eventos y modo demo | `herramientas`, `recomendador`, `db` |
+| `app/servicios/verificacion.py` | Revisa la respuesta del modelo contra la base y el turno antes de entregarla | `db`, `turno` |
 | `app/servicios/fabrica.py` | `construir_servicio`: arma el servicio real desde la configuración y `datos/` | todos los servicios |
 
 Las dependencias van en un solo sentido: la API conoce a los servicios, los servicios conocen a la persistencia y a los clientes de modelos, y nada de lo anterior conoce a FastAPI. Por eso el turno completo se prueba sin servidor HTTP, con un modelo simulado.
@@ -115,6 +116,8 @@ Detalles que importan:
 - Los libros que devuelven `buscar_libros`, `recomendar_libros` y `ficha_libro` se juntan, sin repetir, en el campo `libros` de la respuesta.
 - Si se agotan las vueltas, se hace una última llamada sin herramientas para cerrar la respuesta.
 - Si ningún proveedor responde, el turno se resuelve en modo demo: un ISBN se busca en el catálogo, lo demás pasa por el recomendador (con la edad del mensaje, si la tiene) y, si no hay libros, se usa la FAQ más cercana.
+- Antes de entregar la respuesta del modelo, `verificacion.py` la compara con lo que pasó de verdad: todo id `PED-…` o `PAG-…` debe existir para ese cliente, un pago o una cancelación que la respuesta afirme deben estar en la base o haberse hecho en el turno, y una cita de política exige haber llamado a `buscar_politica`. Si algo no cuadra, el modelo recibe una corrección y tiene una vuelta más; si vuelve a fallar, el cliente recibe un mensaje seguro en lugar de la respuesta.
+- La respuesta se guarda en el historial con una línea final `[Referencias del turno: …]` con los ISBN y pedidos del turno. El cliente no la ve; sirve para que en el turno siguiente el modelo use los identificadores exactos ("me llevo el primero", "págalo").
 
 ## Recomendación
 
@@ -208,6 +211,7 @@ Regla de diseño: un dato, un dueño. Lo que se consulta o suma (pedidos, tokens
 | `rag.recuperado` | INFO | Fragmentos elegidos, mejor puntaje y motor |
 | `pedido.creado`, `pedido.cobrado`, `pedido.cancelado` | INFO | Cambios en pedidos |
 | `salida.bloqueada`, `salida.redactada` | WARN o INFO | La validación de salida actuó |
+| `salida.no_verificada` | WARN | La respuesta del modelo afirmaba algo que no pasó (id, pago, cancelación o cita); se pidió corrección |
 | `degradacion` | WARN | Sin proveedor: modo demo |
 | `limite.superado` | WARN | Un cliente superó el límite por minuto |
 | `turno.fin` | INFO | Cierre con ruta, latencia y tokens |

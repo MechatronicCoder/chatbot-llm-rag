@@ -39,9 +39,12 @@ from app.servicios.turno import (
     RespuestaChat,
     ejecutar_llamada,
     fuente_de,
+    mensaje_con_llamadas,
+    referencias_del_turno,
     ruta_de,
     texto_demo,
 )
+from app.servicios.verificacion import revisar_respuesta
 
 
 class ServicioChat:
@@ -196,6 +199,7 @@ class ServicioChat:
         mensajes = self._mensajes_iniciales(mensaje, cierre["session_id"], saludo)
         acumulado = Acumulado()
         a = self.ajustes
+        corregido = False
 
         try:
             for _ in range(a.max_vueltas):
@@ -219,8 +223,20 @@ class ServicioChat:
                     self.registro.aviso("llm.lento", turno_id, ms=ms_llm, umbral=a.llm_lento_ms)
 
                 if not resp.tool_calls:
+                    # Un id de pedido inventado o una política citada sin consultarla no se
+                    # entregan: el modelo recibe una corrección y tiene una vuelta más.
+                    problema = revisar_respuesta(resp.texto, acumulado, self.bd, usuario_id)
+                    if problema and not corregido:
+                        corregido = True
+                        self.registro.aviso(
+                            "salida.no_verificada", turno_id, motivo=problema.motivo
+                        )
+                        mensajes.append({"role": "assistant", "content": resp.texto})
+                        mensajes.append({"role": "user", "content": problema.instruccion})
+                        continue
                     texto, bloqueada, motivo = seguridad.validar_salida(
-                        resp.texto.strip() or "No se pudo completar la gestión."
+                        (problema.respaldo if problema else resp.texto.strip())
+                        or "No se pudo completar la gestión."
                     )
                     if bloqueada:
                         self.registro.aviso("salida.bloqueada", turno_id, motivo=motivo)
@@ -237,24 +253,7 @@ class ServicioChat:
                         resp.proveedor,
                     )
 
-                asistente: Mensaje = {
-                    "role": "assistant",
-                    "content": resp.texto or "",
-                    "tool_calls": [
-                        {
-                            "id": tc["id"],
-                            "type": "function",
-                            "function": {
-                                "name": tc["name"],
-                                "arguments": json.dumps(tc["arguments"], ensure_ascii=False),
-                            },
-                        }
-                        for tc in resp.tool_calls
-                    ],
-                }
-                if resp.razonamiento:  # algunos modelos con razonamiento lo exigen de vuelta
-                    asistente["reasoning_content"] = resp.razonamiento
-                mensajes.append(asistente)
+                mensajes.append(mensaje_con_llamadas(resp))
 
                 for tc in resp.tool_calls:
                     resultado = ejecutar_llamada(
@@ -271,8 +270,10 @@ class ServicioChat:
             # se agotaron las vueltas: una última llamada sin herramientas para cerrar
             resp = self.llm.chat(mensajes, temperatura=a.temperatura, max_tokens=a.max_tokens)
             acumulado.sumar_uso(resp.uso)
+            problema = revisar_respuesta(resp.texto, acumulado, self.bd, usuario_id)
             texto, _, _ = seguridad.validar_salida(
-                resp.texto.strip() or "No se pudo completar la gestión."
+                (problema.respaldo if problema else resp.texto.strip())
+                or "No se pudo completar la gestión."
             )
             return self._cerrar_con_modelo(
                 texto, mensaje, inicio, decision, cierre, acumulado, resp.modelo, resp.proveedor
@@ -355,12 +356,13 @@ class ServicioChat:
         latencia = int((time.perf_counter() - inicio) * 1000)
         tokens = list(datos.pop("tokens", None) or [0, 0])
         session_id = datos["session_id"]
+        referencias = referencias_del_turno(datos.get("libros") or [], datos.get("pedidos") or [])
         self.bd.guardar_turno(
             datos["turno_id"],
             session_id,
             datos["usuario_id"],
             mensaje,
-            texto,
+            texto + referencias,
             ruta=datos.get("ruta", ""),
             fuente=datos.get("fuente", ""),
             faq_id=datos.get("faq_id"),

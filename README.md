@@ -446,7 +446,7 @@ uv run python scripts/evaluar.py             # con el modelo del .env
 uv run python scripts/evaluar.py --sin-llm   # solo los casos que no usan el modelo
 ```
 
-El informe se guarda en `evaluacion/resultados/` con la tasa de aciertos por categoría, el acierto del libro esperado, la latencia y los tokens. Sin modelo configurado, los 10 casos de FAQ y seguridad aciertan la ruta (10/10). Los casos de catálogo, recomendación y acción nombran libros del catálogo actual: si el catálogo cambia, se actualizan. La metodología y cómo calibrar `RAG_UMBRAL` y `RECO_UMBRAL` están en [docs/evaluacion.md](docs/evaluacion.md).
+El informe se guarda en `evaluacion/resultados/` con la tasa de aciertos por categoría, el acierto del libro esperado, la latencia y los tokens. Sin modelo configurado, los 10 casos de FAQ y seguridad aciertan la ruta (10/10); con `qwen-plus`, el conjunto completo da 27/28. Los casos de catálogo, recomendación y acción nombran libros del catálogo actual: si el catálogo cambia, se actualizan. La metodología y cómo calibrar `RAG_UMBRAL` y `RECO_UMBRAL` están en [docs/evaluacion.md](docs/evaluacion.md).
 
 ## Seguridad
 
@@ -456,6 +456,7 @@ El informe se guarda en `evaluacion/resultados/` con la tasa de aciertos por cat
 | Manipulación de las instrucciones (prompt injection) | Guardias antes del modelo y validación de la salida |
 | Pedidos de copias piratas | Guardia antes del modelo; el librero ofrece el libro del catálogo |
 | El modelo inventa libros, precios, stock o pedidos | Esos datos solo salen de las herramientas; el prompt lo exige |
+| El modelo confirma una reserva o un pago que no hizo, o cita una política sin consultarla | Verificación determinista de la respuesta contra la base antes de entregarla; si no cuadra, se corrige o se responde un mensaje seguro |
 | Un cliente opera pedidos de otro | El usuario viene de la sesión, no de los argumentos del modelo; la base lo verifica |
 | Abuso del endpoint público y gasto de la API | Límite de mensajes por minuto por IP y tope de tokens por respuesta |
 | Exposición de logs y ventas | Rutas de administración con `X-Admin-Token` |

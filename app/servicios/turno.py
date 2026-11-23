@@ -17,6 +17,7 @@ from app.catalogo.carga import Tienda
 from app.core.config import Settings
 from app.core.isbn import RE_ISBN, isbns_en
 from app.core.logs import RegistroEventos
+from app.llm.cliente import Mensaje, RespuestaLLM
 from app.persistencia.db import BaseDatos
 from app.servicios.faq import Decision
 from app.servicios.herramientas import ACCIONES, IDEMPOTENTES, Herramientas
@@ -150,6 +151,40 @@ def ruta_de(usadas: list[dict[str, Any]]) -> str:
     if "recomendar_libros" in nombres:
         return "recomendacion"
     return "herramientas" if nombres else "directa"
+
+
+def mensaje_con_llamadas(resp: RespuestaLLM) -> Mensaje:
+    """Turno del asistente con sus llamadas, en el formato que el modelo espera de vuelta."""
+    asistente: Mensaje = {
+        "role": "assistant",
+        "content": resp.texto or "",
+        "tool_calls": [
+            {
+                "id": tc["id"],
+                "type": "function",
+                "function": {
+                    "name": tc["name"],
+                    "arguments": json.dumps(tc["arguments"], ensure_ascii=False),
+                },
+            }
+            for tc in resp.tool_calls
+        ],
+    }
+    if resp.razonamiento:  # algunos modelos con razonamiento lo exigen de vuelta
+        asistente["reasoning_content"] = resp.razonamiento
+    return asistente
+
+
+def referencias_del_turno(libros: list[dict[str, Any]], pedidos: list[str]) -> str:
+    """Nota que se guarda al final de la respuesta en el historial; el cliente no la ve.
+
+    El historial guarda solo texto, así que sin esta nota el modelo no ve en el
+    turno siguiente los ISBN ni los pedidos que devolvieron las herramientas y
+    tiende a inventarlos ("me interesa el primero", "págalo").
+    """
+    partes = [f"ISBN {lb['isbn']} «{lb['titulo']}»" for lb in libros]
+    partes += [f"pedido {p}" for p in pedidos]
+    return f"\n\n[Referencias del turno: {'; '.join(partes)}]" if partes else ""
 
 
 def fuente_de(usadas: list[dict[str, Any]]) -> str:
