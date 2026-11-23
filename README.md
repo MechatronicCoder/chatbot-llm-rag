@@ -466,7 +466,7 @@ uv run python scripts/evaluar.py             # con el modelo del .env
 uv run python scripts/evaluar.py --sin-llm   # solo los casos que no usan el modelo
 ```
 
-El informe se guarda en `evaluacion/resultados/` con la tasa de aciertos por categoría, el acierto del libro esperado, la latencia y los tokens. Sin modelo configurado, los 10 casos de FAQ y seguridad aciertan la ruta (10/10); con `qwen-plus`, el conjunto completo da 35/35. Los casos de catálogo, recomendación y acción nombran libros del catálogo actual: si el catálogo cambia, se actualizan. La metodología y cómo calibrar `RAG_UMBRAL` y `RECO_UMBRAL` están en [docs/evaluacion.md](docs/evaluacion.md).
+El informe se guarda en `evaluacion/resultados/` con la tasa de aciertos por categoría, el acierto del libro esperado, la latencia y los tokens. Sin modelo configurado, los 10 casos de FAQ y seguridad aciertan la ruta (10/10); con `qwen-plus`, el conjunto completo da 36/36. Los casos de catálogo, recomendación y acción nombran libros del catálogo actual: si el catálogo cambia, se actualizan. La metodología y cómo calibrar `RAG_UMBRAL` y `RECO_UMBRAL` están en [docs/evaluacion.md](docs/evaluacion.md).
 
 ## Seguridad
 
