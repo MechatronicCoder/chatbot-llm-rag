@@ -203,10 +203,17 @@ export function iniciarChat({ obtenerUsuario, alFiltrarTurno, alResponder } = {}
   // Lo escrito por partes se junta (agrupador.js) y sale como un solo turno; lo que se
   // escribe mientras el asistente responde espera en la cola y sale en el turno siguiente.
   const cola = [];
+  const ayuda = porId('ayuda-entrada');
+  const textoAyuda = ayuda.textContent;
   const agrupador = crearAgrupador({
     alEnviar: (texto) => {
       cola.push(texto);
       procesarCola();
+    },
+    alCambiar: (pendiente) => {
+      ayuda.textContent = pendiente
+        ? 'Esperando por si sigues escribiendo · Enter con la caja vacía lo envía ya'
+        : textoAyuda;
     },
   });
 
@@ -261,7 +268,8 @@ export function iniciarChat({ obtenerUsuario, alFiltrarTurno, alResponder } = {}
   }
 
   function enviarEntrada() {
-    if (!entrada.value.trim() || segundosBloqueo() > 0) return;
+    if (!entrada.value.trim()) return agrupador.vaciar(); // Enter sin texto: enviar ya lo escrito
+    if (segundosBloqueo() > 0) return;
     const texto = entrada.value;
     entrada.value = '';
     enviar(texto, { agrupar: true });
