@@ -225,7 +225,9 @@ class ServicioChat:
                 if not resp.tool_calls:
                     # Un id de pedido inventado o una política citada sin consultarla no se
                     # entregan: el modelo recibe una corrección y tiene una vuelta más.
-                    problema = revisar_respuesta(resp.texto, acumulado, self.bd, usuario_id)
+                    problema = revisar_respuesta(
+                        resp.texto, acumulado, self.bd, usuario_id, mensaje
+                    )
                     if problema and not corregido:
                         corregido = True
                         self.registro.aviso(
@@ -270,7 +272,7 @@ class ServicioChat:
             # se agotaron las vueltas: una última llamada sin herramientas para cerrar
             resp = self.llm.chat(mensajes, temperatura=a.temperatura, max_tokens=a.max_tokens)
             acumulado.sumar_uso(resp.uso)
-            problema = revisar_respuesta(resp.texto, acumulado, self.bd, usuario_id)
+            problema = revisar_respuesta(resp.texto, acumulado, self.bd, usuario_id, mensaje)
             texto, _, _ = seguridad.validar_salida(
                 (problema.respaldo if problema else resp.texto.strip())
                 or "No se pudo completar la gestión."

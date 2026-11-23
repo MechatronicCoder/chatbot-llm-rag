@@ -12,7 +12,7 @@ import re
 from dataclasses import dataclass
 
 from app.persistencia.db import BaseDatos
-from app.servicios.turno import Acumulado
+from app.servicios.turno import RE_BUSQUEDA, RE_EDAD, Acumulado
 
 RE_ID = re.compile(r"\b(?:PED|PAG)-[0-9A-Z]{4,16}\b", re.IGNORECASE)
 # "página 2", "pág. 3", "secc. 4", 'sección "Libros con defectos"', "según nuestra política"
@@ -30,6 +30,8 @@ RE_PAGADO = re.compile(
     re.IGNORECASE,
 )
 RE_CANCELADO = re.compile(r"\bcancelad[oa]s?\b", re.IGNORECASE)
+# "algo de terror…", "algún libro…": pedidos que RE_BUSQUEDA no cubre
+RE_ALGO = re.compile(r"\b(?:algo|alg[uú]n)\b", re.IGNORECASE)
 NOTA = "[Revisión interna; no la menciones al cliente] "
 
 
@@ -50,9 +52,20 @@ def _id_real(ident: str, acumulado: Acumulado, bd: BaseDatos, usuario_id: str) -
 
 
 def revisar_respuesta(
-    texto: str, acumulado: Acumulado, bd: BaseDatos, usuario_id: str
+    texto: str, acumulado: Acumulado, bd: BaseDatos, usuario_id: str, mensaje: str = ""
 ) -> Problema | None:
     """El primer problema encontrado, o None si la respuesta se puede entregar."""
+    # "algo de terror para mi hijo de 10 años": ya dijo qué busca y la edad, así que
+    # una pregunta sin haber recomendado nada es una vuelta de más para el cliente.
+    pide = RE_BUSQUEDA.search(mensaje) or RE_ALGO.search(mensaje)
+    pide_con_edad = bool(pide and RE_EDAD.search(mensaje))
+    if pide_con_edad and not acumulado.usadas and "?" in texto:
+        return Problema(
+            motivo="pregunta en lugar de recomendar",
+            instruccion=NOTA + "El cliente ya dijo qué busca y la edad del lector: llama ahora a "
+            "recomendar_libros con eso y recomienda; después puedes ofrecer afinar.",
+            respaldo=texto.strip(),
+        )
     ids = sorted({m.group(0).upper() for m in RE_ID.finditer(texto)})
     inventados = [i for i in ids if not _id_real(i, acumulado, bd, usuario_id)]
     if inventados:

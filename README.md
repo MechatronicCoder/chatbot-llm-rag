@@ -47,7 +47,7 @@ La propuesta combina varias fuentes de verdad y deja al modelo de lenguaje solo 
 | Políticas y derechos del consumidor | El LLM con fragmentos recuperados de los documentos (RAG) | La respuesta cita documento y sección o página |
 | Datos sensibles, manipulación o piratería | Filtros de seguridad, antes del modelo | La tarjeta nunca llega al modelo, a la base ni al log |
 
-El caso es la Librería Letra Viva, con un catálogo de 180 libros con precios en soles. Todo el contenido del negocio está en la carpeta `datos/` (tienda, catálogo, preguntas frecuentes, documentos y prompt): cambiar de librería o de catálogo no requiere cambiar código.
+El caso es la Librería Letra Viva, con un catálogo de 200 libros con precios en soles. Todo el contenido del negocio está en la carpeta `datos/` (tienda, catálogo, preguntas frecuentes, documentos y prompt): cambiar de librería o de catálogo no requiere cambiar código.
 
 ## Qué hace y qué no hace
 
@@ -173,15 +173,15 @@ No se usa filtrado colaborativo: requiere historial de compras de muchos cliente
 
 ## Catálogo de libros
 
-El catálogo está en `datos/catalogo.json`, con un objeto `{"libros": [...]}`. El actual tiene 180 libros (147 novelas, 16 de cuentos, 9 juveniles, 5 de no ficción y 3 infantiles) y se armó a partir de una exportación de Open Library:
+El catálogo está en `datos/catalogo.json`, con un objeto `{"libros": [...]}`. El actual tiene 200 libros (162 novelas, 16 de cuentos, 14 juveniles, 5 de no ficción y 3 infantiles) y se armó a partir de una exportación de Open Library:
 
-- la edición, su ISBN-13 y sus páginas salen de Open Library; se eligió la edición en español y, si no había, la original en inglés (11 libros);
-- el precio en soles es el de esa edición en Buscalibre Perú, consultado el 22 de noviembre de 2026;
+- la edición, su ISBN-13 y sus páginas salen de Open Library; se eligió la edición en español y, si no había, la original en inglés (13 libros);
+- el precio en soles de 180 libros es el de esa edición en Buscalibre Perú, consultado el 22 de noviembre de 2026;
+- los otros 20 no se venden en Perú ni en las tiendas de Buscalibre de Estados Unidos, México, Chile y Colombia (sobre todo novelas de Harlequin y libros de Fear Street descatalogados), o solo existen en edición de colección; su precio es referencial: el del archivo original, tomado como soles;
 - la valoración y la cantidad de votos son las de Open Library;
 - la sinopsis, los temas, el tono, el protagonista y la edad recomendada se redactaron en español para la tienda;
 - el stock es de demostración.
 
-Quedaron fuera 20 obras de la exportación: sin edición a la venta en Perú, solo en edición de colección o sin forma de verificar la edición.
 
 | Campo | Tipo | Obligatorio | Uso |
 |---|---|---|---|
@@ -278,7 +278,7 @@ chatbot-llm-rag/
 │       └── rag.py            Fragmentación (PDF y Markdown), índice, caché y MMR
 ├── datos/                    Contenido del negocio (se cambia sin tocar código)
 │   ├── tienda.json           Nombre de la tienda y moneda
-│   ├── catalogo.json         Catálogo de 180 libros
+│   ├── catalogo.json         Catálogo de 200 libros
 │   ├── faq.json              11 FAQs con variaciones y temas críticos
 │   ├── prompt_sistema.md     Instrucciones del librero ({tienda} y {moneda} se completan solos)
 │   └── documentos/           Políticas de la librería (Markdown) y manual del consumidor (PDF)

@@ -108,3 +108,27 @@ def test_el_modelo_corrige_un_pago_que_no_hizo(
     r = servicio_con_modelo.responder("págalo con tarjeta", "ana", "s-v4")
     assert r.pagos and r.ruta == "accion"
     assert servicio_con_modelo.bd.consultar_pedido(pedido)["estado"] == "pagado"  # type: ignore[index]
+
+
+def test_preguntar_en_vez_de_recomendar_solo_cuenta_si_ya_dio_la_edad(bd: BaseDatos) -> None:
+    pregunta = "¿Qué tipo de terror le gusta?"
+    con_edad = "algo de terror para mi hijo de 10 años"
+    problema = revisar_respuesta(pregunta, Acumulado(), bd, "ana", con_edad)
+    assert problema is not None and "recomendar_libros" in problema.instruccion
+    assert problema.respaldo == pregunta
+    sin_edad = "quiero un libro para mi hija"
+    assert revisar_respuesta("¿Qué edad tiene?", Acumulado(), bd, "ana", sin_edad) is None
+    recomendo = Acumulado(usadas=[{"nombre": "recomendar_libros", "ok": True}])
+    assert revisar_respuesta(pregunta, recomendo, bd, "ana", con_edad) is None
+
+
+def test_el_modelo_recomienda_despues_de_la_correccion(
+    servicio_con_modelo: ServicioChat, modelo: ModeloFalso
+) -> None:
+    modelo.respuestas = [
+        respuesta("¿Qué tipo de magia le gusta a tu hijo?"),
+        respuesta(tool_calls=[llamada("recomendar_libros", necesidad="magia", edad=10)]),
+        respuesta("Te recomiendo La escuela de magos."),
+    ]
+    r = servicio_con_modelo.responder("busco algo de magia para mi hijo de 10 años", "ana", "s-v5")
+    assert r.ruta == "recomendacion" and r.libros

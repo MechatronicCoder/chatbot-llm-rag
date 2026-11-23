@@ -44,7 +44,7 @@ Los 10 casos se resuelven en milisegundos y sin tokens. Los 18 casos restantes r
 
 ## Resultado con modelo
 
-Con `qwen-plus` (respaldo `qwen-flash`) y `text-embedding-v4` en la región de Singapur, sobre el catálogo de 180 libros:
+Con `qwen-plus` (respaldo `qwen-flash`) y `text-embedding-v4` en la región de Singapur, sobre el catálogo de entonces, de 180 libros (los 20 con precio referencial se agregaron después):
 
 | Categoría | Aciertos |
 |---|---|
