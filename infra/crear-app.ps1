@@ -3,7 +3,7 @@
 # hecha y una imagen en el registro. Desde la raíz del repositorio:
 #   powershell -ExecutionPolicy Bypass -File infra\crear-app.ps1
 # Proveedor 'qwen' (por defecto): una sola clave de Model Studio para el chat (qwen-plus),
-# el respaldo (qwen-turbo) y los embeddings. Proveedor 'deepseek': DeepSeek para el chat
+# el respaldo (qwen-flash) y los embeddings. Proveedor 'deepseek': DeepSeek para el chat
 # y Qwen para el respaldo y los embeddings.
 # Region: 'intl' (Singapur, dashscope-intl) o 'cn' (Pekín); debe coincidir con la de la clave.
 # MinReplicas 0 = la app se apaga sin tráfico: ahorra crédito, pero tarda en despertar
@@ -63,7 +63,7 @@ if ($Proveedor -eq 'deepseek') {
 } else {
     $llmKey = $qwenKey
     $llmUrl, $llmModelo = $URL_QWEN, 'qwen-plus'
-    $respaldoModelo = 'qwen-turbo'   # otro modelo, misma clave: cubre fallas de un modelo
+    $respaldoModelo = 'qwen-flash'   # otro modelo, misma clave: cubre fallas de un modelo
 }
 Write-Host "Chat: $llmModelo · respaldo: $respaldoModelo · embeddings: text-embedding-v4"
 
