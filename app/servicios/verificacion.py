@@ -39,6 +39,11 @@ RE_COMPRA = re.compile(
     r"\b(?:quiero|me llevo|me lo llevo|dame|compro|comprar|agrega|añade)\b", re.IGNORECASE
 )
 PEDIDOS = {"actualizar_carrito", "reservar_pedido", "cobrar_pedido"}
+# el libro es para un menor: preguntar la edad antes de recomendar es lo correcto
+RE_MENOR = re.compile(
+    r"\b(?:hij[oa]s?|niñ[oa]s?|sobrin[oa]s?|niet[oa]s?|alumn[oa]s?|adolescentes?|beb[eé]s?)\b",
+    re.IGNORECASE,
+)
 # "S/ 59.90", "S/1,234.50", "S/ 59,90"
 RE_MONTO = re.compile(r"S/\s?(\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d+(?:[.,]\d{1,2})?)")
 RE_NUMERO = re.compile(r"\d+(?:[.,]\d{1,2})?")
@@ -95,6 +100,17 @@ def revisar_respuesta(
             instruccion=NOTA + "El cliente ya dijo qué busca y la edad del lector: llama ahora a "
             "recomendar_libros con eso y recomienda; después puedes ofrecer afinar.",
             respaldo=texto.strip(),
+        )
+    # "me das un libro de comedia o política" respondido sin herramientas: los títulos salen
+    # de la memoria del modelo, no del catálogo. Preguntar la edad de un menor sí vale.
+    if RE_BUSQUEDA.search(mensaje) and not acumulado.usadas and not RE_MENOR.search(mensaje):
+        return Problema(
+            motivo="recomienda sin consultar el catálogo",
+            instruccion=NOTA + "No consultaste el catálogo: llama ahora a recomendar_libros (o a "
+            "buscar_libros si nombró un título o autor) y recomienda solo libros que devuelva; "
+            "si dio varias opciones, una búsqueda por cada una.",
+            respaldo="Para recomendarte libros que sí tenemos necesito revisar el catálogo. "
+            "¿Me cuentas de nuevo qué te gustaría leer?",
         )
     # "quiero el libro Drácula": encontró ese único libro, pero pregunta si lo agrega en vez
     # de agregarlo. Con una recomendación o varios resultados, preguntar sí es razonable.

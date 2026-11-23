@@ -199,7 +199,10 @@ def test_mensaje_vacio_o_largo_se_rechaza(servicio: ServicioChat) -> None:
 def test_la_salida_no_recomienda_sitios_piratas(
     servicio_con_modelo: ServicioChat, modelo: ModeloFalso
 ) -> None:
-    modelo.respuestas = [respuesta("Búscalo gratis en Z-Library.")]
+    modelo.respuestas = [
+        respuesta(tool_calls=[llamada("recomendar_libros", necesidad="algo para leer")]),
+        respuesta("Búscalo gratis en Z-Library."),
+    ]
     r = servicio_con_modelo.responder("¿qué me recomiendas leer?", "a", "s-salida")
     assert "library" not in r.respuesta.lower()
     assert "salida.bloqueada" in eventos_del_turno(servicio_con_modelo, r.turno_id)

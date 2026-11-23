@@ -53,6 +53,9 @@ RE_ACCION = re.compile(
 # un libro": lo resuelven las herramientas. "Libro de reclamaciones" sí es FAQ.
 RE_BUSQUEDA = re.compile(
     r"\b(busco|buscando|recomi[eé]nda(me|s)?|recomiendas|sug[ie][eé]re(me)?|sugieres)\b|"
+    # "me das un libro", "quiero una novela" ("quiero devolver un libro" no: va a la FAQ)
+    r"\b(me das|dame|quiero|necesito|tienes|tienen)\s+(un|una|algún|algun|alguna)\s+"
+    r"(libro|novela|cuento)\b|"
     r"\b(un|una|algún|algun|algo)\s+(libro|novela|cuento|cómic|comic)\b"
     r"(?!\s+de\s+reclamaciones)\s*(para|de|sobre|que|como|parecid[oa]|similar|con)\b|"
     r"\blibros\s+(de|sobre|para(?!\s+regalo)|como|parecidos|similares|con)\b|"

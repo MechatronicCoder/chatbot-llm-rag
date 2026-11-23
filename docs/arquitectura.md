@@ -36,6 +36,7 @@ Este documento describe los componentes, el arranque, el flujo de un turno, el m
 | `app/servicios/esquemas_herramientas.py` | Las 9 herramientas que ve el modelo, cuáles son idempotentes y cuáles son acciones | nada |
 | `app/servicios/herramientas.py` | Ejecución de las herramientas | `db`, `rag`, `recomendador` |
 | `app/servicios/chat.py` | El turno completo, paso a paso | `turno`, `faq`, `rag`, `herramientas` |
+| `app/servicios/contexto.py` | Lo que ve el modelo (prompt, FAQ cercanas, historial y mensaje) y el candado por sesión: dos mensajes de la misma conversación se atienden en orden, nunca a la vez | `db`, `faq` |
 | `app/servicios/turno.py` | Ajustes, guardias de acción y búsqueda, respuesta del turno, ejecución de herramientas con sus eventos y modo demo | `herramientas`, `recomendador`, `db` |
 | `app/servicios/verificacion.py` | Revisa la respuesta del modelo contra la base y el turno antes de entregarla | `db`, `turno` |
 | `app/servicios/fabrica.py` | `construir_servicio`: arma el servicio real desde la configuración y `datos/` | todos los servicios |

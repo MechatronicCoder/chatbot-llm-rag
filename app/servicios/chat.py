@@ -23,8 +23,9 @@ from typing import Any
 from app.catalogo.carga import Tienda
 from app.core import seguridad
 from app.core.logs import RegistroEventos, nuevo_turno
-from app.llm.cliente import Mensaje, ModeloChat, SinProveedores
+from app.llm.cliente import ModeloChat, SinProveedores
 from app.persistencia.db import BaseDatos
+from app.servicios.contexto import CandadosPorSesion, mensajes_iniciales
 from app.servicios.faq import Decision, IndiceFAQ
 from app.servicios.herramientas import Herramientas
 from app.servicios.rag import BuscadorDocumentos
@@ -73,22 +74,17 @@ class ServicioChat:
         self.tienda = tienda
         self.ajustes = ajustes or AjustesChat()
         self.herramientas = Herramientas(bd, buscador, recomendador)
-
-    # -- memoria de la sesión (vive en la base de datos) -----------------------
-    def historial(self, session_id: str) -> list[Mensaje]:
-        filas = self.bd.mensajes_de(session_id, limite=self.ajustes.max_mensajes)
-        return [
-            {
-                "role": "user" if f["rol"] == "user" else "assistant",
-                "content": f["contenido_redactado"],
-            }
-            for f in filas
-        ]
+        self.candados = CandadosPorSesion()
 
     # -- turno -----------------------------------------------------------------
     def responder(
         self, mensaje: str, usuario_id: str = "cliente", session_id: str = "demo"
     ) -> RespuestaChat:
+        # Dos mensajes de la misma conversación se atienden en orden, nunca a la vez.
+        with self.candados.de(session_id):
+            return self._responder(mensaje, usuario_id, session_id)
+
+    def _responder(self, mensaje: str, usuario_id: str, session_id: str) -> RespuestaChat:
         mensaje = (mensaje or "").strip()
         if not mensaje:
             raise ValueError("El mensaje no puede estar vacío.")
@@ -176,27 +172,20 @@ class ServicioChat:
         return self._con_modelo(limpio, inicio, decision, cierre)
 
     # -- camino con modelo -------------------------------------------------------
-    def _mensajes_iniciales(self, mensaje: str, session_id: str, saludo: bool) -> list[Mensaje]:
-        sistema = self.prompt_sistema
-        if not saludo:
-            contexto = self.faq.contexto(mensaje)
-            if contexto:
-                sistema += (
-                    "\n\nPreguntas frecuentes verificadas que pueden servir "
-                    f"(úsalas solo si responden la consulta):\n{contexto}"
-                )
-        return [
-            {"role": "system", "content": sistema},
-            *self.historial(session_id),
-            {"role": "user", "content": mensaje},
-        ]
-
     def _con_modelo(
         self, mensaje: str, inicio: float, decision: Decision, cierre: dict[str, str]
     ) -> RespuestaChat:
         turno_id, usuario_id = cierre["turno_id"], cierre["usuario_id"]
         saludo = bool(RE_SALUDO.match(mensaje))
-        mensajes = self._mensajes_iniciales(mensaje, cierre["session_id"], saludo)
+        mensajes = mensajes_iniciales(
+            self.prompt_sistema,
+            self.faq,
+            self.bd,
+            mensaje,
+            cierre["session_id"],
+            saludo=saludo,
+            limite=self.ajustes.max_mensajes,
+        )
         acumulado = Acumulado()
         a = self.ajustes
         corregido = False

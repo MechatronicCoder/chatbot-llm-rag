@@ -27,7 +27,9 @@ frontend/
     ├── api.js          cliente HTTP, ErrorApi y token de administración
     ├── acceso.js       pantalla de acceso de la demo y botón Salir
     ├── util.js         escape de HTML, formato, localStorage seguro, ayudas de DOM
-    ├── chat.js         hilo, burbujas, chips, indicador de escritura, envío
+    ├── chat.js         hilo, burbujas, indicador de escritura, envío y cola
+    ├── agrupador.js    junta los mensajes escritos por partes en un solo turno
+    ├── detalles.js     chips de metadatos y JSON completo de cada respuesta
     ├── libros.js       tarjetas de los libros de cada respuesta
     ├── carrito.js      tarjeta del carrito o pedido de cada respuesta
     ├── panel.js        cliente, pedidos y catálogo de libros
@@ -41,7 +43,9 @@ frontend/
 | `util.js` | Funciones puras y ayudas de DOM. No depende de ningún otro módulo. | `escaparHtml`, `formatear`, `ponerHtmlFormateado`, `leerLocal`, `guardarLocal`, `borrarLocal`, `CLAVES`, `crear`, `porId`, `vaciar`, `ponerTexto`, `prefiereMenosMovimiento`, `cercaDelFinal`, `desplazarA`, `irAlFinal`, `haySeleccionDentro`, moneda (`configurarMoneda`), formateadores (`formatearPrecio`, `formatearMs`, `formatearHora`, `formatearDuracion`, `formatearPuntaje`, `formatearCantidad`, `plural`, `resumir`) |
 | `api.js` | Una función por endpoint, tiempo límite, cancelación, traducción de errores HTTP a mensajes legibles, cabecera `X-Admin-Token` y aviso a `acceso.js` ante un `401` con `X-Acceso: requerido`. | `ErrorApi`, `segundosDeRetryAfter`, `configurarAvisoDeAcceso`, `estadoAcceso`, `iniciarSesion`, `cerrarSesion`, `salud`, `buscarLibros`, `pedidosDe`, `enviarMensaje`, `borrarSesion`, `leerLogs`, `leerMetricas`, `obtenerTokenAdmin`, `guardarTokenAdmin`, `borrarTokenAdmin` |
 | `acceso.js` | Pantalla de acceso (usuario y clave) que bloquea la página si el backend lo pide, y botón Salir. La sesión es una cookie HttpOnly que el código nunca lee. | `iniciarAcceso({ alEntrar, alSalir })` → `{ verificar, mostrar, sesionRechazada, bloqueado }` |
-| `chat.js` | Todo lo que ocurre dentro del hilo y del formulario de envío. | `iniciarChat({ obtenerUsuario, alFiltrarTurno, alResponder })` → `{ enviar, limpiar, anotar, marcarTurno }` |
+| `chat.js` | Todo lo que ocurre dentro del hilo y del formulario de envío. Se puede escribir mientras el asistente responde: lo nuevo espera en una cola y sale como el turno siguiente, nunca en paralelo. | `iniciarChat({ obtenerUsuario, alFiltrarTurno, alResponder })` → `{ enviar, limpiar, anotar, marcarTurno }` |
+| `agrupador.js` | Junta los mensajes que el cliente escribe por partes ("hola", "me das un libro", "puede ser de comedia"): espera 2 s sin escribir y manda todo unido, con un tope de 8 s desde el primero y de 2000 caracteres. | `crearAgrupador({ alEnviar })` → `{ agregar, escribiendo, vaciar, descartar }` |
+| `detalles.js` | Chips de ruta, modo, latencia, modelo, tokens, FAQ, herramientas, documentos, pedidos y turno, y el bloque con la respuesta completa. | `chipsDe(respuesta, turnoFiltrado)`, `detalleJson(respuesta)` |
 | `libros.js` | Tarjetas de los libros de una respuesta: título, autor, precio, stock, valoración y edad, siempre como texto. | `tarjetasDeLibros(libros)` → `<ul>` o `null` |
 | `carrito.js` | Tarjeta del pedido que tocó una respuesta: líneas, subtotal, envío, total y cuánto falta para el envío gratis. Solo formatea los montos que calculó el servidor; nunca suma. | `tarjetaCarrito(carrito)` → `<section>` o `null` |
 | `panel.js` | Columna del cliente: id (guardado en localStorage), recargar, borrar conversación, pedidos y catálogo. | `iniciarPanel({ alCambiarUsuario, alRecargar, alBorrar })` → `{ usuario, cargarPedidos, cargarCatalogo }` |
@@ -53,7 +57,8 @@ frontend/
 ```
 main.js   ─► chat.js, panel.js, logs.js, acceso.js, api.js, util.js
 acceso.js ─► api.js, util.js
-chat.js   ─► libros.js, carrito.js, api.js, util.js
+chat.js   ─► agrupador.js, detalles.js, libros.js, carrito.js, api.js, util.js
+detalles.js ─► util.js
 panel.js  ─► api.js, util.js
 logs.js   ─► api.js, util.js
 libros.js ─► util.js

@@ -269,7 +269,7 @@ def test_pedir_un_libro_concreto_lo_agrega_sin_preguntar(
     assert r.carrito is not None and r.carrito["unidades"] == 1
     buscar_otro = revisar_respuesta(
         "¿De qué tema?",
-        Acumulado(libros=[{"isbn": ISBN_MAGO}]),
+        Acumulado(usadas=[{"nombre": "buscar_libros"}], libros=[{"isbn": ISBN_MAGO}]),
         servicio_con_modelo.bd,
         "ana",
         "quiero un libro de magia",
