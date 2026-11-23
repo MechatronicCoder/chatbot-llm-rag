@@ -23,10 +23,10 @@ import {
 } from './util.js';
 
 const SUGERENCIAS = [
-  'Un libro para que mi hijo de 5 años aprenda a sumar',
-  'Fantasía con un goblin de protagonista',
+  'Algo de terror para mi sobrino de 13 años',
+  'Un misterio como los de Agatha Christie',
+  'Fantasía épica para empezar una saga',
   '¿Cuánto cuesta el envío?',
-  '¿Puedo cambiar un libro?',
 ];
 
 /** Si la respuesta llega antes de este tiempo no se muestra el indicador (evita un parpadeo). */

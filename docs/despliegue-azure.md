@@ -502,3 +502,5 @@ El reinicio es necesario para que el contenedor lea el valor nuevo, y también b
 
 - `MissingSubscriptionRegistration`: falta registrar un proveedor (paso 2).
 - Errores de cuota o de disponibilidad en la región: las suscripciones de prueba tienen cuotas bajas. Se borra el grupo de recursos y se repite el proceso en otra región.
+- `MaxNumberOfRegionalEnvironmentsInSubExceeded` o `MaxNumberOfGlobalEnvironmentsInSubExceeded`: la prueba gratuita admite un solo entorno de Container Apps en toda la suscripción, así que cambiar de región no basta. Se lista el existente con `az containerapp env list -o table` y hay que elegir: desplegar la app en ese entorno o borrarlo (`az containerapp env delete`), después de borrar sus apps y respaldar su configuración con `az containerapp show -o yaml`. El borrado queda en estado `ScheduledForDelete` durante varios minutos y el cupo se libera recién cuando el entorno desaparece de la lista.
+- `MissingSubscription` al asignar un rol desde Git Bash: Git Bash convierte el alcance `/subscriptions/...` en una ruta de Windows. Se ejecuta el comando en PowerShell o se antepone `MSYS_NO_PATHCONV=1`.
