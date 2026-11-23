@@ -93,7 +93,7 @@ ESQUEMAS: list[dict[str, Any]] = [
                         "type": "object",
                         "properties": {
                             "isbn": _ISBN,
-                            "cantidad": {"type": "integer", "minimum": 0, "maximum": 10},
+                            "cantidad": {"type": "integer", "minimum": 0, "maximum": 50},
                         },
                         "required": ["isbn", "cantidad"],
                     },
@@ -131,20 +131,6 @@ ESQUEMAS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "cobrar_pedido",
-        "description": "Cobra un pedido del cliente actual (un carrito se reserva y cobra a la "
-        "vez). Solo si el cliente ya vio el total y pidió pagar. Métodos: tarjeta, efectivo o "
-        "transferencia. Un pedido no se cobra dos veces.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "pedido_id": _PEDIDO,
-                "metodo": {"type": "string", "enum": ["tarjeta", "efectivo", "transferencia"]},
-            },
-            "required": ["pedido_id", "metodo"],
-        },
-    },
-    {
         "name": "derivar_a_persona",
         "description": "Pasa la atención a una persona del equipo cuando el cliente lo pide o "
         "el caso no se resuelve con las herramientas (un reclamo, un pedido especial, un "
@@ -172,4 +158,5 @@ ESQUEMAS: list[dict[str, Any]] = [
 IDEMPOTENTES = frozenset(
     {"buscar_libros", "recomendar_libros", "ficha_libro", "consultar_pedido", "buscar_politica"}
 )
-ACCIONES = frozenset({"actualizar_carrito", "reservar_pedido", "cobrar_pedido", "cancelar_pedido"})
+# El modelo no cobra: el cliente paga con el botón de la tarjeta (POST /api/pedidos/…/pago).
+ACCIONES = frozenset({"actualizar_carrito", "reservar_pedido", "cancelar_pedido"})

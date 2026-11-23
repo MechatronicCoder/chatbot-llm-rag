@@ -71,34 +71,30 @@ def test_reservar_descuenta_stock(servicio: ServicioChat) -> None:
     assert r["lineas"][0]["titulo"] == "La escuela de magos" and "reservado" in r["resumen"]
     assert servicio.bd.obtener_libro(ISBN_MAGO)["stock"] == 6  # type: ignore[index]
     assert "Solo quedan 3" in carrito(h, "a", (ISBN_POEMAS, 5))["error"]
-    assert "de 0 a 10" in carrito(h, "a", (ISBN_POEMAS, 50))["error"]
+    assert "de 0 a 50" in carrito(h, "a", (ISBN_POEMAS, 51))["error"]
 
 
-def test_cobrar_una_vez_y_solo_lo_propio(servicio: ServicioChat) -> None:
+def test_el_bot_no_puede_cobrar_y_el_pedido_se_consulta(servicio: ServicioChat) -> None:
+    """Demo: con "con transferencia bancaria" el bot cobraba solo. Ahora paga el cliente."""
     h = servicio.herramientas
     carrito(h, "dueno", (ISBN_DRAGON, 1))
     pedido = h.ejecutar("reservar_pedido", {}, "dueno")
-    argumentos = {"pedido_id": pedido["pedido_id"], "metodo": "tarjeta"}
-    assert "otro cliente" in h.ejecutar("cobrar_pedido", argumentos, "intruso")["error"]
-    pagado = h.ejecutar("cobrar_pedido", argumentos, "dueno")
-    assert pagado["estado"] == "pagado" and pagado["monto"] == pedido["total"]
-    assert pagado["pago_id"].startswith("PAG-") and "pagado" in pagado["resumen"]
-    assert "pagado" in h.ejecutar("cobrar_pedido", argumentos, "dueno")["error"]
+    argumentos = {"pedido_id": pedido["pedido_id"], "metodo": "transferencia"}
+    assert "desconocida" in h.ejecutar("cobrar_pedido", argumentos, "dueno")["error"]
+    assert servicio.bd.consultar_pedido(pedido["pedido_id"])["estado"] == "reservado"  # type: ignore[index]
     consulta_ajena = h.ejecutar("consultar_pedido", {"pedido_id": pedido["pedido_id"]}, "intruso")
     assert "error" in consulta_ajena and "dragón" not in str(consulta_ajena)
     propia = h.ejecutar("consultar_pedido", {"pedido_id": pedido["pedido_id"]}, "dueno")
-    assert propia["estado"] == "pagado" and propia["resumen"]
+    assert propia["estado"] == "reservado" and propia["resumen"]
 
 
-def test_un_carrito_se_cobra_directo_si_tiene_zona(servicio: ServicioChat) -> None:
+def test_sin_zona_no_se_reserva(servicio: ServicioChat) -> None:
     h = servicio.herramientas
     sin_zona = carrito(h, "a", (ISBN_SUMAS, 1), zona=None)
     assert "falta elegir la zona" in sin_zona["resumen"]
-    argumentos = {"pedido_id": sin_zona["pedido_id"], "metodo": "efectivo"}
-    assert "Falta la zona" in h.ejecutar("cobrar_pedido", argumentos, "a")["error"]
     assert "Falta la zona" in h.ejecutar("reservar_pedido", {}, "a")["error"]
     carrito(h, "a", zona="provincias")
-    assert h.ejecutar("cobrar_pedido", argumentos, "a")["estado"] == "pagado"
+    assert h.ejecutar("reservar_pedido", {}, "a")["estado"] == "reservado"
     assert servicio.bd.obtener_libro(ISBN_SUMAS)["stock"] == 9  # type: ignore[index]
 
 
@@ -106,7 +102,6 @@ def test_metodo_invalido_y_cancelaciones(servicio: ServicioChat) -> None:
     h = servicio.herramientas
     carrito(h, "a", (ISBN_SUMAS, 3))
     pedido = h.ejecutar("reservar_pedido", {}, "a")["pedido_id"]
-    assert "error" in h.ejecutar("cobrar_pedido", {"pedido_id": pedido, "metodo": "cripto"}, "a")
     assert "otro cliente" in h.ejecutar("cancelar_pedido", {"pedido_id": pedido}, "b")["error"]
     cancelado = h.ejecutar("cancelar_pedido", {"pedido_id": pedido}, "a")
     assert cancelado["estado"] == "cancelado" and cancelado["unidades_devueltas"] == 3
@@ -144,7 +139,7 @@ def test_error_inesperado_de_una_herramienta(servicio: ServicioChat, monkeypatch
     assert r == {"error": "RuntimeError: base caída"}
 
 
-def test_los_esquemas_declaran_las_diez_herramientas(servicio: ServicioChat) -> None:
+def test_los_esquemas_declaran_las_nueve_herramientas(servicio: ServicioChat) -> None:
     carro = next(e for e in ESQUEMAS if e["name"] == "actualizar_carrito")
     zonas = carro["parameters"]["properties"]["zona"]["enum"]
     assert set(zonas) == set(servicio.bd.tienda.envio)  # el esquema y tienda.json coinciden
@@ -156,7 +151,6 @@ def test_los_esquemas_declaran_las_diez_herramientas(servicio: ServicioChat) -> 
         "reservar_pedido",
         "consultar_pedido",
         "cancelar_pedido",
-        "cobrar_pedido",
         "buscar_politica",
         "derivar_a_persona",
     }

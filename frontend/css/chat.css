@@ -205,6 +205,14 @@
 .carrito-fila dt { color: var(--color-tenue); }
 .carrito-total { font-weight: 600; color: var(--color-texto); }
 .carrito-nota { margin: 6px 0 0; color: var(--color-ok-texto); }
+.carrito-pago { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.carrito-metodo { padding: 6px 8px; border-radius: var(--radio-s); border: 1px solid var(--color-linea-fuerte); background: var(--color-panel-alto); color: var(--color-texto); }
+.carrito-pagar { padding: 6px 14px; border: 0; border-radius: var(--radio-s); background: var(--color-acento); color: #fff; font-weight: 600; cursor: pointer; }
+.carrito-pagar:hover:not(:disabled) { background: var(--color-acento-hover); }
+.carrito-pagar:disabled, .carrito-metodo:disabled { opacity: 0.55; cursor: not-allowed; }
+.carrito-aviso { flex-basis: 100%; margin: 0; color: var(--color-tenue); }
+.carrito-numero { flex: 1 1 180px; padding: 6px 8px; border-radius: var(--radio-s); border: 1px solid var(--color-linea-fuerte); background: var(--color-panel-alto); color: var(--color-texto); }
+.carrito-numero[hidden] { display: none; }
 
 /* Chips de metadatos */
 

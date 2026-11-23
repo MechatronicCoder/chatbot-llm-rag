@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import pytest
 
-from app.api.esquemas import RespuestaChatAPI
 from app.catalogo.carga import Tienda
 from app.catalogo.cotizacion import (
     Linea,
@@ -17,7 +16,7 @@ from app.catalogo.cotizacion import (
 )
 from app.persistencia.db import BaseDatos, ErrorPedido
 from app.servicios.chat import ServicioChat
-from app.servicios.turno import AVISO_COBRO, Acumulado
+from app.servicios.turno import Acumulado
 from app.servicios.verificacion import montos_sin_respaldo, revisar_respuesta
 from tests.datos_prueba import ISBN_AGOTADO, ISBN_DRAGON, ISBN_GOBLIN, ISBN_MAGO, ISBN_SUMAS
 from tests.dobles import ModeloFalso, llamada, respuesta
@@ -139,7 +138,7 @@ def test_un_cambio_de_precio_frena_el_cobro_y_se_avisa_al_reservar(bd: BaseDatos
     with bd.conectar() as con:
         con.execute("update libros set precio = 75.0 where isbn = ?", (ISBN_MAGO,))
     with pytest.raises(ErrorPedido, match="cambió el precio"):
-        bd.registrar_pago("ana", pedido_id, "tarjeta")
+        bd.registrar_pago("ana", pedido_id, "efectivo")
     assert bd.carrito_de("ana")["total"] == 79.9  # type: ignore[index]  # no se tocó nada
     assert bd.obtener_libro(ISBN_MAGO)["stock"] == 8  # type: ignore[index]
     reservado = bd.reservar_carrito("ana")
@@ -193,36 +192,6 @@ def test_solo_pasan_montos_con_respaldo(bd: BaseDatos) -> None:
 
 
 # -- el turno ------------------------------------------------------------------------
-def test_no_se_cobra_en_el_turno_en_que_cambio_el_total(
-    servicio_con_modelo: ServicioChat, modelo: ModeloFalso
-) -> None:
-    bd = servicio_con_modelo.bd
-    pedido_id = bd.actualizar_carrito("ana", [{"isbn": ISBN_MAGO, "cantidad": 1}], "lima")[
-        "pedido_id"
-    ]
-    cobrar = llamada("cobrar_pedido", pedido_id=pedido_id, metodo="tarjeta")
-    modelo.respuestas = [
-        respuesta(
-            tool_calls=[
-                llamada("actualizar_carrito", cambios=[{"isbn": ISBN_MAGO, "cantidad": 2}]),
-                cobrar,
-            ]
-        ),
-        respuesta("Son S/ 139.80 con envío gratis. ¿Confirmas el pago?"),
-    ]
-    primero = servicio_con_modelo.responder("quiero comprar dos, págalo con tarjeta", "ana", "s-c")
-    assert not primero.pagos and primero.carrito is not None
-    assert primero.carrito["total"] == 139.8 and primero.carrito["estado"] == "carrito"
-    assert any(u["nombre"] == "cobrar_pedido" and not u["ok"] for u in primero.herramientas)
-    assert AVISO_COBRO in modelo.llamadas[1]["mensajes"][-1]["content"]
-    api = RespuestaChatAPI.model_validate(primero.to_dict())
-    assert api.carrito is not None and api.carrito.lineas[0].isbn == ISBN_MAGO
-
-    modelo.respuestas = [respuesta(tool_calls=[cobrar]), respuesta("Pagado.")]
-    segundo = servicio_con_modelo.responder("sí, págalo", "ana", "s-c")
-    assert segundo.pagos and bd.consultar_pedido(pedido_id)["estado"] == "pagado"  # type: ignore[index]
-
-
 def test_un_total_inventado_termina_en_el_resumen_del_sistema(
     servicio_con_modelo: ServicioChat, modelo: ModeloFalso
 ) -> None:

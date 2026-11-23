@@ -92,6 +92,11 @@ def crear_app(
         respuesta.headers.setdefault("X-Frame-Options", "DENY")
         if not request.url.path.startswith(RUTAS_SIN_CSP):
             respuesta.headers.setdefault("Content-Security-Policy", ajustes.content_security_policy)
+        if not request.url.path.startswith("/api"):
+            # Frontend: el navegador revalida en cada carga (con ETag, sin bajar todo de nuevo).
+            # Sin esto, tras un despliegue un navegador siguió con el panel.js viejo y mostraba
+            # "? × libro" con la API nueva.
+            respuesta.headers.setdefault("Cache-Control", "no-cache")
         return respuesta
 
     # Con ACCESO_* configurado, toda la API salvo salud y acceso pide sesión.

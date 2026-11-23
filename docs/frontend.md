@@ -47,7 +47,7 @@ frontend/
 | `agrupador.js` | Junta los mensajes que el cliente escribe por partes ("uhm, la verdad", "no sé", "algo de ciencia", "ficción?") y manda todo unido. La pausa depende de cómo termina lo último: 1,5 s si parece completo (termina en "?", "!", "." o un emoji) y 4,5 s si parece seguir ("hola", "puede ser de"). Mientras se escribe en la caja el grupo sigue abierto; el tope es de 15 s desde el primero y 2000 caracteres. Bajo la caja se avisa que está esperando, y Enter con la caja vacía lo envía ya. Con una pausa fija de 2 s, quien se detenía a pensar a mitad de la idea recibía dos respuestas. | `crearAgrupador({ alEnviar, alCambiar })` → `{ agregar, escribiendo, vaciar, descartar }` |
 | `detalles.js` | Chips de ruta, modo, latencia, modelo, tokens, FAQ, herramientas, documentos, pedidos y turno, y el bloque con la respuesta completa. | `chipsDe(respuesta, turnoFiltrado)`, `detalleJson(respuesta)` |
 | `libros.js` | Tarjetas de los libros de una respuesta: título, autor, precio, stock, valoración y edad, siempre como texto. | `tarjetasDeLibros(libros)` → `<ul>` o `null` |
-| `carrito.js` | Tarjeta del pedido que tocó una respuesta: líneas, subtotal, envío, total y cuánto falta para el envío gratis. Solo formatea los montos que calculó el servidor; nunca suma. | `tarjetaCarrito(carrito)` → `<section>` o `null` |
+| `carrito.js` | Tarjeta del pedido que tocó una respuesta: líneas, subtotal, envío, total y cuánto falta para el envío gratis. Solo formatea los montos que calculó el servidor; nunca suma. Si el pedido está por pagar, trae el selector (tarjetas guardadas, otra nueva, efectivo o transferencia) y el botón «Pagar»; al pagar se reemplaza por la versión pagada. | `tarjetaCarrito(carrito, { alPagar, cargarTarjetas })` → `<section>` o `null` |
 | `panel.js` | Columna del cliente: id (guardado en localStorage), recargar, borrar conversación, pedidos y catálogo. | `iniciarPanel({ alCambiarUsuario, alRecargar, alBorrar })` → `{ usuario, cargarPedidos, cargarCatalogo }` |
 | `logs.js` | Panel de logs: refresco pausable, filtros, métricas, formulario de token ante 401. | `iniciarLogs({ alCambiarTurno })` → `{ refrescar, refrescarSiActivo, filtrarTurno, turnoActual }` |
 | `main.js` | Crea los tres módulos, los conecta mediante callbacks, pinta la cabecera desde `/api/health` (incluidos el nombre de la tienda, el título de la pestaña y la moneda) y mantiene los temporizadores. | (nada; es el punto de entrada) |
@@ -82,6 +82,10 @@ Notas:
 - Si un módulo no refleja el cambio, se fuerza la recarga con Ctrl+F5 (Cmd+Shift+R en macOS) o se activa "Disable cache" con las herramientas de desarrollo abiertas.
 - `index.html` no funciona abierto como archivo (`file://`): los módulos ES exigen HTTP y la API debe estar en el mismo origen.
 - Si la consola muestra `Failed to load module script ... MIME type of "text/plain"`, el servidor está tomando el tipo de `.js` del registro de Windows. La corrección corresponde al backend: registrar `mimetypes.add_type("text/javascript", ".js")` antes de montar `StaticFiles`.
+
+## Caché del navegador
+
+Los archivos del frontend se sirven con `Cache-Control: no-cache`: el navegador vuelve a preguntar por cada uno en cada carga y, si no cambió, recibe un 304 sin bajarlo de nuevo. Sin esto, después de un despliegue un navegador siguió usando el `panel.js` anterior con la API nueva y el panel mostró "? × libro". Las rutas `/api` no llevan esa cabecera.
 
 ## Arranque y temporizadores
 
