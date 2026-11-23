@@ -40,6 +40,28 @@ def test_flujo_de_venta_buscar_y_reservar(
         assert esperado in eventos
 
 
+def test_el_historial_guarda_isbn_y_pedido_para_el_turno_siguiente(
+    servicio_con_modelo: ServicioChat, modelo: ModeloFalso
+) -> None:
+    modelo.respuestas = [
+        respuesta(
+            tool_calls=[
+                llamada("buscar_libros", consulta="escuela de magos"),
+                llamada("reservar_pedido", isbn=ISBN_MAGO, cantidad=1),
+            ]
+        ),
+        respuesta("Reservado."),
+        respuesta("Listo."),
+    ]
+    r = servicio_con_modelo.responder("quiero La escuela de magos", "alumno", "s-ref")
+    assert "Referencias" not in r.respuesta  # el cliente no ve la nota
+    guardado = servicio_con_modelo.bd.mensajes_de("s-ref")[-1]["contenido_redactado"]
+    assert f"ISBN {ISBN_MAGO}" in guardado and f"pedido {r.pedidos[0]}" in guardado
+    servicio_con_modelo.responder("págalo con tarjeta", "alumno", "s-ref")
+    previos = [m["content"] for m in modelo.llamadas[-1]["mensajes"] if m["role"] == "assistant"]
+    assert any(f"pedido {r.pedidos[0]}" in m for m in previos)
+
+
 def test_recomendacion_queda_como_ruta_y_evento(
     servicio_con_modelo: ServicioChat, modelo: ModeloFalso
 ) -> None:

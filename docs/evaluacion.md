@@ -42,6 +42,23 @@ Con el clasificador TF-IDF y las guardias, sin ninguna API configurada:
 
 Los 10 casos se resuelven en milisegundos y sin tokens. Los 18 casos restantes requieren el modelo y se miden con las claves configuradas.
 
+## Resultado con modelo
+
+Con `qwen-plus` (respaldo `qwen-flash`) y `text-embedding-v4` en la región de Singapur, sobre el catálogo de 180 libros:
+
+| Categoría | Aciertos |
+|---|---|
+| faq | 7/7 |
+| seguridad | 3/3 |
+| cortesia | 2/2 |
+| catalogo | 3/3 |
+| recomendacion | 5/6 |
+| accion | 2/2 |
+| rag | 3/3 |
+| fuera_de_alcance | 2/2 |
+
+En total 27/28 rutas (96 %) y el libro esperado en 7 de 8 casos, con una latencia mediana de 1,7 s y unos 82 000 tokens para todo el conjunto. El caso que varía entre ejecuciones es una recomendación en la que el modelo a veces hace una pregunta antes de recomendar. Antes de ajustar el prompt y de agregar la verificación de respuestas, el mismo conjunto daba 19/28: el modelo pedía detalles en lugar de recomendar, pedía confirmación en lugar de reservar y respondía políticas sin consultar los documentos.
+
 ## Calibrar el umbral del RAG
 
 `RAG_UMBRAL` depende del modelo de embeddings: con un umbral alto, preguntas legítimas sobre las políticas quedan sin contexto; con uno bajo, se cita un fragmento que no responde. Para ajustarlo:
