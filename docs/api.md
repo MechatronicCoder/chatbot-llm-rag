@@ -29,7 +29,7 @@ Invoke-RestMethod "http://localhost:8000/api/libros?limite=3" -WebSession $sesio
 `POST /api/chat`
 
 ```powershell
-$cuerpo = @{ mensaje = "quiero un libro para que mi hijo de 5 años aprenda a sumar"; usuario_id = "cliente-01"; session_id = "cliente-01" } | ConvertTo-Json
+$cuerpo = @{ mensaje = "busco algo de terror para mi sobrino de 13 años"; usuario_id = "cliente-01"; session_id = "cliente-01" } | ConvertTo-Json
 Invoke-RestMethod -Method Post -Uri http://localhost:8000/api/chat -ContentType "application/json; charset=utf-8" -Body ([Text.Encoding]::UTF8.GetBytes($cuerpo))
 ```
 
@@ -37,28 +37,28 @@ Respuesta (campos principales):
 
 ```json
 {
-  "respuesta": "Para un niño de 5 años te recomiendo «Mis primeras sumas» ...",
+  "respuesta": "Para un lector de 13 años te recomiendo «El bisturí», de La calle del terror ...",
   "ruta": "recomendacion",
   "modo": "real",
   "fuente": "LLM + recomendar_libros",
   "herramientas": [{"nombre": "recomendar_libros", "ok": true, "ms": 41, "resumen": "3 recomendaciones"}],
   "libros": [
     {
-      "isbn": "9786120000069",
-      "titulo": "Mis primeras sumas",
-      "autor": "Equipo editorial (ejemplo)",
-      "categoria": "educativo",
-      "genero": "actividades",
-      "edad": "4–6 años",
+      "isbn": "9788440662286",
+      "titulo": "El bisturí (La calle del terror)",
+      "autor": "R. L. Stine",
+      "categoria": "juvenil",
+      "genero": "terror",
+      "edad": "12–17 años",
       "formato": "tapa blanda",
-      "precio": 29.9,
-      "stock": 25,
-      "valoracion": 4.5,
-      "num_valoraciones": 60,
-      "sinopsis": "Cuaderno de actividades con stickers para aprender a sumar hasta diez jugando...",
+      "precio": 75.33,
+      "stock": 11,
+      "valoracion": 3.8,
+      "num_valoraciones": 6,
+      "sinopsis": "Laurie trabaja como voluntaria en el hospital de Shadyside y descubre que cada habitación esconde un secreto inquietante...",
       "portada": null,
-      "similitud": 0.6123,
-      "puntaje": 0.9772,
+      "similitud": 0.5834,
+      "puntaje": 0.8731,
       "motor": "denso"
     }
   ],
@@ -72,7 +72,7 @@ Respuesta (campos principales):
   "turno": 1,
   "turno_id": "t-3f9a21bc",
   "aviso": null,
-  "clasificacion": {"ruta": "llm", "similitud": 0.453, "motivo": "busqueda de libros: 'un libro para'"}
+  "clasificacion": {"ruta": "llm", "similitud": 0.453, "motivo": "busqueda de libros: 'busco'"}
 }
 ```
 
@@ -97,9 +97,9 @@ Errores:
 ## Libros, pedidos y documentos
 
 ```powershell
-Invoke-RestMethod "http://localhost:8000/api/libros?consulta=dahl&limite=5"
-Invoke-RestMethod "http://localhost:8000/api/libros?categoria=infantil&edad=6"
-Invoke-RestMethod "http://localhost:8000/api/libros/978-612-000004-5"
+Invoke-RestMethod "http://localhost:8000/api/libros?consulta=christie&limite=5"
+Invoke-RestMethod "http://localhost:8000/api/libros?categoria=juvenil&edad=13"
+Invoke-RestMethod "http://localhost:8000/api/libros/978-84-17826-89-5"
 Invoke-RestMethod "http://localhost:8000/api/categorias"
 Invoke-RestMethod "http://localhost:8000/api/pedidos/cliente-01"
 Invoke-RestMethod "http://localhost:8000/api/politicas"

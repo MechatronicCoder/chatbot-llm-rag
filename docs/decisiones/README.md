@@ -13,6 +13,7 @@ Cada documento registra una decisión de arquitectura con el mismo formato: cont
 | [0007](0007-flujo-de-ramas.md) | Flujo de ramas con main y dev, y aprobación del dueño | Aceptada |
 | [0008](0008-recomendacion-hibrida.md) | Recomendación híbrida (contenido y valoración) dentro del flujo de venta | Aceptada |
 | [0009](0009-catalogo-como-fuente-de-verdad.md) | El archivo del catálogo como fuente de verdad; la base, dueña del stock | Aceptada |
+| [0010](0010-solo-main-despliega.md) | Solo main despliega: el despliegue es un job del CI y el environment acepta solo main | Aceptada |
 | [0011](0011-acceso-de-demo.md) | Acceso de demo con usuario y clave, sesión en cookie y límites contra bots | Aceptada |
 
 Plantilla para una decisión nueva:

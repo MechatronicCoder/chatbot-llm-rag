@@ -54,9 +54,12 @@ def evaluar_caso(servicio: Any, caso: dict[str, Any]) -> dict[str, Any]:
         fallos.append(f"documento esperado {caso['documento']} no citado")
     libro_ok = None
     if caso.get("libro_titulo"):
-        libro_ok = caso["libro_titulo"] in titulos
+        # un título o una lista de títulos válidos (basta con que aparezca uno)
+        esperados = caso["libro_titulo"]
+        esperados = [esperados] if isinstance(esperados, str) else esperados
+        libro_ok = any(t in titulos for t in esperados)
         if not libro_ok:
-            fallos.append(f"libro esperado «{caso['libro_titulo']}» no mostrado")
+            fallos.append(f"ningún libro esperado mostrado ({' / '.join(esperados)})")
     return {
         "id": caso["id"],
         "categoria": caso["categoria"],

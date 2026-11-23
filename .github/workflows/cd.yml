@@ -1,8 +1,12 @@
-# Despliegue continuo en Azure Container Apps.
+# Despliegue en Azure Container Apps.
 #
-# Corre cuando el workflow "CI" termina con éxito en main (o a mano). Construye la
-# imagen en el runner, la sube al registro con la identidad federada (OIDC, sin
+# Lo llama el workflow "CI" como último job, solo en un push a main y solo si las
+# pruebas y la imagen pasaron; también se puede lanzar a mano desde main. Construye
+# la imagen en el runner, la sube al registro con la identidad federada (OIDC, sin
 # contraseñas guardadas), actualiza la Container App y verifica /api/health/ready.
+#
+# El environment "produccion" solo admite la rama main: un job de otra rama no
+# recibe credenciales de Azure, aunque alguien lance este workflow a mano.
 #
 # Variables de repositorio necesarias (Settings > Secrets and variables > Actions >
 # Variables): AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID,
@@ -12,43 +16,33 @@
 name: CD
 
 on:
-  workflow_run:
-    workflows: ["CI"]
-    types: [completed]
-    branches: [main]
+  workflow_call:
   workflow_dispatch:
 
 permissions:
   id-token: write
   contents: read
 
-# Un solo despliegue a la vez; el siguiente espera en cola en lugar de cancelar al actual.
-concurrency:
-  group: cd-produccion
-  cancel-in-progress: false
-
 jobs:
   desplegar:
     name: Desplegar en Azure Container Apps
-    # workflow_run: solo si CI pasó en un push del propio repositorio (nunca código de un fork).
-    if: >-
-      vars.AZURE_CLIENT_ID != '' &&
-      (github.event_name == 'workflow_dispatch' ||
-        (github.event.workflow_run.conclusion == 'success' &&
-         github.event.workflow_run.event == 'push' &&
-         github.event.workflow_run.head_repository.full_name == github.repository))
+    if: vars.AZURE_CLIENT_ID != '' && github.ref == 'refs/heads/main'
+    # Un solo despliegue a la vez; el siguiente espera en cola en lugar de cancelar al actual.
+    concurrency:
+      group: cd-produccion
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     environment: produccion
     timeout-minutes: 30
     env:
-      COMMIT_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+      COMMIT_SHA: ${{ github.sha }}
       IMAGEN_NOMBRE: chatbot-llm-rag
       GRUPO: ${{ vars.AZURE_RESOURCE_GROUP }}
       ACR_NOMBRE: ${{ vars.ACR_NOMBRE }}
       APP_NOMBRE: ${{ vars.CONTAINERAPP_NOMBRE }}
 
     steps:
-      - name: Obtener el commit que pasó CI
+      - name: Obtener el commit de main
         uses: actions/checkout@v4
         with:
           ref: ${{ env.COMMIT_SHA }}
