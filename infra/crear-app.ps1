@@ -2,16 +2,27 @@
 # Pide las claves sin mostrarlas y no las guarda en ningún archivo. Requiere la fase 1
 # hecha y una imagen en el registro. Desde la raíz del repositorio:
 #   powershell -ExecutionPolicy Bypass -File infra\crear-app.ps1
+# Proveedor 'qwen' (por defecto): una sola clave de Model Studio para el chat (qwen-plus),
+# el respaldo (qwen-turbo) y los embeddings. Proveedor 'deepseek': DeepSeek para el chat
+# y Qwen para el respaldo y los embeddings.
+# Region: 'intl' (Singapur, dashscope-intl) o 'cn' (Pekín); debe coincidir con la de la clave.
 # MinReplicas 0 = la app se apaga sin tráfico: ahorra crédito, pero tarda en despertar
 # y borra los pedidos.
 param(
     [string]$Grupo = 'rg-chatbot-llm-rag',
     [string]$Prefijo = 'chatbotrag',
+    [ValidateSet('qwen', 'deepseek')][string]$Proveedor = 'qwen',
+    [ValidateSet('intl', 'cn')][string]$Region = 'intl',
     [ValidateRange(0, 1)][int]$MinReplicas = 1
 )
 
 $ErrorActionPreference = 'Stop'
 $REPO = Split-Path -Parent $PSScriptRoot
+$URL_QWEN = if ($Region -eq 'cn') {
+    'https://dashscope.aliyuncs.com/compatible-mode/v1'
+} else {
+    'https://dashscope-intl.aliyuncs.com/compatible-mode/v1'
+}
 
 function Read-Secreto([string]$Nombre) {
     $valor = Read-Host -Prompt $Nombre -AsSecureString
@@ -42,9 +53,19 @@ if (-not $tag) { throw "No hay imágenes en el registro $ACR." }
 $IMAGEN = "$ACR.azurecr.io/chatbot-llm-rag:$tag"
 Write-Host "Imagen a desplegar (la más reciente del registro): $IMAGEN"
 
-$llmKey  = Read-Secreto 'Clave de DeepSeek (LLM_API_KEY)'
-$qwenKey = Read-Secreto 'Clave de Qwen en Model Studio (embeddings y respaldo)'
-if (-not $llmKey -or -not $qwenKey) { throw 'Faltan claves: se necesitan la de DeepSeek y la de Qwen.' }
+$qwenKey = Read-Secreto "Clave de Qwen en Model Studio (región $Region)"
+if (-not $qwenKey) { throw 'Falta la clave de Qwen.' }
+if ($Proveedor -eq 'deepseek') {
+    $llmKey = Read-Secreto 'Clave de DeepSeek (LLM_API_KEY)'
+    if (-not $llmKey) { throw 'Falta la clave de DeepSeek.' }
+    $llmUrl, $llmModelo = 'https://api.deepseek.com', 'deepseek-chat'
+    $respaldoModelo = 'qwen-plus'
+} else {
+    $llmKey = $qwenKey
+    $llmUrl, $llmModelo = $URL_QWEN, 'qwen-plus'
+    $respaldoModelo = 'qwen-turbo'   # otro modelo, misma clave: cubre fallas de un modelo
+}
+Write-Host "Chat: $llmModelo · respaldo: $respaldoModelo · embeddings: text-embedding-v4"
 
 # Acceso de la demo: en Azure solo se guarda el hash de la clave, como secreto.
 # El usuario tampoco va en el repositorio público: se escribe al ejecutar el script.
@@ -76,11 +97,11 @@ $parametros = @(
     "adminToken=$adminToken"
     "accesoUsuario=$usuarioAcceso"
     "accesoClaveHash=$hashAcceso"
-    'llmBaseUrl=https://api.deepseek.com'
-    'llmModel=deepseek-chat'
-    'llm2BaseUrl=https://dashscope-intl.aliyuncs.com/compatible-mode/v1'
-    'llm2Model=qwen-plus'
-    'embeddingsBaseUrl=https://dashscope-intl.aliyuncs.com/compatible-mode/v1'
+    "llmBaseUrl=$llmUrl"
+    "llmModel=$llmModelo"
+    "llm2BaseUrl=$URL_QWEN"
+    "llm2Model=$respaldoModelo"
+    "embeddingsBaseUrl=$URL_QWEN"
     'embeddingsModel=text-embedding-v4'
 )
 

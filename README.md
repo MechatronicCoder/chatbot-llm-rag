@@ -364,6 +364,7 @@ Si un valor no tiene el tipo o el rango esperado (por ejemplo `RAG_MMR_LAMBDA=1.
 
 - DeepSeek: crear una cuenta en la plataforma de DeepSeek, generar una API key y cargar saldo. La URL base es `https://api.deepseek.com`. El nombre del modelo se toma de su documentación vigente.
 - Qwen (Alibaba Cloud Model Studio): activar Model Studio, crear una API key y anotar la región. La misma clave sirve para el chat de respaldo y para los embeddings. La URL de modo compatible con OpenAI depende de la región; la de `.env.example` corresponde a la internacional.
+- Solo Qwen: DeepSeek es opcional. Con una sola clave de Model Studio se usa `qwen-plus` como modelo principal, `qwen-turbo` como respaldo y `text-embedding-v4` para los embeddings; los valores exactos están comentados al inicio de la sección del LLM en `.env.example`.
 
 Las claves van solo en `.env` (excluido de Git) o en los secretos de Azure. Nunca en el código, en issues ni en capturas.
 

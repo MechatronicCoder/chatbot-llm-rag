@@ -164,7 +164,7 @@ uv run python scripts/hash_clave.py   # pide la clave dos veces; copiar el valor
 $env:ACCESO_CLAVE_HASH = Read-Secreto 'ACCESO_CLAVE_HASH'
 ```
 
-El script `infra/crear-app.ps1` hace todo el paso 7 de una vez: pide las claves sin mostrarlas, calcula el hash de la clave de acceso, genera el `ADMIN_TOKEN` y crea la app con la imagen más reciente del registro. Se ejecuta desde la raíz del repositorio con `powershell -ExecutionPolicy Bypass -File infra\crear-app.ps1`.
+El script `infra/crear-app.ps1` hace todo el paso 7 de una vez: pide las claves sin mostrarlas, calcula el hash de la clave de acceso, genera el `ADMIN_TOKEN` y crea la app con la imagen más reciente del registro. Se ejecuta desde la raíz del repositorio con `powershell -ExecutionPolicy Bypass -File infra\crear-app.ps1`. Por defecto usa solo Qwen, con una clave de Model Studio para el chat (`qwen-plus`), el respaldo (`qwen-turbo`) y los embeddings; `-Proveedor deepseek` usa DeepSeek para el chat, y `-Region cn` apunta a la región de Pekín si la clave es de allí.
 
 La configuración no secreta debe coincidir con la del `.env` local. Los valores siguientes son de ejemplo:
 
