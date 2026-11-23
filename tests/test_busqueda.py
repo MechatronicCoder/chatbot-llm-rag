@@ -79,3 +79,18 @@ def test_los_relacionados_tambien_se_muestran_como_tarjetas(
     )
     esperados = [lb["isbn"] for lb in resultado["libros"] + resultado.get("relacionados", [])]
     assert [lb["isbn"] for lb in r.libros] == esperados
+
+
+def test_los_relacionados_no_impiden_agregar_el_libro_pedido(bd: BaseDatos) -> None:
+    from app.servicios.turno import Acumulado
+    from app.servicios.verificacion import revisar_respuesta
+
+    encontrado = {"isbn": ISBN_CUENTOS}
+    acumulado = Acumulado(
+        usadas=[{"nombre": "buscar_libros"}],
+        libros=[encontrado, {"isbn": ISBN_SUMAS, "relacionado": True}],
+    )
+    problema = revisar_respuesta(
+        "¿Lo agrego al carrito?", acumulado, bd, "ana", "quiero Cuentos de colores"
+    )
+    assert problema is not None and "actualizar_carrito" in problema.instruccion

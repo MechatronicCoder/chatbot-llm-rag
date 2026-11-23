@@ -115,7 +115,7 @@ class Herramientas:
                 cantidad=MINIMO_RESULTADOS - len(libros),
             )
             if relacionados:
-                resultado["relacionados"] = relacionados
+                resultado["relacionados"] = [{**lb, "relacionado": True} for lb in relacionados]
         return resultado
 
     def _recomendar_libros(
