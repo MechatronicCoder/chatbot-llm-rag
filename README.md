@@ -145,7 +145,7 @@ mensaje
 | Ruta | Cuándo ocurre | ¿Usa el LLM? |
 |---|---|---|
 | `filtro` | Intento de manipular las instrucciones o de conseguir copias piratas | No |
-| `faq` | La pregunta coincide con una FAQ con similitud suficiente | No |
+| `faq` | La pregunta coincide con una FAQ con similitud suficiente y comparte con ella al menos una palabra con contenido | No |
 | `escalar` | Tema crítico (pagos, reclamos, denuncias) sin FAQ parecida | No |
 | `directa` | Saludos, preguntas de aclaración (por ejemplo, la edad) o temas ajenos | Sí |
 | `herramientas` | Búsqueda por título, autor o ISBN, fichas y estado de pedidos | Sí |
@@ -153,6 +153,8 @@ mensaje
 | `accion` | Reserva, cobro o cancelación de un pedido | Sí |
 | `rag` | Preguntas sobre políticas o derechos del consumidor | Sí |
 | `demo` | No hay modelo configurado o todos los proveedores fallaron | No |
+
+La similitud sola engaña: "¿cómo puedo programar una calculadora en Python?" se parece a "¿cómo puedo pagar?" (0.56) por las palabras que no dicen nada del tema. Por eso una FAQ solo responde si además comparte con el mensaje una palabra con contenido ("pagar", "envío", "tarjeta"); si no, el mensaje va al modelo, que lo trata como un tema ajeno.
 
 Una frase como "quiero un libro para…" se parece mucho a "quiero devolver un libro". Por eso una guardia reconoce las búsquedas de libros ("un libro para", "libros de", "recomiéndame", "busco", "parecido a") y las envía al modelo sin pasar por la FAQ. "Libro de reclamaciones" y "libros para regalo" siguen siendo preguntas frecuentes.
 

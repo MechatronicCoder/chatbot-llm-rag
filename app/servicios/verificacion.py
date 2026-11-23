@@ -13,6 +13,7 @@ import re
 from dataclasses import dataclass
 
 from app.catalogo.cotizacion import a_centimos, montos_en_centimos
+from app.core.texto import normalizar
 from app.persistencia.db import BaseDatos
 from app.servicios.turno import RE_BUSQUEDA, RE_EDAD, Acumulado
 
@@ -50,8 +51,30 @@ RE_MENOR = re.compile(
     r"\b(?:hij[oa]s?|niñ[oa]s?|sobrin[oa]s?|niet[oa]s?|alumn[oa]s?|adolescentes?|beb[eé]s?)\b",
     re.IGNORECASE,
 )
-# "S/ 59.90", "S/1,234.50", "S/ 59,90"
-RE_MONTO = re.compile(r"S/\s?(\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d+(?:[.,]\d{1,2})?)")
+# Pedir películas, series o música no es pedir libros, aunque diga "recomiendas".
+RE_OTRO_MEDIO = re.compile(
+    r"\b(?:pel[ií]culas?|series?|m[uú]sica|canci[oó]n(?:es)?|videojuegos?|podcasts?|anime)\b",
+    re.IGNORECASE,
+)
+RE_LECTURA = re.compile(r"\b(?:libros?|novelas?|cuentos?|leer|lectura|c[oó]mics?)\b", re.IGNORECASE)
+# Lo que solo se sabe consultando el catálogo: stock, precio, valoración, disponibilidad.
+RE_DATOS_CATALOGO = re.compile(
+    r"\bstock\b|\bvaloraci[oó]n|\bficha\b|\bISBN\b|S/\s?\d|\bdisponibles?\b|cat[aá]logo|"
+    r"\btenemos\b|\bcontamos con\b|\bc[oó]mpral[oa]s?\b|\bcomprarl[oa]s?\b|\breservarl[oa]s?\b",
+    re.IGNORECASE,
+)
+# Títulos destacados en la respuesta: **Título**, *Título*, «Título» o “Título”.
+RE_DESTACADO = re.compile(
+    r"\*\*([^*\n]{2,90})\*\*|(?<![*\w])\*([^*\n]{2,90})\*(?![*\w])|«([^»\n]{2,90})»|“([^”\n]{2,90})”"
+)
+ETIQUETAS = frozenset(
+    {
+        "precio", "stock", "stock disponible", "formato", "valoracion", "isbn", "subtotal",
+        "envio", "total", "sinopsis", "autor", "editorial", "paginas", "edad", "respuesta",
+    }
+)  # fmt: skip
+# "S/ 59.90", "S/1,234.50", "S/ 59,90", "S/. 59.90"
+RE_MONTO = re.compile(r"S/\.?\s?(\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d+(?:[.,]\d{1,2})?)")
 RE_NUMERO = re.compile(r"\d+(?:[.,]\d{1,2})?")
 NOTA = "[Revisión interna; no la menciones al cliente] "
 
@@ -92,6 +115,29 @@ def montos_sin_respaldo(texto: str, bd: BaseDatos, usuario_id: str, mensaje: str
     return [m for m in dict.fromkeys(escritos) if _centimos(m) not in conocidos]
 
 
+def titulos_ajenos(texto: str, bd: BaseDatos) -> list[str]:
+    """Títulos destacados en la respuesta que no son libros, autores ni zonas de la tienda.
+
+    "**Harry Potter y la piedra filosofal**" no está en el catálogo: si el modelo lo ofrece
+    con su stock y su valoración, los inventó. Las etiquetas ("**Precio**:"), los géneros
+    en minúscula y los nombres del catálogo no cuentan.
+    """
+    conocidos = {bd.tienda.nombre, *(z.nombre for z in bd.tienda.envio.values())}
+    for libro in bd.libros_activos():
+        conocidos |= {libro["titulo"], libro["autor"]}
+    normalizados = [f" {normalizar(c)} " for c in conocidos]
+    ajenos = []
+    for marca in RE_DESTACADO.finditer(texto):
+        frase = next(g for g in marca.groups() if g).strip()
+        limpia = normalizar(frase)
+        etiqueta = frase.endswith(":") or texto[marca.end() : marca.end() + 1] == ":"
+        if not limpia or not frase[0].isupper() or etiqueta or limpia in ETIQUETAS:
+            continue
+        if not any(f" {limpia} " in c or c in f" {limpia} " for c in normalizados):
+            ajenos.append(frase)
+    return list(dict.fromkeys(ajenos))
+
+
 def revisar_respuesta(
     texto: str, acumulado: Acumulado, bd: BaseDatos, usuario_id: str, mensaje: str = ""
 ) -> Problema | None:
@@ -108,8 +154,11 @@ def revisar_respuesta(
             respaldo=texto.strip(),
         )
     # "me das un libro de comedia o política" respondido sin herramientas: los títulos salen
-    # de la memoria del modelo, no del catálogo. Preguntar la edad de un menor sí vale.
-    if RE_BUSQUEDA.search(mensaje) and not acumulado.usadas and not RE_MENOR.search(mensaje):
+    # de la memoria del modelo, no del catálogo. Preguntar la edad de un menor sí vale, y
+    # "¿qué películas me recomiendas?" no es un pedido de libros.
+    otro_medio = RE_OTRO_MEDIO.search(mensaje) and not RE_LECTURA.search(mensaje)
+    busca = RE_BUSQUEDA.search(mensaje) and not otro_medio
+    if busca and not acumulado.usadas and not RE_MENOR.search(mensaje):
         return Problema(
             motivo="recomienda sin consultar el catálogo",
             instruccion=NOTA + "No consultaste el catálogo: llama ahora a recomendar_libros (o a "
@@ -117,6 +166,19 @@ def revisar_respuesta(
             "si dio varias opciones, una búsqueda por cada una.",
             respaldo="Para recomendarte libros que sí tenemos necesito revisar el catálogo. "
             "¿Me cuentas de nuevo qué te gustaría leer?",
+        )
+    # "Es Harry Potter… ¿te muestro su ficha, stock y valoración?" sin haber consultado nada:
+    # el libro no está en el catálogo y sus datos serían inventados.
+    sin_consultar = not acumulado.usadas and not otro_medio and RE_DATOS_CATALOGO.search(texto)
+    if sin_consultar and (ajenos := titulos_ajenos(texto, bd)):
+        return Problema(
+            motivo=f"nombra libros que no están en el catálogo: {', '.join(ajenos)}",
+            instruccion=NOTA + f"Nombraste {', '.join(ajenos)} como si estuviera en el "
+            "catálogo, sin consultarlo, y no está. Llama a buscar_libros con ese título, dile "
+            "al cliente con claridad que no lo tenemos y ofrece solo libros que devuelva una "
+            "herramienta. No des stock, precio ni valoración de libros que no consultaste.",
+            respaldo=f"No tenemos {ajenos[0]} en nuestro catálogo. Si me cuentas qué te "
+            "gustó de él, te recomiendo libros parecidos que sí tenemos.",
         )
     # "quiero el libro Drácula": encontró ese único libro, pero pregunta si lo agrega en vez
     # de agregarlo. Con una recomendación o varios resultados, preguntar sí es razonable.

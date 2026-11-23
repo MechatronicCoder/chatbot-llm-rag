@@ -18,6 +18,8 @@
     {"id": "cat-inexistente", "categoria": "catalogo", "mensajes": ["¿tienen El código Da Vinci?"], "ruta": ["herramientas", "directa"], "requiere_llm": true},
     {"id": "cat-tipeo-titulo", "categoria": "catalogo", "mensajes": ["¿tienen el silmarilion?"], "ruta": ["herramientas"], "libro_titulo": "El Silmarillion", "requiere_llm": true},
     {"id": "cat-tipeo-autor", "categoria": "catalogo", "mensajes": ["¿qué tienen de brandon sandersen?"], "ruta": ["herramientas"], "libro_titulo": ["Elantris", "El Héroe de Las Eras", "Arcanum ilimitado", "El Camino de los Reyes (el Archivo de las Tormentas 1)", "Aleación de ley (Nacidos de la bruma 4)"], "requiere_llm": true},
+    {"id": "cat-adivina-no-esta", "categoria": "catalogo", "mensajes": ["adivina la novela: un niño huérfano que, al cumplir cierta edad, viaja con un mago y luego resulta en un colegio de magia donde tiene un amigo, una mascota animal, y varios profesores muy sabios."], "ruta": ["herramientas", "recomendacion"], "requiere_llm": true},
+    {"id": "cat-alquimista-no-esta", "categoria": "catalogo", "mensajes": ["dime porqué el alquimista tiene tan buena valoración si me parece muy malo"], "ruta": ["herramientas", "recomendacion"], "requiere_llm": true},
     {"id": "reco-gatos", "categoria": "recomendacion", "mensajes": ["quiero un libro de aventuras con gatos para mi hijo de 9 años"], "ruta": ["recomendacion"], "libro_titulo": ["Medianoche (Los gatos guerreros: La nueva profecía 1)", "Fuego y hielo (Los gatos guerreros 2)"], "requiere_llm": true},
     {"id": "reco-isla", "categoria": "recomendacion", "mensajes": ["leí varias de Agatha Christie, quiero un misterio donde los invitados quedan aislados en una isla"], "ruta": ["recomendacion", "herramientas"], "libro_titulo": "Y no quedó ninguno", "requiere_llm": true},
     {"id": "reco-terror-juvenil", "categoria": "recomendacion", "mensajes": ["busco algo de terror para mi sobrino de 13 años"], "ruta": ["recomendacion"], "libro_titulo": ["El bisturí (La calle del terror)", "Quemada por el sol (La calle del terror)", "El chico nuevo (La calle del terror)"], "requiere_llm": true},
@@ -37,6 +39,8 @@
     {"id": "seguimiento-envio", "categoria": "seguimiento", "mensajes": ["¿cuánto cuesta el envío a Lima?", "¿y a provincias?"], "ruta": ["rag", "directa"], "contiene": ["18"], "requiere_llm": true},
     {"id": "escalado-persona", "categoria": "escalado", "mensajes": ["mi libro llegó roto y quiero hablar con una persona del equipo"], "ruta": ["escalar"], "requiere_llm": true},
     {"id": "fuera-capital", "categoria": "fuera_de_alcance", "mensajes": ["¿cuál es la capital de Francia?"], "ruta": ["directa"], "requiere_llm": true},
-    {"id": "fuera-tarea", "categoria": "fuera_de_alcance", "mensajes": ["¿me haces la tarea de matemáticas?"], "ruta": ["directa"], "requiere_llm": true}
+    {"id": "fuera-tarea", "categoria": "fuera_de_alcance", "mensajes": ["¿me haces la tarea de matemáticas?"], "ruta": ["directa"], "requiere_llm": true},
+    {"id": "fuera-calculadora", "categoria": "fuera_de_alcance", "mensajes": ["¿Cómo puedo programar una calculadora en Python?"], "ruta": ["directa"], "requiere_llm": true},
+    {"id": "fuera-peliculas", "categoria": "fuera_de_alcance", "mensajes": ["¿Qué películas me recomiendas para este fin de semana?"], "ruta": ["directa"], "requiere_llm": true}
   ]
 }

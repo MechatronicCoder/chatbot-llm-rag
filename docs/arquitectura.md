@@ -254,7 +254,7 @@ Regla de diseño: un dato, un dueño. Lo que se consulta o suma (pedidos, tokens
 | `carrito.actualizado` | INFO | El carrito cambió (pedido y total) |
 | `pedido.creado`, `pedido.cobrado`, `pedido.cancelado` | INFO | Cambios en pedidos |
 | `salida.bloqueada`, `salida.redactada` | WARN o INFO | La validación de salida actuó |
-| `salida.no_verificada` | WARN | La respuesta del modelo afirmaba algo que no pasó (id, pago, cancelación o cita); se pidió corrección |
+| `salida.no_verificada` | WARN | La respuesta del modelo afirmaba algo que no pasó (id, pago, cancelación, cita, monto o un libro que no está en el catálogo) o recomendaba sin consultarlo; se pidió corrección |
 | `degradacion` | WARN | Sin proveedor o con el tope diario de tokens alcanzado: modo demo |
 | `resumen.actualizado`, `resumen.fallo` | INFO o WARN | Se resumió lo que salió de la ventana del historial (mensajes cubiertos y tokens), o el modelo falló y quedó el resumen anterior |
 | `derivacion.solicitada` | WARN | El modelo pasó la atención a una persona; el motivo queda en el log para que alguien lo atienda |
