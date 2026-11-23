@@ -52,14 +52,14 @@ Con `qwen-plus` (respaldo `qwen-flash`) y `text-embedding-v4` en la región de S
 | faq | 7/7 |
 | seguridad | 3/3 |
 | cortesia | 2/2 |
-| catalogo | 3/3 |
-| recomendacion | 7/7 |
+| catalogo | 5/5 |
+| recomendacion | 8/8 |
 | accion | 2/2 |
 | carrito | 3/3 |
 | rag | 3/3 |
 | fuera_de_alcance | 2/2 |
 
-En total 32/32 rutas y el libro esperado en los 9 casos que lo piden, con una latencia mediana de 3,1 s y unos 139 000 tokens para todo el conjunto. La primera corrida con el carrito dio 30/31 y mostró dos fallos que se corrigieron: el modelo preguntaba "¿deseas agregarlo al carrito?" en lugar de agregarlo, y "¿cuánto me falta para el envío gratis?" lo respondía la FAQ, que no conoce el carrito. El caso del mensaje escrito por partes mostró otro: el modelo recomendaba títulos de memoria, sin llamar al catálogo; ahora la verificación lo detecta y le pide usar recomendar_libros, una búsqueda por cada opción. Antes de ajustar el prompt y de agregar la verificación de respuestas, el conjunto de 28 casos daba 19/28: el modelo pedía detalles en lugar de recomendar, pedía confirmación en lugar de reservar y respondía políticas sin consultar los documentos.
+En total 35/35 rutas y el libro esperado en los 11 casos que lo piden, con una latencia mediana de 4,5 s y unos 177 000 tokens para todo el conjunto. La primera corrida con el carrito dio 30/31 y mostró dos fallos que se corrigieron: el modelo preguntaba "¿deseas agregarlo al carrito?" en lugar de agregarlo, y "¿cuánto me falta para el envío gratis?" lo respondía la FAQ, que no conoce el carrito. El caso del mensaje escrito por partes mostró otro: el modelo recomendaba títulos de memoria, sin llamar al catálogo; ahora la verificación lo detecta y le pide usar recomendar_libros, una búsqueda por cada opción. Con la búsqueda tolerante, la primera corrida dio 33/35: los relacionados que agrega la búsqueda hacían que "quiero 2 de Drácula" ya no contara como un solo libro pedido, y el modelo volvía a preguntar; ahora los relacionados no cuentan. Antes de ajustar el prompt y de agregar la verificación de respuestas, el conjunto de 28 casos daba 19/28: el modelo pedía detalles en lugar de recomendar, pedía confirmación en lugar de reservar y respondía políticas sin consultar los documentos.
 
 ## Calibrar el umbral del RAG
 
