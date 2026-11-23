@@ -14,12 +14,16 @@ _ISBN = {
 }
 _PEDIDO = {"type": "string", "description": "Id del pedido, por ejemplo PED-1A2B3C4D"}
 _EDAD = {"type": "integer", "minimum": 0, "maximum": 99, "description": "Edad del lector"}
+_PRECIO_MAX = {"type": "number", "minimum": 0, "description": "Presupuesto máximo en soles"}
+_PRECIO_MIN = {"type": "number", "minimum": 0, "description": "Precio mínimo en soles"}
 
 ESQUEMAS: list[dict[str, Any]] = [
     {
         "name": "buscar_libros",
         "description": "Busca en el catálogo cuando el cliente nombra un título, un autor, una "
-        "saga, una editorial o un ISBN concreto. Devuelve precio y stock.",
+        "saga, una editorial o un ISBN concreto. Devuelve precio y stock. Tolera errores de "
+        "tipeo (`correcciones` dice cómo se entendió). Si encuentra menos de tres libros, agrega "
+        "`relacionados`: parecidos a lo pedido, pero no lo que pidió.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -27,6 +31,8 @@ ESQUEMAS: list[dict[str, Any]] = [
                 "categoria": {"type": "string", "description": "Categoría exacta, opcional"},
                 "autor": {"type": "string", "description": "Nombre del autor, opcional"},
                 "edad": _EDAD,
+                "precio_max": _PRECIO_MAX,
+                "precio_min": _PRECIO_MIN,
                 "limite": {"type": "integer", "minimum": 1, "maximum": 10},
             },
             "required": ["consulta"],
@@ -48,6 +54,8 @@ ESQUEMAS: list[dict[str, Any]] = [
                 },
                 "edad": _EDAD,
                 "categoria": {"type": "string", "description": "Categoría exacta, opcional"},
+                "precio_max": _PRECIO_MAX,
+                "precio_min": _PRECIO_MIN,
                 "excluir": {
                     "type": "array",
                     "items": {"type": "string"},

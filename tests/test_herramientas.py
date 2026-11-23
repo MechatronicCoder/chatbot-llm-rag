@@ -139,7 +139,7 @@ def test_error_inesperado_de_una_herramienta(servicio: ServicioChat, monkeypatch
     def explota(*_: object, **__: object) -> None:
         raise RuntimeError("base caída")
 
-    monkeypatch.setattr(servicio.bd, "buscar_libros", explota)
+    monkeypatch.setattr(servicio.bd, "buscar", explota)
     r = servicio.herramientas.ejecutar("buscar_libros", {"consulta": "x"}, "a")
     assert r == {"error": "RuntimeError: base caída"}
 

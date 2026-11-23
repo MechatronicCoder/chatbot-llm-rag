@@ -115,7 +115,9 @@ def revisar_respuesta(
     # "quiero el libro Drácula": encontró ese único libro, pero pregunta si lo agrega en vez
     # de agregarlo. Con una recomendación o varios resultados, preguntar sí es razonable.
     nombres = {u["nombre"] for u in acumulado.usadas}
-    concreto = len(acumulado.libros) == 1 and "recomendar_libros" not in nombres
+    # los relacionados que agrega la búsqueda no cuentan: el cliente pidió un libro
+    encontrados = [lb for lb in acumulado.libros if not lb.get("relacionado")]
+    concreto = len(encontrados) == 1 and "recomendar_libros" not in nombres
     compra = RE_COMPRA.search(mensaje) and not RE_BUSQUEDA.search(mensaje)
     if compra and concreto and not nombres & PEDIDOS and "?" in texto:
         return Problema(

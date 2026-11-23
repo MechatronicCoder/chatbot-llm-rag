@@ -14,6 +14,8 @@ from collections.abc import Callable, Sequence
 from typing import Any
 
 from app.catalogo.cotizacion import resumen
+from app.core.isbn import isbns_en
+from app.persistencia.catalogo import en_presupuesto
 from app.persistencia.db import BaseDatos, ErrorPedido
 from app.servicios.esquemas_herramientas import ACCIONES, ESQUEMAS, IDEMPOTENTES
 from app.servicios.rag import BuscadorDocumentos
@@ -24,8 +26,15 @@ __all__ = ["ACCIONES", "ESQUEMAS", "IDEMPOTENTES", "Herramientas"]
 Resultado = dict[str, Any]
 
 
+MINIMO_RESULTADOS = 3
+
+
 def _edad(valor: Any) -> int | None:
     return None if valor is None or valor == "" else int(valor)
+
+
+def _precio(valor: Any) -> float | None:
+    return None if valor is None or valor == "" else float(valor)
 
 
 class Herramientas:
@@ -67,6 +76,13 @@ class Herramientas:
             return {"error": f"{type(exc).__name__}: {exc}"}
 
     # -- catálogo ----------------------------------------------------------------
+    def _vivos(self, precio_min: Any = None, precio_max: Any = None) -> dict[str, Resultado]:
+        """Libros activos con stock y precio actuales, dentro del presupuesto."""
+        minimo, maximo = _precio(precio_min), _precio(precio_max)
+        return {
+            lb["isbn"]: lb for lb in self.bd.libros_activos() if en_presupuesto(lb, minimo, maximo)
+        }
+
     def _buscar_libros(
         self,
         consulta: str = "",
@@ -74,10 +90,33 @@ class Herramientas:
         autor: str | None = None,
         edad: int | None = None,
         limite: int = 5,
+        precio_max: float | None = None,
+        precio_min: float | None = None,
         **_: Any,
     ) -> Resultado:
-        libros = self.bd.buscar_libros(consulta or "", categoria, autor, _edad(edad), limite or 5)
-        return {"encontrados": len(libros), "libros": [resumen_libro(lb) for lb in libros]}
+        libros, correcciones = self.bd.buscar(
+            consulta or "", categoria, autor, _edad(edad), limite or 5,
+            _precio(precio_min), _precio(precio_max),
+        )  # fmt: skip
+        resultado: Resultado = {
+            "encontrados": len(libros),
+            "libros": [resumen_libro(lb) for lb in libros],
+        }
+        if correcciones:
+            resultado["correcciones"] = correcciones
+        # Pocos resultados: se completan con parecidos para que el cliente tenga opciones.
+        if len(libros) < MINIMO_RESULTADOS and (consulta or "").strip() and not isbns_en(consulta):
+            relacionados = self.recomendador.recomendar(
+                consulta,
+                self._vivos(precio_min, precio_max),
+                edad=_edad(edad),
+                categoria=categoria,
+                excluir=[lb["isbn"] for lb in libros],
+                cantidad=MINIMO_RESULTADOS - len(libros),
+            )
+            if relacionados:
+                resultado["relacionados"] = [{**lb, "relacionado": True} for lb in relacionados]
+        return resultado
 
     def _recomendar_libros(
         self,
@@ -86,13 +125,15 @@ class Herramientas:
         categoria: str | None = None,
         excluir: Sequence[str] | None = None,
         cantidad: int = 3,
+        precio_max: float | None = None,
+        precio_min: float | None = None,
         **_: Any,
     ) -> Resultado:
         if not (necesidad or "").strip():
             return {"error": "Falta describir qué busca el cliente."}
         recomendaciones = self.recomendador.recomendar(
             necesidad,
-            {lb["isbn"]: lb for lb in self.bd.libros_activos()},  # stock y precio actuales
+            self._vivos(precio_min, precio_max),
             edad=_edad(edad),
             categoria=categoria,
             excluir=excluir or (),
@@ -100,8 +141,9 @@ class Herramientas:
         )
         if not recomendaciones:
             return {
-                "error": "No hay libros del catálogo con stock que se parezcan a lo pedido. "
-                "Preguntar por otro tema, edad o autor; no inventar títulos."
+                "error": "No hay libros del catálogo con stock que se parezcan a lo pedido "
+                "(ni dentro del presupuesto, si lo hay). Preguntar por otro tema, edad, autor o "
+                "presupuesto; no inventar títulos."
             }
         return {"recomendaciones": recomendaciones}
 
