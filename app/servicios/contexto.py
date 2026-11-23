@@ -59,6 +59,7 @@ def mensajes_iniciales(
     *,
     saludo: bool,
     limite: int,
+    faq_minimo: float = 0.0,
 ) -> list[Mensaje]:
     sistema = prompt_sistema
     previos = historial(bd, session_id, limite)
@@ -73,7 +74,7 @@ def mensajes_iniciales(
         if es_seguimiento(mensaje):
             anterior = next((m["content"] for m in reversed(previos) if m["role"] == "user"), "")
             consulta = f"{anterior} {mensaje}"
-        if contexto := faq.contexto(consulta):
+        if contexto := faq.contexto(consulta, minimo=faq_minimo):
             contenido += f"\n\n{NOTA_FAQ}\n{contexto}"
     return [
         {"role": "system", "content": sistema},

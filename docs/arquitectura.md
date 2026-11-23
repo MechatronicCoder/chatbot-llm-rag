@@ -70,6 +70,8 @@ Así "el silmarilion" encuentra El Silmarillion y "brandon sandersen" a Brandon 
 
 Qwen reutiliza de su caché el prefijo de un pedido que ya vio, y esos tokens se cobran más baratos. Por eso lo que cambia en cada turno va al final: el mensaje de sistema (prompt y, si hay, el resumen de la conversación), las herramientas y el historial forman un prefijo fijo, y las preguntas frecuentes cercanas viajan pegadas al mensaje del cliente, marcadas como contexto interno. Medido con `qwen-plus`: con las FAQ al final del mensaje de sistema se servían de caché 3 968 de 5 727 tokens (69 %); con las FAQ en el mensaje del cliente, 5 632 de 5 728 (98 %). Un segundo mensaje de sistema en medio de la conversación no sirve: anuló la caché (0 tokens). El historial guarda solo lo que escribió el cliente, sin esa nota.
 
+En el mensaje del cliente, una FAQ poco parecida pesa más que en el de sistema. Con el mínimo de contexto de 0.25, a "quiero ciencia ficción con robots que investigan crímenes" se le pegaba la FAQ de devoluciones (similitud 0.30), y el modelo buscó por título en dos de tres intentos en vez de recomendar. Sin esa FAQ recomendó en cuatro de cuatro y en la mitad del tiempo. Por eso `FAQ_PROMPT_MIN` (0.5) decide qué FAQ se adjuntan; en la muestra medida, las preguntas de libros quedaron entre 0.22 y 0.48 y casi todas las de políticas entre 0.57 y 0.77. `FAQ_CONTEXTO_MIN` (0.25) sigue decidiendo cuándo un tema crítico se deriva y qué FAQ cercana usa el modo demo.
+
 ## Arranque
 
 ```mermaid

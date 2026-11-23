@@ -363,6 +363,7 @@ Todas las variables están documentadas en [.env.example](.env.example). Las pri
 | `PRECIO_ENTRADA_USD_MILLON`, `PRECIO_SALIDA_USD_MILLON` | Precio del modelo para estimar el costo en `/api/metricas` | 0: no se estima |
 | `API_REINTENTOS`, `API_ESPERA_MAX_S` | Reintentos ante 429, 5xx o cortes de red y espera máxima aceptada | 2 y 6 s |
 | `FAQ_UMBRAL`, `FAQ_MARGEN` | Cuándo una FAQ gana sobre el LLM | 0.55 y 0.03 |
+| `FAQ_PROMPT_MIN` | Similitud mínima para adjuntar una FAQ cercana al mensaje que ve el modelo | 0.5 |
 | `RAG_UMBRAL` | Similitud mínima para usar un fragmento | 0.35 |
 | `RAG_K_INICIAL`, `RAG_K_FINAL`, `RAG_MMR_LAMBDA` | Candidatos, fragmentos elegidos y equilibrio relevancia/variedad | 8, 3 y 0.5 |
 | `RECO_UMBRAL`, `RECO_UMBRAL_TFIDF` | Similitud mínima para recomendar un libro, con embeddings y con TF-IDF | 0.25 y 0.03 |

@@ -116,7 +116,7 @@ def test_un_seguimiento_busca_las_faq_con_el_mensaje_anterior(
 ) -> None:
     consultas: list[str] = []
     monkeypatch.setattr(
-        servicio_con_modelo.faq, "contexto", lambda texto, *_: consultas.append(texto) or ""
+        servicio_con_modelo.faq, "contexto", lambda texto, *_, **__: consultas.append(texto) or ""
     )
     bd = servicio_con_modelo.bd
     bd.guardar_turno("t-1", "s7", "ana", "¿cuánto cuesta el envío a Lima?", "S/ 10.")

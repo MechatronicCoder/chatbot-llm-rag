@@ -194,6 +194,7 @@ class ServicioChat:
             cierre["session_id"],
             saludo=saludo,
             limite=self.ajustes.max_mensajes,
+            faq_minimo=self.ajustes.faq_prompt_min,
         )
         acumulado = Acumulado()
         a = self.ajustes

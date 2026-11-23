@@ -91,6 +91,9 @@ class Settings(BaseSettings):
     faq_umbral: float = Field(default=0.55, ge=0, le=1)
     faq_margen: float = Field(default=0.03, ge=0, le=1)
     faq_contexto_min: float = Field(default=0.25, ge=0, le=1)
+    # Similitud mínima para adjuntar una FAQ al mensaje que ve el modelo. Con 0.25 se colaban
+    # FAQ ajenas en pedidos de libros (0.30 a 0.48) y lo desviaban de recomendar_libros.
+    faq_prompt_min: float = Field(default=0.5, ge=0, le=1)
 
     # -- recuperación de documentos (RAG) -------------------------------------
     rag_umbral: float = Field(default=0.35, ge=-1, le=1)

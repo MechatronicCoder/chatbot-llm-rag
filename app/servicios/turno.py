@@ -96,6 +96,7 @@ class AjustesChat:
     max_vueltas: int = 3
     limite_mensaje: int = 2000
     faq_contexto_min: float = 0.25
+    faq_prompt_min: float = 0.5
     temperatura: float = 0.3
     max_tokens: int = 700
     llm_lento_ms: int = 4000
@@ -107,6 +108,7 @@ class AjustesChat:
             max_vueltas=ajustes.max_vueltas,
             limite_mensaje=ajustes.limite_mensaje,
             faq_contexto_min=ajustes.faq_contexto_min,
+            faq_prompt_min=ajustes.faq_prompt_min,
             temperatura=ajustes.llm_temperatura,
             max_tokens=ajustes.llm_max_tokens,
             llm_lento_ms=ajustes.llm_lento_ms,
