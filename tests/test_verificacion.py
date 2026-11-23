@@ -17,7 +17,7 @@ def eventos(servicio: ServicioChat, turno_id: str) -> list[str]:
 # -- la función ------------------------------------------------------------------
 def test_un_id_inventado_o_ajeno_es_un_problema(bd: BaseDatos) -> None:
     pedido = bd.reservar_pedido("ana", ISBN_MAGO, 1)["pedido_id"]
-    pago = bd.registrar_pago("ana", pedido, "tarjeta")["pago_id"]
+    pago = bd.registrar_pago("ana", pedido, "efectivo")["pago_id"]
     vacio = Acumulado()
     assert revisar_respuesta(f"Tu pedido {pedido} y el pago {pago}.", vacio, bd, "ana") is None
     assert revisar_respuesta(f"tu pedido {pedido.lower()}", vacio, bd, "ana") is None
@@ -46,19 +46,16 @@ def test_un_pago_o_una_cancelacion_deben_estar_en_la_base(bd: BaseDatos) -> None
     vacio = Acumulado()
     pagado = f"Tu pedido {pedido} ya está pagado."
     problema = revisar_respuesta(pagado, vacio, bd, "ana")
-    assert problema is not None and "cobrar_pedido" in problema.instruccion
+    assert problema is not None and "«Pagar»" in problema.instruccion
+    assert "«Pagar»" in problema.respaldo
     assert revisar_respuesta("¡Pago confirmado! Gracias.", vacio, bd, "ana") is not None
-    cobro_ok = Acumulado(usadas=[{"nombre": "cobrar_pedido", "ok": True}])
-    cobro_fallido = Acumulado(usadas=[{"nombre": "cobrar_pedido", "ok": False}])
-    assert revisar_respuesta(pagado, cobro_ok, bd, "ana") is None
-    assert revisar_respuesta(pagado, cobro_fallido, bd, "ana") is not None
     cancelado = f"Listo, el pedido {pedido} fue cancelado."
     problema = revisar_respuesta(cancelado, vacio, bd, "ana")
     assert problema is not None and "cancelar_pedido" in problema.instruccion
     bd.cancelar_pedido(pedido)
     assert revisar_respuesta(cancelado, vacio, bd, "ana") is None
     otro = bd.reservar_pedido("ana", ISBN_MAGO, 1)["pedido_id"]
-    bd.registrar_pago("ana", otro, "tarjeta")
+    bd.registrar_pago("ana", otro, "efectivo")
     assert revisar_respuesta(f"Tu pedido {otro} está pagado.", vacio, bd, "ana") is None
 
 
@@ -103,18 +100,19 @@ def test_al_agotar_las_vueltas_tambien_se_verifica(
     assert "revisar nuestras políticas" in r.respuesta
 
 
-def test_el_modelo_corrige_un_pago_que_no_hizo(
+def test_decir_pagado_sin_pago_lleva_al_boton(
     servicio_con_modelo: ServicioChat, modelo: ModeloFalso
 ) -> None:
+    """Demo: "con transferencia bancaria" y el bot respondió "¡pagado con éxito!"."""
     pedido = servicio_con_modelo.bd.reservar_pedido("ana", ISBN_MAGO, 1)["pedido_id"]
     modelo.respuestas = [
-        respuesta(f"¡Pago confirmado! Tu pedido {pedido} está pagado."),
-        respuesta(tool_calls=[llamada("cobrar_pedido", pedido_id=pedido, metodo="tarjeta")]),
-        respuesta(f"Pagado: {pedido}."),
+        respuesta(f"¡Tu pedido {pedido} ha sido pagado con éxito por transferencia!"),
+        respuesta(f"Para pagar {pedido}, elige transferencia y pulsa «Pagar»."),
     ]
-    r = servicio_con_modelo.responder("págalo con tarjeta", "ana", "s-v4")
-    assert r.pagos and r.ruta == "accion"
-    assert servicio_con_modelo.bd.consultar_pedido(pedido)["estado"] == "pagado"  # type: ignore[index]
+    r = servicio_con_modelo.responder("con transferencia bancaria", "ana", "s-v4")
+    assert "«Pagar»" in modelo.llamadas[1]["mensajes"][-1]["content"]
+    assert "pagado con éxito" not in r.respuesta and not r.pagos
+    assert servicio_con_modelo.bd.consultar_pedido(pedido)["estado"] == "reservado"  # type: ignore[index]
 
 
 def test_preguntar_en_vez_de_recomendar_solo_cuenta_si_ya_dio_la_edad(bd: BaseDatos) -> None:

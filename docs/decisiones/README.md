@@ -16,6 +16,7 @@ Cada documento registra una decisión de arquitectura con el mismo formato: cont
 | [0010](0010-solo-main-despliega.md) | Solo main despliega: el despliegue es un job del CI y el environment acepta solo main | Aceptada |
 | [0011](0011-acceso-de-demo.md) | Acceso de demo con usuario y clave, sesión en cookie y límites contra bots | Aceptada |
 | [0012](0012-carrito-y-montos-en-centimos.md) | Carrito con subtotal, envío y total calculados por el sistema, en céntimos | Aceptada |
+| [0013](0013-el-cliente-paga-con-un-boton.md) | El cliente paga con un botón; de las tarjetas solo se guardan marca y 4 dígitos | Aceptada |
 
 Plantilla para una decisión nueva:
 

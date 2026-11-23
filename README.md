@@ -280,7 +280,7 @@ chatbot-llm-rag/
 │       ├── fabrica.py        Arma el servicio real a partir de la configuración
 │       ├── faq.py            Clasificador de preguntas frecuentes
 │       ├── recomendador.py   Recomendador híbrido de libros
-│       ├── esquemas_herramientas.py  Las 10 herramientas que ve el modelo
+│       ├── esquemas_herramientas.py  Las 9 herramientas que ve el modelo (ninguna cobra)
 │       ├── herramientas.py   Ejecución de las herramientas
 │       └── rag.py            Fragmentación (PDF y Markdown), índice, caché y MMR
 ├── datos/                    Contenido del negocio (se cambia sin tocar código)
@@ -525,6 +525,7 @@ Cada decisión importante está documentada con su contexto, las alternativas y 
 - [0010 Solo main despliega](docs/decisiones/0010-solo-main-despliega.md)
 - [0011 Acceso de demo con usuario y clave](docs/decisiones/0011-acceso-de-demo.md)
 - [0012 Carrito con montos calculados por el sistema](docs/decisiones/0012-carrito-y-montos-en-centimos.md)
+- [0013 El cliente paga con un botón y la tienda guarda solo marca y 4 dígitos](docs/decisiones/0013-el-cliente-paga-con-un-boton.md)
 
 ## Flujo de trabajo del equipo
 

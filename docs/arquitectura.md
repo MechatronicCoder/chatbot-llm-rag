@@ -33,7 +33,7 @@ Este documento describe los componentes, el arranque, el flujo de un turno, el m
 | `app/servicios/faq.py` | Clasificador TF-IDF de preguntas frecuentes | scikit-learn |
 | `app/servicios/rag.py` | Fragmentos de PDF y Markdown, índice denso y TF-IDF, caché y MMR | pypdf, numpy, `llm.embeddings` |
 | `app/servicios/recomendador.py` | Recomendador híbrido: similitud por contenido, valoración bayesiana y filtros | `rag`, `persistencia.catalogo` |
-| `app/servicios/esquemas_herramientas.py` | Las 10 herramientas que ve el modelo, cuáles son idempotentes y cuáles son acciones | nada |
+| `app/servicios/esquemas_herramientas.py` | Las 9 herramientas que ve el modelo (ninguna cobra), cuáles son idempotentes y cuáles son acciones | nada |
 | `app/servicios/herramientas.py` | Ejecución de las herramientas | `db`, `rag`, `recomendador` |
 | `app/servicios/chat.py` | El turno completo, paso a paso | `turno`, `faq`, `rag`, `herramientas` |
 | `app/servicios/contexto.py` | Lo que ve el modelo (prompt, FAQ cercanas, historial y mensaje) y el candado por sesión: dos mensajes de la misma conversación se atienden en orden, nunca a la vez | `db`, `faq` |
@@ -55,8 +55,8 @@ Las dependencias van en un solo sentido: la API conoce a los servicios, los serv
 | `consultar_pedido` | lectura | Estado, líneas y montos de un pedido del cliente |
 | `actualizar_carrito` | acción | Fija la cantidad de cada libro y la zona de envío; devuelve subtotal, envío, total y un resumen redactado por el sistema |
 | `reservar_pedido` | acción | Reserva el carrito: descuenta el stock de todas las líneas y fija los montos |
-| `cobrar_pedido` | acción | Cobra un pedido reservado, o reserva y cobra un carrito; se rechaza si el total cambió en el mismo turno |
 | `cancelar_pedido` | acción | Cancela un carrito o una reserva y devuelve el stock |
+| Cobrar | botón | El modelo no cobra: el cliente paga con el botón «Pagar» de la tarjeta del pedido, con una tarjeta guardada, una nueva, efectivo o transferencia (ADR 0013) |
 | `derivar_a_persona` | escalado | Registra el motivo y devuelve el teléfono, el correo y el horario de atención de `tienda.json`; el turno queda con ruta `escalar` |
 
 La búsqueda corrige errores de tipeo con `difflib`, pero con cuidado, porque corregir de más cambia el pedido del cliente por otro libro. Una palabra que no está en el catálogo se cambia por la más parecida solo si:
@@ -164,6 +164,8 @@ erDiagram
     pedidos ||--|{ pedido_lineas : "tiene"
     usuarios ||--o{ pedidos : "hace"
     pedidos ||--o{ pagos : "se cobra con"
+    usuarios ||--o{ tarjetas : "guarda"
+    tarjetas ||--o{ pagos : "paga"
     usuarios ||--o{ mensajes : "escribe"
     libros {
         text isbn PK
@@ -200,7 +202,14 @@ erDiagram
         text id PK
         text pedido_id FK
         text metodo
+        text tarjeta_id FK
         int monto_cent
+    }
+    tarjetas {
+        text id PK
+        text usuario_id FK
+        text marca
+        text ultimos4 "nunca el número completo"
     }
     mensajes {
         text id PK

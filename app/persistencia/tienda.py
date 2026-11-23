@@ -15,6 +15,7 @@ from typing import Any
 from app.catalogo.cotizacion import Cotizacion, Linea, a_centimos, a_soles, cotizar, detalle
 from app.persistencia.catalogo import RepositorioCatalogo
 from app.persistencia.esquema import METODOS_PAGO, ErrorPedido, momento_actual
+from app.persistencia.tarjetas import RepositorioTarjetas
 
 _LINEAS = (
     "select pl.isbn, pl.cantidad, pl.precio_cent, l.titulo, l.autor, l.precio, l.stock, "
@@ -27,7 +28,7 @@ def nuevo_pedido_id() -> str:
     return f"PED-{uuid.uuid4().hex[:8].upper()}"
 
 
-class RepositorioTienda(RepositorioCatalogo):
+class RepositorioTienda(RepositorioCatalogo, RepositorioTarjetas):
     """Operaciones de venta sobre el catálogo."""
 
     # -- usuarios ----------------------------------------------------------------
@@ -200,12 +201,22 @@ class RepositorioTienda(RepositorioCatalogo):
         return {**pedido, "unidades_devueltas": devueltas}
 
     def registrar_pago(
-        self, usuario_id: str, pedido_id: str, metodo: str = "tarjeta"
+        self,
+        usuario_id: str,
+        pedido_id: str,
+        metodo: str = "tarjeta",
+        tarjeta_id: str | None = None,
     ) -> dict[str, Any]:
-        """Cobra un pedido del mismo cliente, nunca dos veces; un carrito se reserva y cobra."""
+        """Cobra un pedido del mismo cliente, nunca dos veces; un carrito se reserva y cobra.
+
+        Con tarjeta, tiene que ser una tarjeta guardada de ese mismo cliente.
+        """
         metodo = (metodo or "tarjeta").strip().lower()
         if metodo not in METODOS_PAGO:
             raise ErrorPedido(f"Método no aceptado. Opciones: {', '.join(METODOS_PAGO)}.")
+        tarjeta = self.tarjeta_de(usuario_id, tarjeta_id or "") if metodo == "tarjeta" else None
+        if metodo == "tarjeta" and tarjeta is None:
+            raise ErrorPedido("Elige una de tus tarjetas guardadas o agrega una nueva.")
 
         with self.conectar() as con:
             con.execute("begin immediate")
@@ -218,7 +229,7 @@ class RepositorioTienda(RepositorioCatalogo):
                     if cambios:
                         raise ErrorPedido(
                             "No se cobró: cambió el precio de " + "; ".join(cambios) + ". "
-                            "Muestra el total nuevo con actualizar_carrito y pide confirmación."
+                            "Revisa el total nuevo antes de pagar."
                         )
                     fila = self._pedido_en_transaccion(con, fila["id"])
                 if fila["estado"] != "reservado":
@@ -228,9 +239,16 @@ class RepositorioTienda(RepositorioCatalogo):
                     )
                 pago_id = f"PAG-{uuid.uuid4().hex[:8].upper()}"
                 con.execute(
-                    "insert into pagos (id, pedido_id, metodo, monto_cent, estado, creado_en) "
-                    "values (?, ?, ?, ?, 'aprobado', ?)",
-                    (pago_id, fila["id"], metodo, fila["total_cent"], momento_actual()),
+                    "insert into pagos (id, pedido_id, metodo, tarjeta_id, monto_cent, estado, "
+                    "creado_en) values (?, ?, ?, ?, ?, 'aprobado', ?)",
+                    (
+                        pago_id,
+                        fila["id"],
+                        metodo,
+                        tarjeta["id"] if tarjeta else None,
+                        fila["total_cent"],
+                        momento_actual(),
+                    ),
                 )
                 con.execute(
                     "update pedidos set estado = 'pagado', actualizado_en = ? where id = ?",
@@ -244,6 +262,7 @@ class RepositorioTienda(RepositorioCatalogo):
             "pago_id": pago_id,
             "pedido_id": fila["id"],
             "metodo": metodo,
+            "tarjeta": tarjeta["etiqueta"] if tarjeta else None,
             "monto": a_soles(fila["total_cent"]),
             "estado": "pagado",
         }

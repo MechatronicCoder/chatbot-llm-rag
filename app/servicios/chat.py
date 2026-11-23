@@ -28,6 +28,7 @@ from app.persistencia.db import BaseDatos
 from app.servicios.contexto import CandadosPorSesion, mensajes_iniciales
 from app.servicios.faq import Decision, IndiceFAQ
 from app.servicios.herramientas import Herramientas
+from app.servicios.medios_de_pago import pedido_para_pagar, redactar_y_guardar
 from app.servicios.rag import BuscadorDocumentos
 from app.servicios.recomendador import Recomendador
 from app.servicios.resumen import Resumidor
@@ -105,8 +106,9 @@ class ServicioChat:
             "turno.inicio", turno_id, sesion=session_id, usuario=usuario_id, largo=len(mensaje)
         )
 
-        # 1. redacción: el valor original no llega ni a la base ni al log ni al modelo
-        limpio, tipos = seguridad.redactar_datos_sensibles(mensaje)
+        # 1. redacción: el valor original no llega ni a la base ni al log ni al modelo; una
+        # tarjeta válida queda guardada como medio de pago (solo marca y últimos 4 dígitos)
+        limpio, tipos, tarjetas = redactar_y_guardar(self.bd, usuario_id, mensaje)
         if tipos:
             self.registro.info("dato.enmascarado", turno_id, tipos=",".join(tipos))
 
@@ -138,6 +140,8 @@ class ServicioChat:
             motivo_forzado = f"busqueda de libros: {busqueda.group(0)!r}"
         elif es_seguimiento(limpio):  # "¿y para 12 años?" depende del historial
             motivo_forzado = "seguimiento del mensaje anterior"
+        elif tarjetas:  # el modelo le avisa que ya puede pagar con ella
+            motivo_forzado = "tarjeta guardada"
         decision = self.faq.clasificar(
             limpio, forzar_llm=motivo_forzado is not None, motivo_forzado=motivo_forzado
         )
@@ -307,7 +311,7 @@ class ServicioChat:
             pagos=acumulado.pagos,
             documentos=acumulado.documentos,
             libros=acumulado.libros,
-            carrito=acumulado.carrito,
+            carrito=acumulado.carrito or pedido_para_pagar(self.bd, cierre["usuario_id"], mensaje),
             modo="real",
             modelo=modelo,
             endpoint=proveedor,

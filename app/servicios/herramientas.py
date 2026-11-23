@@ -5,7 +5,8 @@ excepciones: devuelven `{"error": ...}` para que el modelo explique el problema
 al cliente en lugar de romper la conversación.
 
 El `usuario_id` no lo elige el modelo: viene de la sesión. Así un cliente no
-puede reservar, cobrar ni consultar pedidos de otro cambiando un argumento.
+puede reservar, cancelar ni consultar pedidos de otro cambiando un argumento. El modelo
+no cobra: el cliente paga con el botón de la tarjeta del pedido.
 """
 
 from __future__ import annotations
@@ -54,7 +55,6 @@ class Herramientas:
             "reservar_pedido": self._reservar_pedido,
             "consultar_pedido": self._consultar_pedido,
             "cancelar_pedido": self._cancelar_pedido,
-            "cobrar_pedido": self._cobrar_pedido,
             "buscar_politica": self._buscar_politica,
             "derivar_a_persona": self._derivar_a_persona,
         }
@@ -191,13 +191,6 @@ class Herramientas:
         if pedido["usuario_id"] != usuario_id:
             return {"error": "Ese pedido pertenece a otro cliente."}
         return self._con_resumen(self.bd.cancelar_pedido(pedido_id))
-
-    def _cobrar_pedido(
-        self, usuario_id: str, pedido_id: str = "", metodo: str = "tarjeta", **_: Any
-    ) -> Resultado:
-        pago = self.bd.registrar_pago(usuario_id, pedido_id, metodo)
-        pedido = self.bd.consultar_pedido(pago["pedido_id"])
-        return {**self._con_resumen(pedido), **pago} if pedido else pago
 
     # -- atención humana -----------------------------------------------------------
     def _derivar_a_persona(self, motivo: str = "", **_: Any) -> Resultado:
