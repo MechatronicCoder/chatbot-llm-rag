@@ -200,3 +200,12 @@ def test_transferencia_bancaria_no_es_un_libro_aunque_la_nombre_el_cliente(bd: B
     mensaje = "dime porqué el alquimista tiene tan buena valoración"
     problema = revisar_respuesta(alquimista, Acumulado(), bd, "ana", mensaje)
     assert problema is not None and "El alquimista" in problema.motivo
+
+
+# -- 7. buscar por autor mostraba la tarjeta de su libro agotado -----------------------
+def test_buscar_por_autor_no_muestra_su_libro_agotado(bd: BaseDatos) -> None:
+    # "libros de Brandon Sanderson" traía *El Héroe de las Eras* (stock 0) entre las tarjetas
+    assert ISBN_AGOTADO not in {lb["isbn"] for lb in bd.buscar_libros("clara reloj")}
+    assert ISBN_AGOTADO not in {lb["isbn"] for lb in bd.buscar_libros("", autor="Clara Reloj")}
+    # pedir justo ese título sí lo trae, para decir que está agotado
+    assert [lb["isbn"] for lb in bd.buscar_libros("el ladrón del tiempo")] == [ISBN_AGOTADO]

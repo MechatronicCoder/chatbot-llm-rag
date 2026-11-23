@@ -56,6 +56,10 @@ def _palabras_buscables(libro: dict[str, Any]) -> set[str]:
     return {raiz(p) for p in normalizar(" ".join(campos)).split()}
 
 
+def _palabras_titulo(libro: dict[str, Any]) -> set[str]:
+    return {raiz(p) for p in normalizar(libro["titulo"]).split()}
+
+
 def corregir(palabras: list[str], vocabulario: set[str]) -> tuple[list[str], dict[str, str]]:
     """Cambia cada palabra de 4 letras o más que no está en el catálogo por la más parecida.
 
@@ -191,10 +195,14 @@ class RepositorioCatalogo(Conexion):
             puntuados = [t for t in puntuados if t[0] == len(palabras)]
             if not puntuados:
                 cambios = {k: v for k, v in cambios.items() if k not in corregidas}
-        # Un agotado solo aparece si es justo el libro pedido (tiene todas las palabras), para
-        # decir que está agotado; como opción entre otras no sirve, porque no se puede comprar.
+        # Un agotado solo aparece si es justo el libro pedido (su título tiene todas las
+        # palabras), para decir que está agotado; como opción entre otras no sirve, porque no se
+        # puede comprar. Buscar "Brandon Sanderson" no pide *El Héroe de las Eras*, que está
+        # agotado: en la demo su tarjeta salía igual debajo de la respuesta.
         puntuados = [
-            t for t in puntuados if t[2]["stock"] > 0 or (palabras and t[0] == len(palabras))
+            t
+            for t in puntuados
+            if t[2]["stock"] > 0 or (palabras and set(palabras) <= _palabras_titulo(t[2]))
         ]
         clave = ORDENES.get(orden or "", ORDENES["valoracion"])
         puntuados.sort(key=lambda t: (-t[0], *clave(t[2])))
