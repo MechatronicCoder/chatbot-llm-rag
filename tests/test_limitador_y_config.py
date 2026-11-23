@@ -10,6 +10,7 @@ from pydantic import ValidationError
 
 from app import __version__
 from app.api.limitador import LimitadorPeticiones
+from app.core.claves import generar_hash
 from app.core.config import RAIZ
 from tests.conftest import crear_ajustes
 
@@ -46,10 +47,16 @@ def test_config_rechaza_valores_fuera_de_rango(tmp_path: Path) -> None:
         crear_ajustes(tmp_path, chunk_max_palabras=50, chunk_overlap_palabras=60)
 
 
-def test_produccion_exige_admin_token(tmp_path: Path) -> None:
+def test_produccion_exige_admin_token_y_acceso(tmp_path: Path) -> None:
+    acceso = {"acceso_usuario": "demo", "acceso_clave_hash": generar_hash("x", iteraciones=1000)}
     with pytest.raises(ValidationError, match="ADMIN_TOKEN"):
-        crear_ajustes(tmp_path, entorno="produccion", admin_token="")
-    assert crear_ajustes(tmp_path, entorno="produccion", admin_token="x").entorno == "produccion"
+        crear_ajustes(tmp_path, entorno="produccion", admin_token="", **acceso)
+    with pytest.raises(
+        ValidationError, match="ACCESO_USUARIO y ACCESO_CLAVE_HASH son obligatorios"
+    ):
+        crear_ajustes(tmp_path, entorno="produccion", admin_token="x")
+    ajustes = crear_ajustes(tmp_path, entorno="produccion", admin_token="x", **acceso)
+    assert ajustes.entorno == "produccion" and ajustes.acceso_configurado
 
 
 def test_rutas_relativas_se_resuelven_desde_la_raiz(tmp_path: Path) -> None:

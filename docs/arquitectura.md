@@ -10,9 +10,12 @@ Este documento describe los componentes, el arranque, el flujo de un turno, el m
 | `app/api/rutas.py` | Endpoints HTTP públicos y de administración | `dependencias`, `esquemas` |
 | `app/api/dependencias.py` | Estado compartido (`EstadoApp`), indexación en segundo plano, token de administración, IP del cliente | `servicios.chat` |
 | `app/api/limitador.py` | Límite de peticiones por cliente con ventana deslizante | nada |
+| `app/api/acceso.py` | Acceso de la demo: inicio y cierre de sesión, límites de intentos y dependencia que protege la API | `dependencias`, `core.claves` |
+| `app/api/sesiones.py` | Sesiones en memoria con vencimiento | nada |
 | `app/catalogo/modelo.py` | Esquema de un libro (`Libro`) con sus validaciones y el texto que se usa para buscarlo | pydantic, `core.isbn` |
 | `app/catalogo/carga.py` | Carga del catálogo y de la tienda; reúne todos los errores en un `ErrorCatalogo` y lista advertencias | `modelo` |
 | `app/core/config.py` | Lectura y validación del `.env` | pydantic-settings |
+| `app/core/claves.py` | Hash y verificación de claves con PBKDF2-SHA256 | nada |
 | `app/core/isbn.py` | Normalización de ISBN, dígito verificador y detección en un texto | nada |
 | `app/core/texto.py` | Normalización de texto sin tildes ni signos | nada |
 | `app/core/logs.py` | Eventos por turno en consola y JSONL | `config` |
@@ -210,6 +213,8 @@ Regla de diseño: un dato, un dueño. Lo que se consulta o suma (pedidos, tokens
 | `salida.bloqueada`, `salida.redactada` | WARN o INFO | La validación de salida actuó |
 | `degradacion` | WARN | Sin proveedor: modo demo |
 | `limite.superado` | WARN | Un cliente superó el límite por minuto |
+| `acceso.correcto`, `acceso.cerrado` | INFO | Inicio y cierre de sesión del acceso de la demo |
+| `acceso.fallido`, `acceso.bloqueado` | WARN | Usuario o clave incorrectos (sin registrar la clave) o demasiados intentos |
 | `turno.fin` | INFO | Cierre con ruta, latencia y tokens |
 
 En local la consola muestra una línea legible por evento; en Azure (`LOG_FORMATO=json`) cada línea es un JSON que Log Analytics indexa. En ambos casos se escribe además `var/logs/eventos.jsonl`, que alimenta el panel de logs del frontend.

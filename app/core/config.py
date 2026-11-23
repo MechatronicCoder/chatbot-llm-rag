@@ -15,6 +15,8 @@ from typing import Any, Literal
 from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.core.claves import hash_valido
+
 RAIZ = Path(__file__).resolve().parents[2]
 
 CSP_POR_DEFECTO = (
@@ -105,6 +107,13 @@ class Settings(BaseSettings):
     limite_chat_por_minuto: int = Field(default=20, ge=0)
     proxies_confiables: int = Field(default=0, ge=0, le=5)
     admin_token: SecretStr = SecretStr("")
+    # Acceso de la demo: un usuario y el hash de su clave (scripts/hash_clave.py).
+    # Vacíos en local = sin login; en producción son obligatorios.
+    acceso_usuario: str = Field(default="", max_length=60)
+    acceso_clave_hash: SecretStr = SecretStr("")
+    acceso_horas_sesion: int = Field(default=8, ge=1, le=72)
+    # Intentos de inicio de sesión por IP cada 15 minutos (contra adivinar la clave)
+    acceso_intentos_por_ip: int = Field(default=5, ge=1, le=50)
     content_security_policy: str = CSP_POR_DEFECTO
 
     # -- validaciones ---------------------------------------------------------
@@ -131,12 +140,29 @@ class Settings(BaseSettings):
             raise ValueError(
                 "ADMIN_TOKEN es obligatorio en producción: protege logs, métricas y ventas."
             )
+        clave_hash = self.acceso_clave_hash.get_secret_value()
+        if bool(self.acceso_usuario) != bool(clave_hash):
+            raise ValueError("ACCESO_USUARIO y ACCESO_CLAVE_HASH se definen juntos.")
+        if clave_hash and not hash_valido(clave_hash):
+            raise ValueError(
+                "ACCESO_CLAVE_HASH no tiene el formato esperado; generarlo con "
+                "python scripts/hash_clave.py."
+            )
+        if self.entorno == "produccion" and not self.acceso_configurado:
+            raise ValueError(
+                "ACCESO_USUARIO y ACCESO_CLAVE_HASH son obligatorios en producción: "
+                "sin ellos cualquiera podría usar el chat y gastar el crédito de la API."
+            )
         return self
 
     # -- vistas de solo lectura -----------------------------------------------
     @property
     def llm_configurado(self) -> bool:
         return bool(self.llm_base_url and self.llm_api_key.get_secret_value() and self.llm_model)
+
+    @property
+    def acceso_configurado(self) -> bool:
+        return bool(self.acceso_usuario and self.acceso_clave_hash.get_secret_value())
 
     @property
     def embeddings_configurados(self) -> bool:
@@ -161,6 +187,7 @@ class Settings(BaseSettings):
             "reco_pesos": [self.reco_peso_similitud, self.reco_peso_valoracion],
             "reco_votos_minimos": self.reco_votos_minimos,
             "limite_chat_por_minuto": self.limite_chat_por_minuto,
+            "acceso_requerido": self.acceso_configurado,
             "log_nivel": self.log_nivel,
         }
 

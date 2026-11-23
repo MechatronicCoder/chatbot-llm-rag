@@ -6,9 +6,11 @@
  * - Mientras el estado sea "iniciando" (o el servidor no responda) reintenta
  *   con más frecuencia; al pasar a "ok" recarga catálogo, pedidos y logs.
  * - Mantiene los temporizadores: logs y métricas cada 3 s, salud cada 10 s.
+ * - Si el backend pide iniciar sesión, muestra la pantalla de acceso (acceso.js).
  */
 
-import { salud } from './api.js';
+import { configurarAvisoDeAcceso, salud } from './api.js';
+import { iniciarAcceso } from './acceso.js';
 import { iniciarChat } from './chat.js';
 import { iniciarPanel } from './panel.js';
 import { iniciarLogs } from './logs.js';
@@ -133,6 +135,12 @@ chat = iniciarChat({
   alResponder,
 });
 
+const acceso = iniciarAcceso({
+  alEntrar: () => alQuedarListo(),
+  alSalir: () => chat.limpiar(),
+});
+configurarAvisoDeAcceso(() => acceso.sesionRechazada());
+
 // ---------------------------------------------------------------------------
 // Bucle de salud
 // ---------------------------------------------------------------------------
@@ -173,7 +181,8 @@ async function revisarSalud() {
     }
   }
 
-  if (estado === 'ok' && estadoAnterior !== null && estadoAnterior !== 'ok') alQuedarListo();
+  const recienListo = estado === 'ok' && estadoAnterior !== null && estadoAnterior !== 'ok';
+  if (recienListo && !acceso.bloqueado()) alQuedarListo();
   estadoAnterior = estado;
 
   if (estado === 'iniciando') espera = REINTENTO_INICIANDO_MS;
@@ -187,14 +196,17 @@ async function revisarSalud() {
 // ---------------------------------------------------------------------------
 
 revisarSalud();
-panel.cargarCatalogo();
-panel.cargarPedidos();
-logs.refrescar();
+// Con el acceso activado, los datos se cargan recién al iniciar sesión (alEntrar).
+acceso.verificar().then((d) => {
+  if (!d?.requerido || d.autenticado) alQuedarListo();
+});
 
-setInterval(() => logs.refrescarSiActivo(), INTERVALO_LOGS_MS);
+setInterval(() => {
+  if (!acceso.bloqueado()) logs.refrescarSiActivo();
+}, INTERVALO_LOGS_MS);
 
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) return;
-  logs.refrescarSiActivo();
+  if (!acceso.bloqueado()) logs.refrescarSiActivo();
   revisarSalud();
 });

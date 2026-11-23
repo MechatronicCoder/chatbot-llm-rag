@@ -4,6 +4,26 @@ La referencia interactiva, generada a partir del código, está en `/docs` (Swag
 
 Todas las respuestas son JSON salvo `/api/ventas.csv`. Los identificadores de usuario y sesión aceptan letras, números, `.`, `_`, `-` y `@`, hasta 60 caracteres. Los precios están en la moneda de `datos/tienda.json`, que `/api/health` informa en `tienda.moneda`.
 
+## Acceso
+
+Con `ACCESO_USUARIO` y `ACCESO_CLAVE_HASH` configurados (obligatorios en producción), todas las rutas salvo `/api/health*` y `/api/acceso/*` responden `401` con el encabezado `X-Acceso: requerido` hasta iniciar sesión. Sin esas variables, en local, la API queda abierta.
+
+| Ruta | Respuesta |
+|---|---|
+| `GET /api/acceso/estado` | `{requerido, autenticado, usuario}` |
+| `POST /api/acceso/login` | Con `{usuario, clave}` correctos: `{requerido: true, autenticado: true, usuario}` y la cookie de sesión `acceso_sesion` (HttpOnly, SameSite=Strict, Secure en producción, 8 horas). Si no: `401` con "Usuario o clave incorrectos.", sin decir cuál falló |
+| `POST /api/acceso/logout` | Cierra la sesión y borra la cookie |
+
+Los intentos de inicio de sesión se limitan a 5 por IP cada 15 minutos (`ACCESO_INTENTOS_POR_IP`) y a 100 en total; al superarlos responde `429` con `Retry-After`.
+
+Desde PowerShell, la sesión se guarda en una variable y se reutiliza en las demás llamadas:
+
+```powershell
+$credenciales = @{ usuario = (Read-Host "Usuario"); clave = (Read-Host "Clave") } | ConvertTo-Json
+Invoke-RestMethod -Method Post -Uri http://localhost:8000/api/acceso/login -ContentType "application/json" -Body $credenciales -SessionVariable sesion
+Invoke-RestMethod "http://localhost:8000/api/libros?limite=3" -WebSession $sesion
+```
+
 ## Chat
 
 `POST /api/chat`

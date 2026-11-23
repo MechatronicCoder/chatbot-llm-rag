@@ -10,12 +10,16 @@ from collections.abc import Callable
 from fastapi import Depends, Header, HTTPException, Request, status
 
 from app.api.limitador import LimitadorPeticiones
+from app.api.sesiones import Sesiones
 from app.catalogo.carga import Tienda
 from app.core.config import Settings
 from app.core.logs import RegistroEventos
 from app.persistencia.db import BaseDatos
 from app.servicios.chat import ServicioChat
 from app.servicios.fabrica import construir_servicio
+
+VENTANA_INTENTOS_S = 15 * 60
+MAX_INTENTOS_TOTALES = 100  # por ventana, sumando todas las IP
 
 
 class EstadoApp:
@@ -42,6 +46,13 @@ class EstadoApp:
         self.tienda = tienda
         self.arranque = time.time()
         self.limitador = LimitadorPeticiones(ajustes.limite_chat_por_minuto)
+        # Acceso de la demo: sesiones y dos topes de intentos de inicio de sesión,
+        # uno por IP y otro total (contra bots que reparten intentos entre muchas IP).
+        self.sesiones = Sesiones(ajustes.acceso_horas_sesion * 3600)
+        self.intentos_por_ip = LimitadorPeticiones(
+            ajustes.acceso_intentos_por_ip, VENTANA_INTENTOS_S
+        )
+        self.intentos_totales = LimitadorPeticiones(MAX_INTENTOS_TOTALES, VENTANA_INTENTOS_S)
         self._servicio = servicio
         self._fabrica = fabrica or (lambda: construir_servicio(ajustes, registro, bd))
         self._candado = threading.Lock()
