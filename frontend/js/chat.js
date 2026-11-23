@@ -8,8 +8,10 @@
  * funciones que recibe en iniciarChat().
  */
 
+import { crearAgrupador } from './agrupador.js';
 import { enviarMensaje, ErrorApi } from './api.js';
 import { tarjetaCarrito } from './carrito.js';
+import { chipsDe, detalleJson } from './detalles.js';
 import { tarjetasDeLibros } from './libros.js';
 import {
   crear,
@@ -18,9 +20,6 @@ import {
   ponerHtmlFormateado,
   irAlFinal,
   desplazarA,
-  formatearMs,
-  formatearPuntaje,
-  resumir,
 } from './util.js';
 
 const SUGERENCIAS = [
@@ -59,9 +58,10 @@ export function iniciarChat({ obtenerUsuario, alFiltrarTurno, alResponder } = {}
     return Math.max(0, Math.ceil((bloqueadoHasta - Date.now()) / 1000));
   }
 
+  // Mientras el asistente responde se puede seguir escribiendo: lo nuevo espera en la cola.
   function actualizarBoton() {
     const restante = segundosBloqueo();
-    boton.disabled = enviando || restante > 0;
+    boton.disabled = restante > 0;
     const texto = restante > 0 ? `Espera ${restante} s` : textoBoton;
     if (boton.textContent !== texto) boton.textContent = texto;
   }
@@ -74,6 +74,7 @@ export function iniciarChat({ obtenerUsuario, alFiltrarTurno, alResponder } = {}
       if (segundosBloqueo() === 0) {
         clearInterval(temporizadorBloqueo);
         temporizadorBloqueo = null;
+        procesarCola(); // lo que se escribió durante la espera sale ahora
       }
     }, 250);
     actualizarBoton();
@@ -149,7 +150,7 @@ export function iniciarChat({ obtenerUsuario, alFiltrarTurno, alResponder } = {}
     const carrito = tarjetaCarrito(d.carrito);
     if (carrito) nodo.append(carrito);
 
-    const chips = chipsDe(d);
+    const chips = chipsDe(d, turnoFiltrado);
     if (chips.length) {
       nodo.append(crear('ul', { clase: 'datos', atributos: { 'aria-label': 'Detalles de la respuesta' } }, chips));
     }
@@ -196,98 +197,37 @@ export function iniciarChat({ obtenerUsuario, alFiltrarTurno, alResponder } = {}
   }
 
   // -------------------------------------------------------------------------
-  // Chips de metadatos
-  // -------------------------------------------------------------------------
-
-  function chip(texto, clase = '', titulo = '') {
-    return crear('li', { clase: ['dato', clase], texto, atributos: { title: titulo || null } });
-  }
-
-  /** En Markdown la "página" es la sección del documento. */
-  function etiquetaPagina(doc) {
-    const esMarkdown = /\.md$/i.test(String(doc.documento ?? ''));
-    return `${esMarkdown ? 'secc.' : 'pág.'} ${doc.pagina ?? '—'}`;
-  }
-
-  function nombreDocumento(ruta) {
-    const base = String(ruta ?? '').split(/[\\/]/).pop() || 'documento';
-    return base.replace(/\.[a-z0-9]+$/i, '').replace(/_/g, ' ');
-  }
-
-  function chipTurno(d) {
-    const etiqueta = typeof d.turno === 'number' ? `turno ${d.turno} · ${d.turno_id}` : `turno ${d.turno_id}`;
-    const boton = crear('button', {
-      clase: 'dato turno',
-      texto: etiqueta,
-      atributos: {
-        type: 'button',
-        'aria-pressed': String(turnoFiltrado === d.turno_id),
-        'aria-label': `Filtrar el log por el ${etiqueta}`,
-        title: 'Filtrar el panel de logs por este turno',
-      },
-      datos: { turno: d.turno_id },
-    });
-    return crear('li', {}, boton);
-  }
-
-  function chipsDe(d) {
-    const chips = [];
-
-    if (d.ruta) chips.push(chip(`ruta ${d.ruta}`, 'ruta', d.fuente ? `Fuente: ${d.fuente}` : ''));
-    if (d.modo) chips.push(chip(`modo ${d.modo}`, d.modo === 'demo' ? 'demo' : ''));
-    if (d.latencia_ms !== null && d.latencia_ms !== undefined) {
-      chips.push(chip(formatearMs(d.latencia_ms), '', 'Latencia del turno'));
-    }
-    if (d.modelo) chips.push(chip(d.modelo, '', d.endpoint ? `Endpoint: ${d.endpoint}` : 'Modelo'));
-    if (Array.isArray(d.tokens) && d.tokens.some((n) => n !== null && n !== undefined)) {
-      chips.push(chip(`tokens ${d.tokens[0] ?? 0}/${d.tokens[1] ?? 0}`, '', 'Tokens de entrada / salida'));
-    }
-    if (d.faq_id) {
-      const similitud = d.similitud !== null && d.similitud !== undefined ? ` · ${formatearPuntaje(d.similitud)}` : '';
-      chips.push(chip(`FAQ ${d.faq_id}${similitud}`, 'ruta', 'Pregunta frecuente y similitud'));
-    }
-
-    for (const h of Array.isArray(d.herramientas) ? d.herramientas : []) {
-      const argumentos = h.argumentos ? `\nArgumentos: ${resumir(JSON.stringify(h.argumentos), 200)}` : '';
-      const titulo = `${h.ok === false ? 'Falló' : 'Correcta'}${h.resumen ? ` · ${h.resumen}` : ''}${argumentos}`;
-      chips.push(chip(`${h.nombre} ${formatearMs(h.ms)}`, ['herramienta', h.ok === false && 'fallo'].filter(Boolean).join(' '), titulo));
-    }
-
-    for (const doc of Array.isArray(d.documentos) ? d.documentos : []) {
-      const titulo = `${doc.documento ?? ''}, página ${doc.pagina ?? '—'}${doc.chunk !== undefined ? `, fragmento ${doc.chunk}` : ''}`
-        + (doc.texto ? `\n\n${resumir(doc.texto, 280)}` : '');
-      chips.push(chip(`${nombreDocumento(doc.documento)} · ${etiquetaPagina(doc)} · ${formatearPuntaje(doc.score)}`, 'documento', titulo));
-    }
-
-    for (const id of Array.isArray(d.pedidos) ? d.pedidos : []) chips.push(chip(`pedido ${id}`, 'pedido'));
-    for (const id of Array.isArray(d.pagos) ? d.pagos : []) chips.push(chip(`pago ${id}`, 'pago'));
-
-    if (d.turno_id) chips.push(chipTurno(d));
-    return chips;
-  }
-
-  function detalleJson(d) {
-    return crear('details', { clase: 'json' }, [
-      crear('summary', { texto: 'Ver respuesta completa' }),
-      crear('pre', {}, crear('code', { texto: JSON.stringify(d, null, 2) })),
-    ]);
-  }
-
-  // -------------------------------------------------------------------------
   // Envío
   // -------------------------------------------------------------------------
 
-  function puedeEnviar() {
-    return !enviando && segundosBloqueo() === 0;
+  // Lo escrito por partes se junta (agrupador.js) y sale como un solo turno; lo que se
+  // escribe mientras el asistente responde espera en la cola y sale en el turno siguiente.
+  const cola = [];
+  const agrupador = crearAgrupador({
+    alEnviar: (texto) => {
+      cola.push(texto);
+      procesarCola();
+    },
+  });
+
+  function procesarCola() {
+    if (enviando || segundosBloqueo() > 0 || !cola.length) return;
+    pedirRespuesta(cola.splice(0).join('\n'));
   }
 
-  async function enviar(textoCrudo) {
+  /** Muestra el mensaje y lo encola; con agrupar=true espera una pausa por si sigue otro. */
+  function enviar(textoCrudo, { agrupar = false } = {}) {
     const texto = String(textoCrudo ?? '').trim();
-    if (!texto || !puedeEnviar()) return false;
-
-    const usuario = obtenerUsuario();
+    if (!texto || segundosBloqueo() > 0) return false;
     quitarBienvenida();
     agregar(burbujaCliente(texto));
+    agrupador.agregar(texto);
+    if (!agrupar) agrupador.vaciar();
+    return true;
+  }
+
+  async function pedirRespuesta(texto) {
+    const usuario = obtenerUsuario();
     enviando = true;
     actualizarBoton();
     const quitarIndicador = mostrarEscribiendo();
@@ -316,15 +256,18 @@ export function iniciarChat({ obtenerUsuario, alFiltrarTurno, alResponder } = {}
       actualizarBoton();
       const activo = document.activeElement;
       if (!activo || activo === document.body || activo === entrada) entrada.focus({ preventScroll: true });
+      procesarCola();
     }
   }
 
   function enviarEntrada() {
-    if (!entrada.value.trim() || !puedeEnviar()) return;
+    if (!entrada.value.trim() || segundosBloqueo() > 0) return;
     const texto = entrada.value;
     entrada.value = '';
-    enviar(texto);
+    enviar(texto, { agrupar: true });
   }
+
+  entrada.addEventListener('input', () => agrupador.escribiendo());
 
   formulario.addEventListener('submit', (ev) => {
     ev.preventDefault();
@@ -363,6 +306,8 @@ export function iniciarChat({ obtenerUsuario, alFiltrarTurno, alResponder } = {}
 
   /** Vacía el hilo y vuelve a mostrar la bienvenida. */
   function limpiar() {
+    agrupador.descartar();
+    cola.length = 0;
     vaciar(hilo);
     pintarBienvenida();
   }

@@ -60,11 +60,11 @@ def test_pasado_el_tope_el_turno_responde_en_modo_demo(
 ) -> None:
     bd = servicio_con_modelo.bd
     servicio_con_modelo.llm = ModeloConTope(modelo, bd.tokens_ultimas_24h, 200)
-    primero = servicio_con_modelo.responder("busco algo de terror", "ana", "s-t1")
+    primero = servicio_con_modelo.responder("quiero comprar un regalo", "ana", "s-t1")
     assert primero.modo == "real" and bd.tokens_ultimas_24h() == 120
 
     modelo.respuestas = [respuesta("no debería llegar")]
     bd.guardar_turno("T-x", "s-otra", "ana", "algo", "algo", tokens=(80, 0))
-    segundo = servicio_con_modelo.responder("busco algo de misterio", "ana", "s-t1")
+    segundo = servicio_con_modelo.responder("quiero comprar otro", "ana", "s-t1")
     assert segundo.modo == "demo" and segundo.aviso == AVISO_TOPE
     assert len(modelo.llamadas) == 1
