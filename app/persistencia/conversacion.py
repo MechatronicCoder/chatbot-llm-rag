@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import uuid
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from app.persistencia.conexion import Conexion
@@ -97,6 +98,17 @@ class RepositorioConversacion(Conexion):
             cursor = con.execute("delete from mensajes where sesion_id = ?", (sesion_id,))
         return int(cursor.rowcount)
 
+    def tokens_ultimas_24h(self) -> int:
+        """Tokens de entrada y salida gastados en las últimas 24 horas (para el tope)."""
+        desde = (datetime.now(UTC) - timedelta(hours=24)).isoformat(timespec="seconds")
+        with self.conectar() as con:
+            fila = con.execute(
+                "select coalesce(sum(tokens_entrada + tokens_salida), 0) from mensajes "
+                "where creado_en >= ?",
+                (desde,),
+            ).fetchone()
+        return int(fila[0])
+
     def metricas(self) -> dict[str, Any]:
         with self.conectar() as con:
             filas = con.execute(
@@ -126,4 +138,5 @@ class RepositorioConversacion(Conexion):
             "tokens_salida": sum(f["salida"] or 0 for f in por_ruta),
             "latencia_p50": percentil(latencias, 0.50),
             "latencia_p95": percentil(latencias, 0.95),
+            "tokens_24h": self.tokens_ultimas_24h(),
         }

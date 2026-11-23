@@ -15,6 +15,7 @@ from app.core.config import get_settings
 from app.core.logs import RegistroEventos
 from app.llm.cliente import ClienteLLM
 from app.llm.embeddings import ClienteEmbeddings
+from app.llm.tope import ModeloConTope
 from app.main import crear_app
 from app.persistencia.db import BaseDatos
 from app.servicios.chat import ServicioChat
@@ -35,7 +36,9 @@ def test_construir_servicio_con_los_datos_reales(tmp_path: Path, bd: BaseDatos) 
     )
     ajustes = ajustes.model_copy(update={"carpeta_datos": DATOS_REALES})
     servicio = construir_servicio(ajustes, RegistroEventos(None, consola=False), bd)
-    assert isinstance(servicio.llm, ClienteLLM) and servicio.llm.configurado
+    assert isinstance(servicio.llm, ModeloConTope) and servicio.llm.configurado
+    assert isinstance(servicio.llm.modelo, ClienteLLM)
+    assert servicio.llm.tope == ajustes.llm_tokens_por_dia
     assert isinstance(servicio.buscador.embedder, ClienteEmbeddings)
     assert servicio.recomendador.indice.embedder is servicio.buscador.embedder
     assert {"politicas_libreria.md"} <= {c.documento for c in servicio.buscador.chunks}

@@ -7,6 +7,7 @@ from app.core.config import Settings
 from app.core.logs import RegistroEventos
 from app.llm.cliente import ClienteLLM
 from app.llm.embeddings import ClienteEmbeddings
+from app.llm.tope import ModeloConTope
 from app.persistencia.db import BaseDatos
 from app.servicios.chat import ServicioChat
 from app.servicios.faq import IndiceFAQ
@@ -48,12 +49,17 @@ def construir_servicio(ajustes: Settings, registro: RegistroEventos, bd: BaseDat
     )
     tienda = cargar_tienda(datos / "tienda.json")
     prompt = preparar_prompt((datos / "prompt_sistema.md").read_text(encoding="utf-8"), tienda)
+    llm = ModeloConTope(
+        ClienteLLM.desde_config(ajustes, registro),
+        bd.tokens_ultimas_24h,
+        ajustes.llm_tokens_por_dia,
+    )
     return ServicioChat(
         bd=bd,
         registro=registro,
         buscador=buscador,
         recomendador=recomendador,
-        llm=ClienteLLM.desde_config(ajustes),
+        llm=llm,
         faq=faq,
         prompt_sistema=prompt,
         tienda=tienda,

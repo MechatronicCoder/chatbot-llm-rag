@@ -67,6 +67,13 @@ class Settings(BaseSettings):
     llm_temperatura: float = Field(default=0.3, ge=0, le=2)
     llm_max_tokens: int = Field(default=700, ge=50, le=8192)
     llm_extra_body: dict[str, Any] = Field(default_factory=dict)
+    # Tope de tokens del chat en las últimas 24 horas; al pasarlo se responde en
+    # modo demo. 0 = sin tope.
+    llm_tokens_por_dia: int = Field(default=2_000_000, ge=0)
+
+    # -- reintentos ante 429, 5xx o cortes de red (chat y embeddings) ---------
+    api_reintentos: int = Field(default=2, ge=0, le=5)
+    api_espera_max_s: float = Field(default=6.0, ge=0, le=60)
 
     # -- embeddings por API ---------------------------------------------------
     embeddings_base_url: str = ""
@@ -187,6 +194,8 @@ class Settings(BaseSettings):
             "reco_pesos": [self.reco_peso_similitud, self.reco_peso_valoracion],
             "reco_votos_minimos": self.reco_votos_minimos,
             "limite_chat_por_minuto": self.limite_chat_por_minuto,
+            "llm_tokens_por_dia": self.llm_tokens_por_dia,
+            "api_reintentos": self.api_reintentos,
             "acceso_requerido": self.acceso_configurado,
             "log_nivel": self.log_nivel,
         }
