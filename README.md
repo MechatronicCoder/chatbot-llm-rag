@@ -114,8 +114,8 @@ Despliegue:
 
 ```mermaid
 flowchart LR
-    Dev[Push a main] --> CI[GitHub Actions: CI<br/>lint, tipos, pruebas, catálogo, imagen]
-    CI -->|si pasa| CD[GitHub Actions: CD<br/>login OIDC]
+    Dev[Merge a main<br/>solo el dueño] --> CI[GitHub Actions: CI<br/>lint, tipos, pruebas, catálogo, imagen]
+    CI -->|si pasa, solo en main| CD[Job de despliegue<br/>login OIDC, environment produccion]
     CD -->|docker push| ACR[(Azure Container Registry)]
     CD -->|nueva revisión| ACA[Azure Container Apps<br/>1 réplica, HTTPS]
     ACR --> ACA
@@ -478,10 +478,10 @@ Puntos a tener en cuenta:
 
 | Workflow | Cuándo corre | Qué hace |
 |---|---|---|
-| [CI](.github/workflows/ci.yml) | En cada pull request y en cada push a `main` | Formato, lint, tipos, validación del catálogo y pruebas en Python 3.12 y 3.13; verifica que `requirements.txt` coincida con `uv.lock`; construye la imagen y la arranca como prueba de humo |
-| [CD](.github/workflows/cd.yml) | Cuando CI pasa en `main` (o a mano) | Inicia sesión en Azure con OIDC, sube la imagen al registro, crea una nueva revisión y espera a que `/api/health/ready` responda |
+| [CI](.github/workflows/ci.yml) | En cada pull request y en cada push a `dev` y `main` | Formato, lint, tipos, validación del catálogo y pruebas en Python 3.12 y 3.13; verifica que `requirements.txt` coincida con `uv.lock`; construye la imagen y la arranca como prueba de humo |
+| [CD](.github/workflows/cd.yml) | Como último job del CI, solo en un push a `main` y si pasaron las pruebas y la imagen (o a mano desde `main`) | Inicia sesión en Azure con OIDC, sube la imagen al registro, crea una nueva revisión y espera a que `/api/health/ready` responda |
 
-El CD no hace nada hasta que se configuran las variables de Azure en el repositorio; así el CI puede usarse desde el primer día.
+Solo `main` despliega: el environment `produccion`, que entrega las credenciales de Azure, acepta únicamente esa rama, y solo el dueño puede unir a `main`. Los pull requests y los push a `dev` no despliegan. El CD no hace nada hasta que se configuran las variables de Azure en el repositorio; así el CI puede usarse desde el primer día.
 
 ## Decisiones técnicas
 
@@ -496,6 +496,7 @@ Cada decisión importante está documentada con su contexto, las alternativas y 
 - [0007 Flujo de ramas con main y dev](docs/decisiones/0007-flujo-de-ramas.md)
 - [0008 Recomendación híbrida dentro del flujo de venta](docs/decisiones/0008-recomendacion-hibrida.md)
 - [0009 El archivo del catálogo como fuente de verdad](docs/decisiones/0009-catalogo-como-fuente-de-verdad.md)
+- [0010 Solo main despliega](docs/decisiones/0010-solo-main-despliega.md)
 
 ## Flujo de trabajo del equipo
 

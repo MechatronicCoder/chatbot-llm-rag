@@ -1,6 +1,6 @@
 # 0004 Azure Container Apps con Bicep y despliegue por OIDC
 
-Estado: aceptada
+Estado: aceptada; ampliada por [0010](0010-solo-main-despliega.md) (solo main despliega)
 Fecha: 2026-11-21
 
 ## Contexto
