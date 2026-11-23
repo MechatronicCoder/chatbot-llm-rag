@@ -93,11 +93,12 @@ class Herramientas:
         limite: int = 5,
         precio_max: float | None = None,
         precio_min: float | None = None,
+        orden: str | None = None,
         **_: Any,
     ) -> Resultado:
         libros, correcciones = self.bd.buscar(
             consulta or "", categoria, autor, _edad(edad), limite or 5,
-            _precio(precio_min), _precio(precio_max),
+            _precio(precio_min), _precio(precio_max), orden,
         )  # fmt: skip
         resultado: Resultado = {
             "encontrados": len(libros),

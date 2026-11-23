@@ -199,13 +199,27 @@ def test_mensaje_vacio_o_largo_se_rechaza(servicio: ServicioChat) -> None:
 def test_la_salida_no_recomienda_sitios_piratas(
     servicio_con_modelo: ServicioChat, modelo: ModeloFalso
 ) -> None:
+    # en minúsculas no es un nombre propio: lo frena el filtro de salida, la última barrera
+    modelo.respuestas = [
+        respuesta(tool_calls=[llamada("recomendar_libros", necesidad="algo para leer")]),
+        respuesta("Búscalo gratis en libgen."),
+    ]
+    r = servicio_con_modelo.responder("¿qué me recomiendas leer?", "a", "s-salida")
+    assert "libgen" not in r.respuesta.lower()
+    assert "salida.bloqueada" in eventos_del_turno(servicio_con_modelo, r.turno_id)
+
+
+def test_un_sitio_pirata_con_nombre_propio_ya_lo_frena_la_verificacion(
+    servicio_con_modelo: ServicioChat, modelo: ModeloFalso
+) -> None:
     modelo.respuestas = [
         respuesta(tool_calls=[llamada("recomendar_libros", necesidad="algo para leer")]),
         respuesta("Búscalo gratis en Z-Library."),
+        respuesta("Búscalo gratis en Z-Library."),
     ]
-    r = servicio_con_modelo.responder("¿qué me recomiendas leer?", "a", "s-salida")
+    r = servicio_con_modelo.responder("¿qué me recomiendas leer?", "a", "s-salida-2")
     assert "library" not in r.respuesta.lower()
-    assert "salida.bloqueada" in eventos_del_turno(servicio_con_modelo, r.turno_id)
+    assert "salida.no_verificada" in eventos_del_turno(servicio_con_modelo, r.turno_id)
 
 
 def test_llm_lento_y_salida_con_tarjeta(
