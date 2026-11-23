@@ -278,7 +278,7 @@ chatbot-llm-rag/
 │       ├── fabrica.py        Arma el servicio real a partir de la configuración
 │       ├── faq.py            Clasificador de preguntas frecuentes
 │       ├── recomendador.py   Recomendador híbrido de libros
-│       ├── esquemas_herramientas.py  Las 9 herramientas que ve el modelo
+│       ├── esquemas_herramientas.py  Las 10 herramientas que ve el modelo
 │       ├── herramientas.py   Ejecución de las herramientas
 │       └── rag.py            Fragmentación (PDF y Markdown), índice, caché y MMR
 ├── datos/                    Contenido del negocio (se cambia sin tocar código)
@@ -360,8 +360,10 @@ Todas las variables están documentadas en [.env.example](.env.example). Las pri
 | `EMBEDDINGS_BASE_URL`, `EMBEDDINGS_API_KEY`, `EMBEDDINGS_MODEL` | Embeddings del RAG y del recomendador | vacío: TF-IDF |
 | `LLM_MAX_TOKENS` | Tope de tokens por respuesta (también limita el gasto) | 700 |
 | `LLM_TOKENS_POR_DIA` | Tope de tokens del chat en 24 horas; al pasarlo responde en modo demo | 2 000 000 |
+| `PRECIO_ENTRADA_USD_MILLON`, `PRECIO_SALIDA_USD_MILLON` | Precio del modelo para estimar el costo en `/api/metricas` | 0: no se estima |
 | `API_REINTENTOS`, `API_ESPERA_MAX_S` | Reintentos ante 429, 5xx o cortes de red y espera máxima aceptada | 2 y 6 s |
 | `FAQ_UMBRAL`, `FAQ_MARGEN` | Cuándo una FAQ gana sobre el LLM | 0.55 y 0.03 |
+| `FAQ_PROMPT_MIN` | Similitud mínima para adjuntar una FAQ cercana al mensaje que ve el modelo | 0.5 |
 | `RAG_UMBRAL` | Similitud mínima para usar un fragmento | 0.35 |
 | `RAG_K_INICIAL`, `RAG_K_FINAL`, `RAG_MMR_LAMBDA` | Candidatos, fragmentos elegidos y equilibrio relevancia/variedad | 8, 3 y 0.5 |
 | `RECO_UMBRAL`, `RECO_UMBRAL_TFIDF` | Similitud mínima para recomendar un libro, con embeddings y con TF-IDF | 0.25 y 0.03 |
@@ -451,7 +453,7 @@ Las pruebas no llaman a ninguna API: el modelo, los embeddings y los proveedores
 - seguridad: redacción (sin tocar un ISBN), guardias de manipulación y piratería, validación de salida, token de administración, límite por IP;
 - clasificador de FAQ, su umbral y la guardia de búsquedas de libros;
 - RAG: fragmentación de PDF y Markdown, MMR, motor denso, caché de embeddings y caída a TF-IDF;
-- herramientas: reglas de stock, cobro y pedidos ajenos;
+- herramientas: reglas de stock, cobro y pedidos ajenos, y el pase a una persona con el contacto de la tienda;
 - carrito: montos en céntimos, envío gratis según la zona, cambios de precio, confirmación antes de cobrar y montos de la respuesta verificados;
 - cliente LLM: formato de herramientas, reintentos con espera creciente y `Retry-After`, cadena de respaldo ante 401, 429, 500 y errores de red, y tope diario de tokens;
 - base de datos, API HTTP, el turno completo y el modo demo;
@@ -459,14 +461,14 @@ Las pruebas no llaman a ninguna API: el modelo, los embeddings y los proveedores
 
 ## Evaluación
 
-Además de las pruebas, `evaluacion/casos.json` define 36 casos (FAQ, seguridad, cortesía, catálogo, recomendación, acciones, carrito, RAG, seguimiento y preguntas fuera de alcance) con la ruta esperada y, cuando corresponde, la FAQ, el documento, el libro que debe aparecer o el estado del pedido.
+Además de las pruebas, `evaluacion/casos.json` define 37 casos (FAQ, seguridad, cortesía, catálogo, recomendación, acciones, carrito, RAG, seguimiento, pase a una persona y preguntas fuera de alcance) con la ruta esperada y, cuando corresponde, la FAQ, el documento, el libro que debe aparecer o el estado del pedido.
 
 ```powershell
 uv run python scripts/evaluar.py             # con el modelo del .env
 uv run python scripts/evaluar.py --sin-llm   # solo los casos que no usan el modelo
 ```
 
-El informe se guarda en `evaluacion/resultados/` con la tasa de aciertos por categoría, el acierto del libro esperado, la latencia y los tokens. Sin modelo configurado, los 10 casos de FAQ y seguridad aciertan la ruta (10/10); con `qwen-plus`, el conjunto completo da 36/36. Los casos de catálogo, recomendación y acción nombran libros del catálogo actual: si el catálogo cambia, se actualizan. La metodología y cómo calibrar `RAG_UMBRAL` y `RECO_UMBRAL` están en [docs/evaluacion.md](docs/evaluacion.md).
+El informe se guarda en `evaluacion/resultados/` con la tasa de aciertos por categoría, el acierto del libro esperado, la latencia y los tokens. Sin modelo configurado, los 10 casos de FAQ y seguridad aciertan la ruta (10/10); con `qwen-plus`, el conjunto completo da 37/37. Los casos de catálogo, recomendación y acción nombran libros del catálogo actual: si el catálogo cambia, se actualizan. La metodología y cómo calibrar `RAG_UMBRAL` y `RECO_UMBRAL` están en [docs/evaluacion.md](docs/evaluacion.md).
 
 ## Seguridad
 

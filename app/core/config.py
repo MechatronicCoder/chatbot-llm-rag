@@ -70,6 +70,10 @@ class Settings(BaseSettings):
     # Tope de tokens del chat en las últimas 24 horas; al pasarlo se responde en
     # modo demo. 0 = sin tope.
     llm_tokens_por_dia: int = Field(default=2_000_000, ge=0)
+    # Precio del modelo en USD por millón de tokens, para estimar el costo en /api/metricas
+    # (0 = no se estima). Se toma de la página de precios del proveedor.
+    precio_entrada_usd_millon: float = Field(default=0.0, ge=0)
+    precio_salida_usd_millon: float = Field(default=0.0, ge=0)
 
     # -- reintentos ante 429, 5xx o cortes de red (chat y embeddings) ---------
     api_reintentos: int = Field(default=2, ge=0, le=5)
@@ -87,6 +91,9 @@ class Settings(BaseSettings):
     faq_umbral: float = Field(default=0.55, ge=0, le=1)
     faq_margen: float = Field(default=0.03, ge=0, le=1)
     faq_contexto_min: float = Field(default=0.25, ge=0, le=1)
+    # Similitud mínima para adjuntar una FAQ al mensaje que ve el modelo. Con 0.25 se colaban
+    # FAQ ajenas en pedidos de libros (0.30 a 0.48) y lo desviaban de recomendar_libros.
+    faq_prompt_min: float = Field(default=0.5, ge=0, le=1)
 
     # -- recuperación de documentos (RAG) -------------------------------------
     rag_umbral: float = Field(default=0.35, ge=-1, le=1)

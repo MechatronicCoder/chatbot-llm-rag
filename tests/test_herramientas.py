@@ -144,7 +144,7 @@ def test_error_inesperado_de_una_herramienta(servicio: ServicioChat, monkeypatch
     assert r == {"error": "RuntimeError: base caída"}
 
 
-def test_los_esquemas_declaran_las_nueve_herramientas(servicio: ServicioChat) -> None:
+def test_los_esquemas_declaran_las_diez_herramientas(servicio: ServicioChat) -> None:
     carro = next(e for e in ESQUEMAS if e["name"] == "actualizar_carrito")
     zonas = carro["parameters"]["properties"]["zona"]["enum"]
     assert set(zonas) == set(servicio.bd.tienda.envio)  # el esquema y tienda.json coinciden
@@ -158,4 +158,5 @@ def test_los_esquemas_declaran_las_nueve_herramientas(servicio: ServicioChat) ->
         "cancelar_pedido",
         "cobrar_pedido",
         "buscar_politica",
+        "derivar_a_persona",
     }

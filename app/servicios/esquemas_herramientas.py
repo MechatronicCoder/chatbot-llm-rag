@@ -145,6 +145,18 @@ ESQUEMAS: list[dict[str, Any]] = [
         },
     },
     {
+        "name": "derivar_a_persona",
+        "description": "Pasa la atención a una persona del equipo cuando el cliente lo pide o "
+        "el caso no se resuelve con las herramientas (un reclamo, un pedido especial, un "
+        "problema con un pago). Registra el motivo y devuelve el teléfono, el correo y el "
+        "horario de atención. No pidas datos personales al cliente.",
+        "parameters": {
+            "type": "object",
+            "properties": {"motivo": {"type": "string", "description": "Qué necesita, en breve"}},
+            "required": ["motivo"],
+        },
+    },
+    {
         "name": "buscar_politica",
         "description": "Busca en los documentos de la librería: envíos, cambios y devoluciones, "
         "pagos, preventas y pedidos especiales, libro de reclamaciones y derechos del consumidor.",

@@ -203,13 +203,13 @@ class IndiceFAQ:
             **comun,
         )
 
-    def contexto(self, texto: str, top_k: int | None = None) -> str:
-        """FAQs parecidas para el prompt del LLM; solo las que superan el umbral de contexto."""
+    def contexto(self, texto: str, top_k: int | None = None, minimo: float = 0.0) -> str:
+        """FAQs parecidas para el prompt: las que superan el umbral de contexto y `minimo`."""
         bloques = [
             f"[{faq.id} · {faq.categoria} · similitud {sim:.2f}]\n"
             f"P: {faq.pregunta}\nR: {faq.respuesta}"
             for faq, sim in self._puntajes(texto)[: top_k or self.top_k]
-            if sim >= self.umbral_contexto
+            if sim >= max(self.umbral_contexto, minimo)
         ]
         return "\n\n".join(bloques)
 

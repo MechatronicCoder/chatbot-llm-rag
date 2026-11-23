@@ -166,7 +166,7 @@ def test_un_saludo_no_recibe_herramientas(
     servicio_con_modelo.responder("hola, buenas tardes", "a", "s-saludo")
     assert modelo.llamadas[-1]["herramientas"] is None
     servicio_con_modelo.responder("¿tienen libros de fantasía?", "a", "s-tools")
-    assert len(modelo.llamadas[-1]["herramientas"]) == 9
+    assert len(modelo.llamadas[-1]["herramientas"]) == 10
 
 
 def test_una_herramienta_repetida_se_reutiliza(

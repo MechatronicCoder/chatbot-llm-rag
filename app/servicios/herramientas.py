@@ -56,6 +56,7 @@ class Herramientas:
             "cancelar_pedido": self._cancelar_pedido,
             "cobrar_pedido": self._cobrar_pedido,
             "buscar_politica": self._buscar_politica,
+            "derivar_a_persona": self._derivar_a_persona,
         }
 
     @staticmethod
@@ -197,6 +198,18 @@ class Herramientas:
         pago = self.bd.registrar_pago(usuario_id, pedido_id, metodo)
         pedido = self.bd.consultar_pedido(pago["pedido_id"])
         return {**self._con_resumen(pedido), **pago} if pedido else pago
+
+    # -- atención humana -----------------------------------------------------------
+    def _derivar_a_persona(self, motivo: str = "", **_: Any) -> Resultado:
+        contacto = self.bd.tienda.contacto
+        if contacto is None:
+            return {"error": "La tienda no tiene datos de contacto configurados."}
+        return {
+            "derivado": True,
+            "motivo": (motivo or "")[:200],
+            **contacto.model_dump(),
+            "mensaje": "Una persona del equipo continúa la atención por estos medios.",
+        }
 
     # -- documentos --------------------------------------------------------------
     def _buscar_politica(self, pregunta: str = "", **_: Any) -> Resultado:
