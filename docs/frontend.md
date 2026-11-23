@@ -18,12 +18,15 @@ frontend/
 ├── css/
 │   ├── base.css          variables y estilos base
 │   ├── disposicion.css   columnas y controles
-│   ├── chat.css          hilo, burbujas, tarjetas de libros, chips y formulario
+│   ├── chat.css          hilo, burbujas, chips y formulario
+│   ├── tarjetas.css      tarjetas de libros y del pedido dentro de las respuestas
 │   ├── paneles.css       panel lateral y panel de logs
 │   ├── responsive.css    ajustes por ancho de pantalla
 │   └── animaciones.css   animaciones y preferencias del sistema
 └── js/
     ├── main.js         arranque, estado de la cabecera y temporizadores
+    ├── divisores.js    bordes arrastrables entre las tres columnas (mínimo 1/6 de la ventana)
+    ├── modo.js         vista de cliente (solo la conversación) o de programador (pide el token de administración)
     ├── api.js          cliente HTTP, ErrorApi y token de administración
     ├── acceso.js       pantalla de acceso de la demo y botón Salir
     ├── util.js         escape de HTML, formato, localStorage seguro, ayudas de DOM
@@ -202,7 +205,7 @@ Cuando algo queda bloqueado, la consola del navegador muestra un mensaje `Refuse
 
 ## Estilos
 
-Los estilos están en `css/`, en seis hojas que `index.html` carga en este orden: `base.css` (variables y base), `disposicion.css` (columnas y controles), `chat.css`, `paneles.css` (panel lateral y logs), `responsive.css` y `animaciones.css` (incluye movimiento reducido y colores forzados). El orden importa: las reglas responsive se cargan después de los componentes para prevalecer sobre sus reglas base. Ningún archivo de código supera las 400 líneas.
+Los estilos están en `css/`, en siete hojas que `index.html` carga en este orden: `base.css` (variables y base), `disposicion.css` (columnas y controles), `chat.css`, `tarjetas.css`, `paneles.css` (panel lateral y logs), `responsive.css` y `animaciones.css` (incluye movimiento reducido y colores forzados). El orden importa: las reglas responsive se cargan después de los componentes para prevalecer sobre sus reglas base. Ningún archivo de código supera las 400 líneas.
 
 ### Variables
 
@@ -210,13 +213,15 @@ Los estilos están en `css/`, en seis hojas que `index.html` carga en este orden
 |---|---|---|
 | Superficies y texto | `--color-fondo`, `--color-panel`, `--color-linea`, `--color-texto`, `--color-tenue` | Fondo, paneles, bordes y texto secundario |
 | Acento y semánticos | `--color-acento`, `--color-ok`, `--color-aviso`, `--color-error`, `--color-ruta` | Fondos y bordes |
-| Variantes para texto | `--color-acento-texto`, `--color-ok-texto`, `--color-aviso-texto`, `--color-error-texto` | Texto pequeño sobre fondo oscuro con contraste AA |
+| Variantes para texto | `--color-acento-texto`, `--color-ok-texto`, `--color-aviso-texto`, `--color-error-texto` | Texto pequeño con contraste AA sobre su fondo |
 | Logs | `--color-fondo-log`, `--color-hora-log`, `--color-info-log` … | Panel de logs |
 | Tipografía | `--fuente-base`, `--fuente-mono`, `--texto-xs` … `--texto-l` | Fuentes del sistema, sin descargas |
 | Radios | `--radio-s`, `--radio-m`, `--radio-l`, `--radio-pildora` | Bordes redondeados |
 | Espacios | `--esp-1` (4 px) … `--esp-5` (20 px) | Márgenes y separaciones |
 | Columnas | `--ancho-panel`, `--ancho-logs`, `--ancho-lateral-compacto`, `--ancho-burbuja` | Disposición |
 | Movimiento | `--dur-*`, `--curva-*`, `--retardo-chips`, `--paso-chip`, `--desplazamiento-entrada` | Animaciones |
+
+La paleta sigue la regla 60-30-10: marfil antiguo (`#EEE3CC`) de fondo, negro piano (`#151515`) en el texto, la cabecera, las burbujas del cliente y el log, y turquesa surf (`#00C2B5`) como acento, con texto negro encima (8:1). La cabecera y el log redefinen las mismas variables para fondo oscuro, así sus controles no necesitan reglas propias.
 
 Los componentes no usan colores literales: si hace falta un tono nuevo, se define una variable en `:root`.
 

@@ -307,7 +307,7 @@ export function iniciarChat({ obtenerUsuario, alFiltrarTurno, alResponder } = {}
     enviarEntrada();
   });
 
-  // Delegación: sugerencias y chips de turno.
+  // Delegación: sugerencias, tarjetas de libros y chips de turno.
   hilo.addEventListener('click', (ev) => {
     const objetivo = ev.target instanceof Element ? ev.target : null;
     if (!objetivo) return;
@@ -316,6 +316,13 @@ export function iniciarChat({ obtenerUsuario, alFiltrarTurno, alResponder } = {}
     if (sugerencia) {
       entrada.focus({ preventScroll: true });
       enviar(sugerencia.textContent);
+      return;
+    }
+
+    // Elegir una tarjeta de libro envía "Quiero el libro «…»"; un doble clic no lo manda dos veces.
+    const pedido = objetivo.closest('[data-pedido]');
+    if (pedido && !pedido.disabled && ev.detail <= 1) {
+      enviar(pedido.dataset.pedido);
       return;
     }
 

@@ -31,6 +31,9 @@ PALABRAS_VACIAS = frozenset(
 # Con 0.68, probado sobre el catálogo real, "cocina" pasaba a "conan".
 UMBRAL_TIPEO = 0.75
 
+# Máximo de libros por búsqueda: alcanza para listar el catálogo entero en el panel.
+LIMITE_LISTADO = 500
+
 # Orden de los resultados que coinciden igual con la consulta. "Los mejor valorados" o
 # "los más baratos" salen de aquí: el modelo no puede ordenar el catálogo de memoria.
 ORDENES: dict[str, Callable[[dict[str, Any]], tuple[float, ...]]] = {
@@ -154,7 +157,7 @@ class RepositorioCatalogo(Conexion):
         no se indica, o precio). Sin consulta, lista el catálogo filtrado en ese orden.
         Devuelve también las correcciones de tipeo que aplicó (escrita -> del catálogo).
         """
-        limite = max(1, min(int(limite), 20))
+        limite = max(1, min(int(limite), LIMITE_LISTADO))
         if isbns := isbns_en(consulta):
             exactos = [self.obtener_libro(isbn) for isbn in isbns]
             return [lb for lb in exactos if lb is not None][:limite], {}

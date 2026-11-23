@@ -29,6 +29,16 @@ export function iniciarAcceso({ alEntrar, alSalir } = {}) {
   const boton = porId('acceso-entrar');
   const error = porId('acceso-error');
   const salir = porId('salir');
+
+  // Logo: la mascota de img/logo.png; si no está, queda el ícono del libro.
+  const logo = porId('acceso-logo-img');
+  const sinLogo = () => {
+    logo.hidden = true;
+    porId('acceso-logo-icono').removeAttribute('hidden'); // en un <svg>, .hidden no existe
+  };
+  if (logo.complete && !logo.naturalWidth) sinLogo();
+  else logo.addEventListener('error', sinLogo);
+
   // Mientras la pantalla está visible, el resto de la página no recibe foco ni clics.
   const fondo = [document.querySelector('.cabecera'), document.querySelector('main')].filter(Boolean);
   let dentro = false; // hubo una sesión abierta en esta pestaña

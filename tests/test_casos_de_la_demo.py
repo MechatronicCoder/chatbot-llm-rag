@@ -209,3 +209,30 @@ def test_buscar_por_autor_no_muestra_su_libro_agotado(bd: BaseDatos) -> None:
     assert ISBN_AGOTADO not in {lb["isbn"] for lb in bd.buscar_libros("", autor="Clara Reloj")}
     # pedir justo ese título sí lo trae, para decir que está agotado
     assert [lb["isbn"] for lb in bd.buscar_libros("el ladrón del tiempo")] == [ISBN_AGOTADO]
+
+
+# -- 8. el panel del catálogo mostraba solo 8 libros ------------------------------------
+def test_el_panel_puede_listar_todo_el_catalogo_y_el_modelo_no(
+    tmp_path: Path, servicio: ServicioChat
+) -> None:
+    from app.servicios.herramientas import LIMITE_HERRAMIENTA
+
+    cliente = cliente_con(tmp_path)
+    con_stock = cliente.get("/api/libros", params={"limite": 500}).json()
+    assert con_stock["total"] == 9  # los 10 libros de prueba menos el agotado
+    assert cliente.get("/api/libros", params={"limite": 501}).status_code == 422
+    # el modelo ve a lo más 10 libros por búsqueda, aunque pida más
+    pedido = {"consulta": "", "limite": 50}
+    vistos = servicio.herramientas.ejecutar("buscar_libros", pedido, "a")["libros"]
+    assert len(vistos) <= LIMITE_HERRAMIENTA
+
+
+# -- 9. un clic en la tarjeta ("ver la ficha") terminó con el libro en el carrito ---------
+def test_ver_la_ficha_desde_la_tarjeta_no_lo_agrega_al_carrito(bd: BaseDatos) -> None:
+    ficha = Acumulado(usadas=[{"nombre": "ficha_libro"}], libros=[{"isbn": ISBN_MAGO, "stock": 8}])
+    texto = "Esta es la ficha de *La escuela de magos*. ¿Deseas agregarlo al carrito?"
+    pedido_ficha = f"Quiero ver la ficha de «La escuela de magos» (ISBN {ISBN_MAGO})"
+    assert revisar_respuesta(texto, ficha, bd, "ana", pedido_ficha) is None
+    # pedir el libro sí es comprarlo: preguntar en vez de agregarlo se corrige
+    problema = revisar_respuesta(texto, ficha, bd, "ana", "quiero La escuela de magos")
+    assert problema is not None and problema.motivo.startswith("pide confirmación")
