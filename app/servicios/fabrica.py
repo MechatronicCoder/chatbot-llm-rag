@@ -13,6 +13,7 @@ from app.servicios.chat import ServicioChat
 from app.servicios.faq import IndiceFAQ
 from app.servicios.rag import BuscadorDocumentos, ParametrosRAG
 from app.servicios.recomendador import ParametrosRecomendacion, Recomendador
+from app.servicios.resumen import Resumidor
 from app.servicios.turno import AjustesChat
 
 
@@ -64,4 +65,7 @@ def construir_servicio(ajustes: Settings, registro: RegistroEventos, bd: BaseDat
         prompt_sistema=prompt,
         tienda=tienda,
         ajustes=AjustesChat.desde_config(ajustes),
+        resumidor=Resumidor(bd, llm, registro, ajustes.max_mensajes)
+        if ajustes.resumen_activo
+        else None,
     )

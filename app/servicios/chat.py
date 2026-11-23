@@ -30,6 +30,7 @@ from app.servicios.faq import Decision, IndiceFAQ
 from app.servicios.herramientas import Herramientas
 from app.servicios.rag import BuscadorDocumentos
 from app.servicios.recomendador import Recomendador
+from app.servicios.resumen import Resumidor
 from app.servicios.turno import (
     MENSAJE_ESCALADO,
     RE_ACCION,
@@ -39,6 +40,7 @@ from app.servicios.turno import (
     AjustesChat,
     RespuestaChat,
     ejecutar_llamada,
+    es_seguimiento,
     fuente_de,
     mensaje_con_llamadas,
     referencias_del_turno,
@@ -63,6 +65,7 @@ class ServicioChat:
         prompt_sistema: str,
         tienda: Tienda,
         ajustes: AjustesChat | None = None,
+        resumidor: Resumidor | None = None,
     ) -> None:
         self.bd = bd
         self.registro = registro
@@ -75,6 +78,7 @@ class ServicioChat:
         self.ajustes = ajustes or AjustesChat()
         self.herramientas = Herramientas(bd, buscador, recomendador)
         self.candados = CandadosPorSesion()
+        self.resumidor = resumidor  # resume lo que sale de la ventana del historial
 
     # -- turno -----------------------------------------------------------------
     def responder(
@@ -82,7 +86,10 @@ class ServicioChat:
     ) -> RespuestaChat:
         # Dos mensajes de la misma conversación se atienden en orden, nunca a la vez.
         with self.candados.de(session_id):
-            return self._responder(mensaje, usuario_id, session_id)
+            respuesta = self._responder(mensaje, usuario_id, session_id)
+        if self.resumidor is not None:
+            self.resumidor.programar(session_id)
+        return respuesta
 
     def _responder(self, mensaje: str, usuario_id: str, session_id: str) -> RespuestaChat:
         mensaje = (mensaje or "").strip()
@@ -129,6 +136,8 @@ class ServicioChat:
             motivo_forzado = f"peticion de accion: {accion.group(0)!r}"
         elif busqueda := RE_BUSQUEDA.search(limpio):
             motivo_forzado = f"busqueda de libros: {busqueda.group(0)!r}"
+        elif es_seguimiento(limpio):  # "¿y para 12 años?" depende del historial
+            motivo_forzado = "seguimiento del mensaje anterior"
         decision = self.faq.clasificar(
             limpio, forzar_llm=motivo_forzado is not None, motivo_forzado=motivo_forzado
         )

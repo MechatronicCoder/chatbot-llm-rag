@@ -60,6 +60,8 @@ def evaluar_caso(servicio: Any, caso: dict[str, Any]) -> dict[str, Any]:
         libro_ok = any(t in titulos for t in esperados)
         if not libro_ok:
             fallos.append(f"ningún libro esperado mostrado ({' / '.join(esperados)})")
+    if (textos := caso.get("contiene")) and not any(t in respuesta.respuesta for t in textos):
+        fallos.append(f"la respuesta no menciona {' ni '.join(textos)}")
     if (tope := caso.get("precio_max")) is not None:
         caros = [lb["titulo"] for lb in respuesta.libros if lb["precio"] > tope]
         if not respuesta.libros or caros:
