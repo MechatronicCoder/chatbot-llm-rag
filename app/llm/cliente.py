@@ -2,10 +2,12 @@
 
 Qué resuelve:
 
-1. Cadena de respaldo: si el proveedor principal falla (clave inválida, cuota,
+1. Reintentos: un 429, un 5xx o un corte de red se repiten con espera creciente
+   antes de dar por caído al proveedor (ver `reintentos.py`).
+2. Cadena de respaldo: si el proveedor principal falla (clave inválida, cuota,
    modelo inexistente, error del servidor, sin red), se intenta el siguiente.
-2. Herramientas (function calling) en el formato estándar `tools`.
-3. Respuesta normalizada: texto, llamadas a herramientas con argumentos ya
+3. Herramientas (function calling) en el formato estándar `tools`.
+4. Respuesta normalizada: texto, llamadas a herramientas con argumentos ya
    convertidos a diccionario, tokens usados y latencia.
 
 Si no hay proveedores configurados se lanza `SinProveedores` de inmediato: el
@@ -16,13 +18,20 @@ from __future__ import annotations
 
 import json
 import time
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 import httpx
 
 from app.core.config import Settings
+from app.core.logs import RegistroEventos
+from app.llm.reintentos import (
+    FalloPasajero,
+    PoliticaReintentos,
+    detalle_error,
+    post_con_reintentos,
+)
 
 Mensaje = dict[str, Any]
 
@@ -92,15 +101,9 @@ def _argumentos(crudo: Any) -> dict[str, Any]:
     return valor if isinstance(valor, dict) else {}
 
 
-def _mensaje_error(respuesta: httpx.Response) -> str:
-    try:
-        cuerpo = respuesta.json()
-        detalle = cuerpo.get("error", cuerpo) if isinstance(cuerpo, dict) else cuerpo
-        if isinstance(detalle, dict):
-            detalle = detalle.get("message") or detalle.get("code") or detalle
-    except ValueError:
-        detalle = respuesta.text
-    return str(detalle)[:160]
+# Un timeout del chat no se repite con el mismo proveedor: ya se esperó el plazo
+# entero y el de respaldo suele ser más rápido.
+POLITICA_CHAT = PoliticaReintentos(reintentar_timeouts=False)
 
 
 class ClienteLLM:
@@ -113,13 +116,19 @@ class ClienteLLM:
         timeout_s: float = 60.0,
         extra_body: dict[str, Any] | None = None,
         transporte: httpx.BaseTransport | None = None,
+        politica: PoliticaReintentos = POLITICA_CHAT,
+        esperar: Callable[[float], None] = time.sleep,
+        registro: RegistroEventos | None = None,
     ) -> None:
         self.proveedores = [p for p in proveedores if p.completo]
         self.extra_body = dict(extra_body or {})
+        self.politica = politica
+        self._esperar = esperar
+        self._registro = registro
         self._http = httpx.Client(timeout=timeout_s, transport=transporte)
 
     @classmethod
-    def desde_config(cls, ajustes: Settings) -> ClienteLLM:
+    def desde_config(cls, ajustes: Settings, registro: RegistroEventos | None = None) -> ClienteLLM:
         proveedores = [
             Proveedor(
                 "principal",
@@ -134,7 +143,18 @@ class ClienteLLM:
                 ajustes.llm_2_model,
             ),
         ]
-        return cls(proveedores, timeout_s=ajustes.llm_timeout_s, extra_body=ajustes.llm_extra_body)
+        politica = PoliticaReintentos(
+            reintentos=ajustes.api_reintentos,
+            espera_max_s=ajustes.api_espera_max_s,
+            reintentar_timeouts=False,
+        )
+        return cls(
+            proveedores,
+            timeout_s=ajustes.llm_timeout_s,
+            extra_body=ajustes.llm_extra_body,
+            politica=politica,
+            registro=registro,
+        )
 
     @property
     def configurado(self) -> bool:
@@ -176,27 +196,52 @@ class ClienteLLM:
 
             inicio = time.perf_counter()
             try:
-                respuesta = self._http.post(
+                respuesta = post_con_reintentos(
+                    self._http,
                     f"{proveedor.base_url}/chat/completions",
-                    json=payload,
-                    headers={"Authorization": f"Bearer {proveedor.api_key}"},
+                    cuerpo=payload,
+                    cabeceras={"Authorization": f"Bearer {proveedor.api_key}"},
+                    politica=self.politica,
+                    esperar=self._esperar,
+                    al_reintentar=self._avisar_reintento(proveedor),
                 )
-            except httpx.HTTPError as exc:
-                intentos.append(f"{proveedor.nombre}: sin respuesta ({type(exc).__name__})")
+            except FalloPasajero as exc:
+                intentos.append(f"{proveedor.nombre}: {exc}")
                 continue
 
             if respuesta.status_code != 200:
                 intentos.append(
-                    f"{proveedor.nombre}: HTTP {respuesta.status_code} {_mensaje_error(respuesta)}"
+                    f"{proveedor.nombre}: HTTP {respuesta.status_code} {detalle_error(respuesta)}"
                 )
                 continue
 
             try:
-                return self._normalizar(respuesta.json(), proveedor, time.perf_counter() - inicio)
+                normalizada = self._normalizar(
+                    respuesta.json(), proveedor, time.perf_counter() - inicio
+                )
             except (ValueError, KeyError, IndexError, TypeError) as exc:
                 intentos.append(f"{proveedor.nombre}: respuesta inválida ({type(exc).__name__})")
+                continue
+            if intentos and self._registro is not None:
+                self._registro.aviso("llm.respaldo", proveedor=proveedor.nombre, fallos=intentos)
+            return normalizada
 
         raise SinProveedores("Ningún proveedor respondió: " + "; ".join(intentos), intentos)
+
+    def _avisar_reintento(self, proveedor: Proveedor) -> Callable[[str, float], None] | None:
+        registro = self._registro
+        if registro is None:
+            return None
+
+        def avisar(motivo: str, espera: float) -> None:
+            registro.aviso(
+                "llm.reintento",
+                proveedor=proveedor.nombre,
+                motivo=motivo,
+                espera_s=round(espera, 1),
+            )
+
+        return avisar
 
     @staticmethod
     def _normalizar(datos: dict[str, Any], proveedor: Proveedor, latencia: float) -> RespuestaLLM:

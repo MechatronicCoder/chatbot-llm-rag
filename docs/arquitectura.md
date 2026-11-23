@@ -21,7 +21,9 @@ Este documento describe los componentes, el arranque, el flujo de un turno, el m
 | `app/core/logs.py` | Eventos por turno en consola y JSONL | `config` |
 | `app/core/seguridad.py` | Redacción, guardias y validación de salida (funciones puras) | `core.isbn` |
 | `app/llm/cliente.py` | Chat compatible con OpenAI, herramientas y respaldo | httpx |
-| `app/llm/embeddings.py` | Embeddings por API, lotes y reintentos | httpx, numpy |
+| `app/llm/embeddings.py` | Embeddings por API y lotes | httpx, numpy |
+| `app/llm/reintentos.py` | Reintentos ante 429, 5xx y cortes de red, con espera creciente y `Retry-After` | httpx |
+| `app/llm/tope.py` | Tope de tokens en 24 horas: al pasarlo, el turno sigue en modo demo | — |
 | `app/persistencia/db.py` | `BaseDatos`: reúne los repositorios en un solo punto de acceso | `tienda`, `conversacion` |
 | `app/persistencia/esquema.py` | Tablas, versión del esquema, errores de pedido y conversión de filas | sqlite3 |
 | `app/persistencia/conexion.py` | Conexión, reconstrucción por versión y sincronización del catálogo | `esquema`, `catalogo.carga` |
@@ -209,13 +211,14 @@ Regla de diseño: un dato, un dueño. Lo que se consulta o suma (pedidos, tokens
 | `guardia.inyeccion`, `guardia.palabra_prohibida` | WARN | Mensaje bloqueado por manipulación o por piratería |
 | `clasificacion`, `faq.hit`, `escalado` | INFO o WARN | Decisión del clasificador |
 | `llm.llamada`, `llm.lento` | INFO o WARN | Cada llamada al modelo y su latencia |
+| `llm.reintento`, `llm.respaldo` | WARN | Un fallo pasajero se reintentó (motivo y espera), o respondió el proveedor de respaldo |
 | `herramienta.ejecutada` | INFO | Cada herramienta con resultado y duración |
 | `recomendacion.generada` | INFO | ISBN recomendados y motor usado |
 | `rag.recuperado` | INFO | Fragmentos elegidos, mejor puntaje y motor |
 | `pedido.creado`, `pedido.cobrado`, `pedido.cancelado` | INFO | Cambios en pedidos |
 | `salida.bloqueada`, `salida.redactada` | WARN o INFO | La validación de salida actuó |
 | `salida.no_verificada` | WARN | La respuesta del modelo afirmaba algo que no pasó (id, pago, cancelación o cita); se pidió corrección |
-| `degradacion` | WARN | Sin proveedor: modo demo |
+| `degradacion` | WARN | Sin proveedor o con el tope diario de tokens alcanzado: modo demo |
 | `limite.superado` | WARN | Un cliente superó el límite por minuto |
 | `acceso.correcto`, `acceso.cerrado` | INFO | Inicio y cierre de sesión del acceso de la demo |
 | `acceso.fallido`, `acceso.bloqueado` | WARN | Usuario o clave incorrectos (sin registrar la clave) o demasiados intentos |

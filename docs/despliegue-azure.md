@@ -422,6 +422,14 @@ Formas de bajar el costo:
 az containerapp update --name $APP --resource-group $GRUPO --min-replicas 0
 ```
 
+- Ajustar el tope de tokens del chat (`LLM_TOKENS_POR_DIA`, 2 000 000 por defecto). Al pasarlo, la app responde en modo demo hasta que el consumo de las últimas 24 horas baje; `tokens_24h` en `/api/metricas` muestra cuánto va. El conteo sale de la base SQLite, así que se reinicia cada vez que se crea una revisión nueva o la réplica se apaga: es una protección contra un abuso dentro del día, no un límite de facturación. Ese límite, o al menos una alerta de gasto, se configura en la consola del proveedor del modelo. Para cambiar el tope sin volver a desplegar:
+
+```powershell
+az containerapp update --name $APP --resource-group $GRUPO --set-env-vars LLM_TOKENS_POR_DIA=500000
+```
+
+  Para que el valor sea permanente se agrega a `variablesAdicionales` en la fase 2.
+
 - Borrar imágenes viejas del registro: cada despliegue continuo sube una etiqueta nueva.
 
 ```powershell

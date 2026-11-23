@@ -259,7 +259,9 @@ chatbot-llm-rag/
 │   │   └── texto.py          Normalización de texto (sin tildes ni signos)
 │   ├── llm/                  Clientes de modelos
 │   │   ├── cliente.py        Chat con herramientas y cadena de respaldo
-│   │   └── embeddings.py     Embeddings por API con lotes y reintentos
+│   │   ├── embeddings.py     Embeddings por API con lotes
+│   │   ├── reintentos.py     Reintentos ante 429, 5xx y cortes de red
+│   │   └── tope.py           Tope de tokens en 24 horas (pasa a modo demo)
 │   ├── persistencia/         SQLite
 │   │   ├── db.py             BaseDatos: reúne los repositorios en un solo punto de acceso
 │   │   ├── esquema.py        Tablas, versión del esquema y conversión de filas
@@ -354,6 +356,8 @@ Todas las variables están documentadas en [.env.example](.env.example). Las pri
 | `LLM_2_BASE_URL`, `LLM_2_API_KEY`, `LLM_2_MODEL` | Modelo de respaldo (Qwen) | vacío: sin respaldo |
 | `EMBEDDINGS_BASE_URL`, `EMBEDDINGS_API_KEY`, `EMBEDDINGS_MODEL` | Embeddings del RAG y del recomendador | vacío: TF-IDF |
 | `LLM_MAX_TOKENS` | Tope de tokens por respuesta (también limita el gasto) | 700 |
+| `LLM_TOKENS_POR_DIA` | Tope de tokens del chat en 24 horas; al pasarlo responde en modo demo | 2 000 000 |
+| `API_REINTENTOS`, `API_ESPERA_MAX_S` | Reintentos ante 429, 5xx o cortes de red y espera máxima aceptada | 2 y 6 s |
 | `FAQ_UMBRAL`, `FAQ_MARGEN` | Cuándo una FAQ gana sobre el LLM | 0.55 y 0.03 |
 | `RAG_UMBRAL` | Similitud mínima para usar un fragmento | 0.35 |
 | `RAG_K_INICIAL`, `RAG_K_FINAL`, `RAG_MMR_LAMBDA` | Candidatos, fragmentos elegidos y equilibrio relevancia/variedad | 8, 3 y 0.5 |
@@ -442,7 +446,7 @@ Las pruebas no llaman a ninguna API: el modelo, los embeddings y los proveedores
 - clasificador de FAQ, su umbral y la guardia de búsquedas de libros;
 - RAG: fragmentación de PDF y Markdown, MMR, motor denso, caché de embeddings y caída a TF-IDF;
 - herramientas: reglas de stock, cobro y pedidos ajenos;
-- cliente LLM: formato de herramientas y cadena de respaldo ante 401, 429, 500 y errores de red;
+- cliente LLM: formato de herramientas, reintentos con espera creciente y `Retry-After`, cadena de respaldo ante 401, 429, 500 y errores de red, y tope diario de tokens;
 - base de datos, API HTTP, el turno completo y el modo demo;
 - los archivos reales de `datos/`: que el catálogo y la tienda sean válidos y que cada FAQ se reconozca.
 
@@ -572,6 +576,7 @@ uv export --no-dev --no-hashes --no-emit-project --no-header -o requirements.txt
 | Las respuestas dicen "Modo demo" | Faltan `LLM_*` en el `.env` o la clave es inválida | Revisar `/api/health` (campo `modo`) y el evento `degradacion` en el panel de logs |
 | `corpus.motor` es `tfidf` con embeddings configurados | La API de embeddings falló al indexar | Ver el campo `corpus.aviso` en `/api/health`; revisar URL, clave y región |
 | Error 429 en el chat | Se superó `LIMITE_CHAT_POR_MINUTO` | Esperar los segundos indicados o subir el límite en local |
+| Las respuestas avisan que se alcanzó el límite diario de uso del modelo | Se pasó `LLM_TOKENS_POR_DIA` | Ver `tokens_24h` en `/api/metricas`; esperar a que bajen o subir el tope |
 | El panel de logs pide un token | `ADMIN_TOKEN` está definido | Ingresar el mismo valor en el panel |
 | `[Errno 10048]` al arrancar | El puerto 8000 está ocupado | Usar `--port 8001` o detener el otro proceso |
 | Una fuente o librería externa no carga en el frontend | La Content-Security-Policy la bloquea | Ajustar `CONTENT_SECURITY_POLICY` (ver [docs/frontend.md](docs/frontend.md)) |
