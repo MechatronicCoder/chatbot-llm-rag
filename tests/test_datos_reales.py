@@ -48,3 +48,15 @@ def test_hay_documentos_para_el_rag() -> None:
     documentos = {p.name for p in (DATOS_REALES / "documentos").iterdir()}
     assert "politicas_libreria.md" in documentos
     assert any(nombre.endswith(".pdf") for nombre in documentos)
+
+
+def test_las_tarifas_de_envio_coinciden_con_las_politicas() -> None:
+    """El código cobra lo que dice `tienda.json`; el documento de políticas debe decir lo mismo."""
+    tienda = cargar_tienda(DATOS_REALES / "tienda.json")
+    politicas = (DATOS_REALES / "documentos" / "politicas_libreria.md").read_text(encoding="utf-8")
+    for tarifa in tienda.envio.values():
+        assert f"S/ {tarifa.costo.normalize():f}" in politicas
+        assert (
+            tarifa.gratis_desde is not None
+            and f"S/ {tarifa.gratis_desde.normalize():f}" in politicas
+        )

@@ -68,7 +68,14 @@ def test_el_modelo_corrige_una_reserva_inventada(
 ) -> None:
     modelo.respuestas = [
         respuesta("¡Listo! Reservé tu libro. Pedido PED-9F3G7H2K."),
-        respuesta(tool_calls=[llamada("reservar_pedido", isbn=ISBN_MAGO, cantidad=1)]),
+        respuesta(
+            tool_calls=[
+                llamada(
+                    "actualizar_carrito", cambios=[{"isbn": ISBN_MAGO, "cantidad": 1}], zona="lima"
+                ),
+                llamada("reservar_pedido"),
+            ]
+        ),
         respuesta("Reservado."),
     ]
     r = servicio_con_modelo.responder("quiero 1 de La escuela de magos", "ana", "s-v1")

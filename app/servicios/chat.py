@@ -308,6 +308,7 @@ class ServicioChat:
             pagos=acumulado.pagos,
             documentos=acumulado.documentos,
             libros=acumulado.libros,
+            carrito=acumulado.carrito,
             modo="real",
             modelo=modelo,
             endpoint=proveedor,

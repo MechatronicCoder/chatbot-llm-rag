@@ -60,6 +60,18 @@ def evaluar_caso(servicio: Any, caso: dict[str, Any]) -> dict[str, Any]:
         libro_ok = any(t in titulos for t in esperados)
         if not libro_ok:
             fallos.append(f"ningún libro esperado mostrado ({' / '.join(esperados)})")
+    if esperado := caso.get("carrito"):
+        # el pedido que tocó el último turno: estado y cantidad de libros
+        carrito = respuesta.carrito or {}
+        if carrito.get("estado") not in esperado["estado"]:
+            fallos.append(
+                f"pedido {carrito.get('estado')} (se esperaba {'/'.join(esperado['estado'])})"
+            )
+        if "unidades" in esperado and carrito.get("unidades") != esperado["unidades"]:
+            fallos.append(
+                f"{carrito.get('unidades')} libros en el pedido "
+                f"(se esperaban {esperado['unidades']})"
+            )
     return {
         "id": caso["id"],
         "categoria": caso["categoria"],

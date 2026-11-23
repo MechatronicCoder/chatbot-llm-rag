@@ -2,13 +2,14 @@
  * chat.js — hilo de mensajes y formulario de envío.
  *
  * Pinta las burbujas del cliente y del asistente, las tarjetas de los libros
- * mostrados (libros.js), los chips de metadatos de cada respuesta, el bloque
+ * mostrados (libros.js) y del pedido (carrito.js), los chips de metadatos de cada respuesta, el bloque
  * "ver respuesta completa" con el JSON, el indicador de escritura y los
  * errores. No conoce el panel ni los logs: se comunica con ellos mediante las
  * funciones que recibe en iniciarChat().
  */
 
 import { enviarMensaje, ErrorApi } from './api.js';
+import { tarjetaCarrito } from './carrito.js';
 import { tarjetasDeLibros } from './libros.js';
 import {
   crear,
@@ -145,6 +146,8 @@ export function iniciarChat({ obtenerUsuario, alFiltrarTurno, alResponder } = {}
     if (d.aviso) nodo.append(crear('p', { clase: 'msg-aviso', texto: d.aviso }));
     const libros = tarjetasDeLibros(d.libros);
     if (libros) nodo.append(libros);
+    const carrito = tarjetaCarrito(d.carrito);
+    if (carrito) nodo.append(carrito);
 
     const chips = chipsDe(d);
     if (chips.length) {

@@ -40,7 +40,10 @@ RE_ACCION = re.compile(
     r"resérvala|reservala|resérvalo|reservalo|cancela|cancélalo|cancelalo|compra|cómprala|"
     r"comprala|cómpralo|compralo|apártalo|apartalo|me lo llevo|me la llevo|lo quiero|"
     r"la quiero|los quiero|quiero comprar|quiero reservar|quiero pedir|quiero el libro|"
-    r"quiero ese libro|quiero este libro)\b|\bPED-[A-Z0-9]{4,}\b|" + RE_ISBN.pattern,
+    r"quiero ese libro|quiero este libro|agrega|agrégalo|agregalo|añade|añádelo|añadelo|quita|"
+    r"quítalo|quitalo)\b|\bPED-[A-Z0-9]{4,}\b|"
+    # el carrito o el pedido propio: la FAQ no los conoce ("¿cuánto me falta para el envío gratis?")
+    r"\b(?:mi|el) (?:carrito|pedido)\b|\bme falta\b|" + RE_ISBN.pattern,
     # un ISBN-13 (con o sin guiones) es un libro concreto: lo resuelven las herramientas
     re.IGNORECASE,
 )
@@ -59,6 +62,12 @@ RE_BUSQUEDA = re.compile(
 
 # "para mi hijo de 5 años" -> 5 (solo para el modo demo; con modelo, lo deduce el LLM)
 RE_EDAD = re.compile(r"\b(\d{1,2})\s*años\b", re.IGNORECASE)
+
+# Confirmación fija: el cliente ve el total que calculó el sistema antes de que se cobre.
+AVISO_COBRO = (
+    "No se cobró: el total de este pedido cambió en este mismo turno y el cliente todavía no "
+    "lo vio. Muéstrale el resumen y pregúntale si confirma el pago."
+)
 
 MENSAJE_ESCALADO = (
     "Esa consulta la responde mejor un asesor humano; queda registrada. "
@@ -112,6 +121,7 @@ class RespuestaChat:
     turno_id: str = ""
     aviso: str | None = None
     clasificacion: dict[str, Any] | None = None
+    carrito: dict[str, Any] | None = None  # el último pedido o carrito que tocó el turno
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -128,6 +138,8 @@ class Acumulado:
     libros: list[dict[str, Any]] = field(default_factory=list)
     tokens: list[int] = field(default_factory=lambda: [0, 0])
     cache: dict[str, dict[str, Any]] = field(default_factory=dict)
+    cotizados: set[str] = field(default_factory=set)  # pedidos cuyo total cambió en el turno
+    carrito: dict[str, Any] | None = None
 
     def sumar_uso(self, uso: dict[str, int]) -> None:
         self.tokens[0] += uso.get("prompt_tokens", 0)
@@ -226,7 +238,11 @@ def ejecutar_llamada(
         return acumulado.cache[firma]
 
     t0 = time.perf_counter()
-    resultado = herramientas.ejecutar(nombre, tc["arguments"], usuario_id)
+    pedido_id = str((tc["arguments"] or {}).get("pedido_id", "")).upper()
+    if nombre == "cobrar_pedido" and pedido_id in acumulado.cotizados:
+        resultado: dict[str, Any] = {"error": AVISO_COBRO}
+    else:
+        resultado = herramientas.ejecutar(nombre, tc["arguments"], usuario_id)
     ms = int((time.perf_counter() - t0) * 1000)
     if nombre in IDEMPOTENTES:
         acumulado.cache[firma] = resultado
@@ -266,10 +282,15 @@ def ejecutar_llamada(
             mejor=acumulado.documentos[0]["score"],
             motor=acumulado.documentos[0].get("motor"),
         )
-    if nombre == "reservar_pedido" and resultado.get("pedido_id"):
-        acumulado.pedidos.append(resultado["pedido_id"])
+    if "lineas" in resultado:  # cualquier herramienta de pedidos devuelve el pedido completo
+        acumulado.carrito = resultado
+    if nombre in ("actualizar_carrito", "reservar_pedido") and ok:
+        if resultado["pedido_id"] not in acumulado.pedidos:
+            acumulado.pedidos.append(resultado["pedido_id"])
+        if nombre == "actualizar_carrito":
+            acumulado.cotizados.add(resultado["pedido_id"])
         registro.info(
-            "pedido.creado",
+            "carrito.actualizado" if nombre == "actualizar_carrito" else "pedido.creado",
             turno_id,
             pedido=resultado["pedido_id"],
             total=resultado.get("total"),

@@ -1,8 +1,9 @@
 """Usuarios, pedidos y pagos.
 
-La reserva descuenta stock y crea el pedido en la misma transacción, así dos
-reservas simultáneas no venden el último ejemplar dos veces; un pedido no se
-cobra dos veces ni se cobra el de otro cliente.
+Un pedido nace como carrito (`carrito.py`) y al reservarse descuenta el stock de
+todas sus líneas en una sola transacción, así dos reservas simultáneas no venden
+el último ejemplar dos veces. Un pedido no se cobra dos veces ni se cobra el de
+otro cliente. Los montos se calculan en `app.catalogo.cotizacion`, en céntimos.
 """
 
 from __future__ import annotations
@@ -11,17 +12,19 @@ import sqlite3
 import uuid
 from typing import Any
 
+from app.catalogo.cotizacion import Cotizacion, Linea, a_centimos, a_soles, cotizar, detalle
 from app.persistencia.catalogo import RepositorioCatalogo
-from app.persistencia.esquema import (
-    METODOS_PAGO,
-    ErrorPedido,
-    fila_a_pedido,
-    momento_actual,
+from app.persistencia.esquema import METODOS_PAGO, ErrorPedido, momento_actual
+
+_LINEAS = (
+    "select pl.isbn, pl.cantidad, pl.precio_cent, l.titulo, l.autor, l.precio, l.stock, "
+    "l.activo from pedido_lineas pl join libros l on l.isbn = pl.isbn "
+    "where pl.pedido_id = ? order by pl.orden"
 )
 
-_PEDIDOS_CON_LIBRO = (
-    "select p.*, l.titulo, l.autor from pedidos p join libros l on l.isbn = p.isbn "
-)
+
+def nuevo_pedido_id() -> str:
+    return f"PED-{uuid.uuid4().hex[:8].upper()}"
 
 
 class RepositorioTienda(RepositorioCatalogo):
@@ -40,81 +43,42 @@ class RepositorioTienda(RepositorioCatalogo):
             fila = con.execute("select * from usuarios where id = ?", (usuario_id,)).fetchone()
         return {"id": fila["id"], "nombre": fila["nombre"], "creado_en": fila["creado_en"]}
 
-    # -- pedidos -----------------------------------------------------------------
-    def reservar_pedido(self, usuario_id: str, isbn: str, cantidad: int) -> dict[str, Any]:
-        """Crea el pedido y descuenta el stock en una sola transacción."""
-        cantidad = int(cantidad)
-        if cantidad <= 0:
-            raise ErrorPedido("La cantidad debe ser mayor que cero.")
-        libro = self.obtener_libro(isbn)
-        if libro is None:
-            raise ErrorPedido(f"No hay un libro con ISBN {isbn!r} en el catálogo.")
-        self.asegurar_usuario(usuario_id)
+    # -- armado del pedido ---------------------------------------------------------
+    def _cotizacion(self, con: sqlite3.Connection, fila: sqlite3.Row) -> Cotizacion:
+        lineas = [
+            Linea(f["isbn"], f["titulo"], f["autor"], f["cantidad"], f["precio_cent"])
+            for f in con.execute(_LINEAS, (fila["id"],)).fetchall()
+        ]
+        if fila["estado"] == "carrito":
+            return cotizar(lineas, fila["zona"], self.tienda)
+        # reservado, pagado o cancelado: los montos quedaron fijos al reservar
+        return Cotizacion(
+            tuple(lineas), fila["zona"], fila["subtotal_cent"], fila["envio_cent"], None
+        )
 
-        with self.conectar() as con:
-            con.execute("begin immediate")
-            try:
-                cursor = con.execute(
-                    "update libros set stock = stock - ? "
-                    "where isbn = ? and activo = 1 and stock >= ?",
-                    (cantidad, libro["isbn"], cantidad),
-                )
-                if cursor.rowcount == 0:
-                    disponible = con.execute(
-                        "select stock from libros where isbn = ?", (libro["isbn"],)
-                    ).fetchone()["stock"]
-                    raise ErrorPedido(
-                        f"Solo quedan {disponible} ejemplares de «{libro['titulo']}» "
-                        f"(se pidieron {cantidad})."
-                    )
-                pedido_id = f"PED-{uuid.uuid4().hex[:8].upper()}"
-                total = round(libro["precio"] * cantidad, 2)
-                con.execute(
-                    "insert into pedidos (id, usuario_id, isbn, cantidad, precio_unitario, "
-                    "total, estado, creado_en) values (?, ?, ?, ?, ?, ?, 'reservado', ?)",
-                    (
-                        pedido_id,
-                        usuario_id,
-                        libro["isbn"],
-                        cantidad,
-                        libro["precio"],
-                        total,
-                        momento_actual(),
-                    ),
-                )
-                con.execute("commit")
-            except Exception:
-                con.execute("rollback")
-                raise
-
+    def _armar(self, con: sqlite3.Connection, fila: sqlite3.Row) -> dict[str, Any]:
         return {
-            "pedido_id": pedido_id,
-            "estado": "reservado",
-            "usuario_id": usuario_id,
-            "isbn": libro["isbn"],
-            "titulo": libro["titulo"],
-            "autor": libro["autor"],
-            "cantidad": cantidad,
-            "precio_unitario": libro["precio"],
-            "total": total,
-            "stock_restante": libro["stock"] - cantidad,
+            "pedido_id": fila["id"],
+            "usuario_id": fila["usuario_id"],
+            "estado": fila["estado"],
+            **detalle(self._cotizacion(con, fila), self.tienda),
+            "creado_en": fila["creado_en"],
         }
 
-    def consultar_pedido(self, pedido_id: str) -> dict[str, Any] | None:
-        with self.conectar() as con:
-            fila = con.execute(
-                _PEDIDOS_CON_LIBRO + "where upper(p.id) = upper(?)", (pedido_id,)
-            ).fetchone()
-        return fila_a_pedido(fila) if fila else None
-
-    def pedidos_de(self, usuario_id: str) -> list[dict[str, Any]]:
-        with self.conectar() as con:
-            filas = con.execute(
-                _PEDIDOS_CON_LIBRO
-                + "where p.usuario_id = ? order by p.creado_en desc, p.rowid desc",
-                (usuario_id,),
-            ).fetchall()
-        return [fila_a_pedido(f) for f in filas]
+    def _guardar_cotizacion(self, con: sqlite3.Connection, pedido_id: str) -> None:
+        fila = self._pedido_en_transaccion(con, pedido_id)
+        cotizacion = cotizar(self._cotizacion(con, fila).lineas, fila["zona"], self.tienda)
+        con.execute(
+            "update pedidos set subtotal_cent = ?, envio_cent = ?, total_cent = ?, "
+            "actualizado_en = ? where id = ?",
+            (
+                cotizacion.subtotal_cent,
+                cotizacion.envio_cent,
+                cotizacion.total_cent,
+                momento_actual(),
+                pedido_id,
+            ),
+        )
 
     def _pedido_en_transaccion(self, con: sqlite3.Connection, pedido_id: str) -> sqlite3.Row:
         fila = con.execute(
@@ -124,37 +88,121 @@ class RepositorioTienda(RepositorioCatalogo):
             raise ErrorPedido(f"No existe el pedido {pedido_id!r}.")
         return fila
 
+    def _reservar_en_transaccion(self, con: sqlite3.Connection, pedido_id: str) -> list[str]:
+        """Descuenta el stock de cada línea con el precio actual; devuelve los cambios de precio."""
+        fila = self._pedido_en_transaccion(con, pedido_id)
+        lineas = con.execute(_LINEAS, (fila["id"],)).fetchall()
+        if not lineas:
+            raise ErrorPedido(
+                "El carrito está vacío: primero agrega libros con actualizar_carrito."
+            )
+        if fila["zona"] not in self.tienda.envio:
+            raise ErrorPedido(
+                "Falta la zona de envío: pregunta si es Lima o provincias y pásala a "
+                "actualizar_carrito antes de reservar."
+            )
+        cambios = []
+        for linea in lineas:
+            cursor = con.execute(
+                "update libros set stock = stock - ? where isbn = ? and activo = 1 and stock >= ?",
+                (linea["cantidad"], linea["isbn"], linea["cantidad"]),
+            )
+            if cursor.rowcount == 0:
+                raise ErrorPedido(
+                    f"Solo quedan {linea['stock'] if linea['activo'] else 0} ejemplares de "
+                    f"«{linea['titulo']}» (se pidieron {linea['cantidad']})."
+                )
+            actual = a_centimos(linea["precio"])
+            if actual != linea["precio_cent"]:
+                precio = self.tienda.precio
+                cambios.append(
+                    f"«{linea['titulo']}» pasó de {precio(a_soles(linea['precio_cent']))} "
+                    f"a {precio(a_soles(actual))}"
+                )
+                con.execute(
+                    "update pedido_lineas set precio_cent = ? where pedido_id = ? and isbn = ?",
+                    (actual, fila["id"], linea["isbn"]),
+                )
+        self._guardar_cotizacion(con, fila["id"])
+        con.execute("update pedidos set estado = 'reservado' where id = ?", (fila["id"],))
+        return cambios
+
+    # -- consultas -------------------------------------------------------------------
+    def consultar_pedido(self, pedido_id: str) -> dict[str, Any] | None:
+        with self.conectar() as con:
+            fila = con.execute(
+                "select * from pedidos where upper(id) = upper(?)", (pedido_id,)
+            ).fetchone()
+            return self._armar(con, fila) if fila else None
+
+    def pedidos_de(self, usuario_id: str) -> list[dict[str, Any]]:
+        """Pedidos del cliente, del más nuevo al más viejo; un carrito vacío no cuenta."""
+        with self.conectar() as con:
+            filas = con.execute(
+                "select * from pedidos where usuario_id = ? order by creado_en desc, rowid desc",
+                (usuario_id,),
+            ).fetchall()
+            pedidos = [self._armar(con, f) for f in filas]
+        return [p for p in pedidos if p["lineas"]]
+
+    def ventas(self, usuario_id: str | None = None) -> list[dict[str, Any]]:
+        """Una fila por libro vendido en pedidos pagados (reporte y CSV)."""
+        with self.conectar() as con:
+            filas = con.execute(
+                "select * from pedidos where estado = 'pagado' and (? is null or usuario_id = ?) "
+                "order by creado_en, rowid",
+                (usuario_id, usuario_id),
+            ).fetchall()
+            pedidos = [self._armar(con, f) for f in filas]
+        return [
+            {
+                "pedido_id": p["pedido_id"],
+                "usuario_id": p["usuario_id"],
+                **linea,
+                "envio": p["envio"] or 0.0,
+                "total": p["total"],
+                "estado": p["estado"],
+                "creado_en": p["creado_en"],
+            }
+            for p in pedidos
+            for linea in p["lineas"]
+        ]
+
+    # -- cambios de estado -------------------------------------------------------------
     def cancelar_pedido(self, pedido_id: str) -> dict[str, Any]:
-        """Cancela un pedido reservado y devuelve los ejemplares al stock."""
+        """Cancela un carrito o un pedido reservado; lo reservado vuelve al stock."""
         with self.conectar() as con:
             con.execute("begin immediate")
             try:
                 fila = self._pedido_en_transaccion(con, pedido_id)
-                if fila["estado"] != "reservado":
+                if fila["estado"] not in ("carrito", "reservado"):
                     raise ErrorPedido(
                         f"El pedido {fila['id']} está en estado {fila['estado']!r}: "
                         "no se puede cancelar."
                     )
+                devueltas = 0
+                if fila["estado"] == "reservado":
+                    for linea in con.execute(_LINEAS, (fila["id"],)).fetchall():
+                        con.execute(
+                            "update libros set stock = stock + ? where isbn = ?",
+                            (linea["cantidad"], linea["isbn"]),
+                        )
+                        devueltas += linea["cantidad"]
                 con.execute(
-                    "update libros set stock = stock + ? where isbn = ?",
-                    (fila["cantidad"], fila["isbn"]),
+                    "update pedidos set estado = 'cancelado', actualizado_en = ? where id = ?",
+                    (momento_actual(), fila["id"]),
                 )
-                con.execute("update pedidos set estado = 'cancelado' where id = ?", (fila["id"],))
                 con.execute("commit")
             except Exception:
                 con.execute("rollback")
                 raise
-        return {
-            "pedido_id": fila["id"],
-            "estado": "cancelado",
-            "unidades_devueltas": fila["cantidad"],
-        }
+            pedido = self._armar(con, self._pedido_en_transaccion(con, fila["id"]))
+        return {**pedido, "unidades_devueltas": devueltas}
 
-    # -- pagos -------------------------------------------------------------------
     def registrar_pago(
         self, usuario_id: str, pedido_id: str, metodo: str = "tarjeta"
     ) -> dict[str, Any]:
-        """Cobra un pedido reservado del mismo cliente; nunca dos veces."""
+        """Cobra un pedido del mismo cliente, nunca dos veces; un carrito se reserva y cobra."""
         metodo = (metodo or "tarjeta").strip().lower()
         if metodo not in METODOS_PAGO:
             raise ErrorPedido(f"Método no aceptado. Opciones: {', '.join(METODOS_PAGO)}.")
@@ -165,6 +213,14 @@ class RepositorioTienda(RepositorioCatalogo):
                 fila = self._pedido_en_transaccion(con, pedido_id)
                 if fila["usuario_id"] != usuario_id:
                     raise ErrorPedido("Ese pedido pertenece a otro cliente.")
+                if fila["estado"] == "carrito":
+                    cambios = self._reservar_en_transaccion(con, fila["id"])
+                    if cambios:
+                        raise ErrorPedido(
+                            "No se cobró: cambió el precio de " + "; ".join(cambios) + ". "
+                            "Muestra el total nuevo con actualizar_carrito y pide confirmación."
+                        )
+                    fila = self._pedido_en_transaccion(con, fila["id"])
                 if fila["estado"] != "reservado":
                     raise ErrorPedido(
                         f"El pedido {fila['id']} está en estado {fila['estado']!r}: "
@@ -172,11 +228,14 @@ class RepositorioTienda(RepositorioCatalogo):
                     )
                 pago_id = f"PAG-{uuid.uuid4().hex[:8].upper()}"
                 con.execute(
-                    "insert into pagos (id, pedido_id, metodo, monto, estado, creado_en) "
+                    "insert into pagos (id, pedido_id, metodo, monto_cent, estado, creado_en) "
                     "values (?, ?, ?, ?, 'aprobado', ?)",
-                    (pago_id, fila["id"], metodo, fila["total"], momento_actual()),
+                    (pago_id, fila["id"], metodo, fila["total_cent"], momento_actual()),
                 )
-                con.execute("update pedidos set estado = 'pagado' where id = ?", (fila["id"],))
+                con.execute(
+                    "update pedidos set estado = 'pagado', actualizado_en = ? where id = ?",
+                    (momento_actual(), fila["id"]),
+                )
                 con.execute("commit")
             except Exception:
                 con.execute("rollback")
@@ -185,7 +244,7 @@ class RepositorioTienda(RepositorioCatalogo):
             "pago_id": pago_id,
             "pedido_id": fila["id"],
             "metodo": metodo,
-            "monto": fila["total"],
+            "monto": a_soles(fila["total_cent"]),
             "estado": "pagado",
         }
 
@@ -194,14 +253,4 @@ class RepositorioTienda(RepositorioCatalogo):
             filas = con.execute(
                 "select * from pagos where pedido_id = ? order by creado_en", (pedido_id,)
             ).fetchall()
-        return [dict(f) for f in filas]
-
-    def ventas(self, usuario_id: str | None = None) -> list[dict[str, Any]]:
-        """Pedidos pagados (reporte y CSV)."""
-        consulta = _PEDIDOS_CON_LIBRO + (
-            "where p.estado = 'pagado' and (? is null or p.usuario_id = ?) "
-            "order by p.creado_en, p.rowid"
-        )
-        with self.conectar() as con:
-            filas = con.execute(consulta, (usuario_id, usuario_id)).fetchall()
-        return [fila_a_pedido(f) for f in filas]
+        return [{**dict(f), "monto": a_soles(f["monto_cent"])} for f in filas]

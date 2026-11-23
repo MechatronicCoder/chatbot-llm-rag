@@ -18,9 +18,10 @@ from __future__ import annotations
 import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
+from functools import cached_property
 from pathlib import Path
 
-from app.catalogo.carga import cargar_catalogo
+from app.catalogo.carga import Tienda, cargar_catalogo, cargar_tienda
 from app.catalogo.modelo import Libro
 from app.persistencia.esquema import COLUMNAS_LIBRO, ESQUEMA, ESQUEMA_VERSION, TABLAS
 
@@ -39,6 +40,11 @@ class Conexion:
         self.ruta = ruta
         self.ruta_catalogo = ruta_catalogo
         self.ultima_sincronizacion: dict[str, int] = {}
+
+    @cached_property
+    def tienda(self) -> Tienda:
+        """Moneda y tarifas de envío: `tienda.json`, junto al catálogo."""
+        return cargar_tienda(self.ruta_catalogo.parent / "tienda.json")
 
     @contextmanager
     def conectar(self) -> Iterator[sqlite3.Connection]:

@@ -69,17 +69,40 @@ ESQUEMAS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "reservar_pedido",
-        "description": "Reserva ejemplares de un libro para el cliente actual: descuenta stock y "
-        "crea el pedido. Solo con el libro y la cantidad confirmados por el cliente.",
+        "name": "actualizar_carrito",
+        "description": "Agrega, cambia o quita libros del carrito del cliente y fija la zona de "
+        "envío. Devuelve el carrito con subtotal, envío y total calculados por el sistema y un "
+        "`resumen` listo para mostrar: nunca sumes ni calcules el envío tú. Sin argumentos, "
+        "devuelve el carrito actual.",
         "parameters": {
             "type": "object",
             "properties": {
-                "isbn": _ISBN,
-                "cantidad": {"type": "integer", "minimum": 1, "description": "Ejemplares"},
+                "cambios": {
+                    "type": "array",
+                    "description": "Un elemento por libro, con la cantidad FINAL de ese libro en "
+                    "el carrito (0 lo quita). Los libros que no se nombran quedan igual.",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "isbn": _ISBN,
+                            "cantidad": {"type": "integer", "minimum": 0, "maximum": 10},
+                        },
+                        "required": ["isbn", "cantidad"],
+                    },
+                },
+                "zona": {
+                    "type": "string",
+                    "enum": ["lima", "provincias"],
+                    "description": "lima = Lima Metropolitana; provincias = resto del país",
+                },
             },
-            "required": ["isbn", "cantidad"],
         },
+    },
+    {
+        "name": "reservar_pedido",
+        "description": "Reserva el carrito del cliente: descuenta stock y fija los montos. "
+        "Necesita libros en el carrito y la zona de envío. No cobra.",
+        "parameters": {"type": "object", "properties": {}},
     },
     {
         "name": "consultar_pedido",
@@ -92,7 +115,7 @@ ESQUEMAS: list[dict[str, Any]] = [
     },
     {
         "name": "cancelar_pedido",
-        "description": "Cancela un pedido reservado y devuelve los ejemplares al stock.",
+        "description": "Cancela un carrito o un pedido reservado; lo reservado vuelve al stock.",
         "parameters": {
             "type": "object",
             "properties": {"pedido_id": _PEDIDO},
@@ -101,8 +124,9 @@ ESQUEMAS: list[dict[str, Any]] = [
     },
     {
         "name": "cobrar_pedido",
-        "description": "Cobra un pedido reservado del cliente actual. Métodos: tarjeta, "
-        "efectivo o transferencia. Un pedido no se cobra dos veces.",
+        "description": "Cobra un pedido del cliente actual (un carrito se reserva y cobra a la "
+        "vez). Solo si el cliente ya vio el total y pidió pagar. Métodos: tarjeta, efectivo o "
+        "transferencia. Un pedido no se cobra dos veces.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -128,4 +152,4 @@ ESQUEMAS: list[dict[str, Any]] = [
 IDEMPOTENTES = frozenset(
     {"buscar_libros", "recomendar_libros", "ficha_libro", "consultar_pedido", "buscar_politica"}
 )
-ACCIONES = frozenset({"reservar_pedido", "cobrar_pedido", "cancelar_pedido"})
+ACCIONES = frozenset({"actualizar_carrito", "reservar_pedido", "cobrar_pedido", "cancelar_pedido"})

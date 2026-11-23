@@ -29,6 +29,7 @@ frontend/
     ├── util.js         escape de HTML, formato, localStorage seguro, ayudas de DOM
     ├── chat.js         hilo, burbujas, chips, indicador de escritura, envío
     ├── libros.js       tarjetas de los libros de cada respuesta
+    ├── carrito.js      tarjeta del carrito o pedido de cada respuesta
     ├── panel.js        cliente, pedidos y catálogo de libros
     └── logs.js         log en vivo, filtros, métricas y formulario de token
 ```
@@ -42,6 +43,7 @@ frontend/
 | `acceso.js` | Pantalla de acceso (usuario y clave) que bloquea la página si el backend lo pide, y botón Salir. La sesión es una cookie HttpOnly que el código nunca lee. | `iniciarAcceso({ alEntrar, alSalir })` → `{ verificar, mostrar, sesionRechazada, bloqueado }` |
 | `chat.js` | Todo lo que ocurre dentro del hilo y del formulario de envío. | `iniciarChat({ obtenerUsuario, alFiltrarTurno, alResponder })` → `{ enviar, limpiar, anotar, marcarTurno }` |
 | `libros.js` | Tarjetas de los libros de una respuesta: título, autor, precio, stock, valoración y edad, siempre como texto. | `tarjetasDeLibros(libros)` → `<ul>` o `null` |
+| `carrito.js` | Tarjeta del pedido que tocó una respuesta: líneas, subtotal, envío, total y cuánto falta para el envío gratis. Solo formatea los montos que calculó el servidor; nunca suma. | `tarjetaCarrito(carrito)` → `<section>` o `null` |
 | `panel.js` | Columna del cliente: id (guardado en localStorage), recargar, borrar conversación, pedidos y catálogo. | `iniciarPanel({ alCambiarUsuario, alRecargar, alBorrar })` → `{ usuario, cargarPedidos, cargarCatalogo }` |
 | `logs.js` | Panel de logs: refresco pausable, filtros, métricas, formulario de token ante 401. | `iniciarLogs({ alCambiarTurno })` → `{ refrescar, refrescarSiActivo, filtrarTurno, turnoActual }` |
 | `main.js` | Crea los tres módulos, los conecta mediante callbacks, pinta la cabecera desde `/api/health` (incluidos el nombre de la tienda, el título de la pestaña y la moneda) y mantiene los temporizadores. | (nada; es el punto de entrada) |
@@ -51,14 +53,15 @@ frontend/
 ```
 main.js   ─► chat.js, panel.js, logs.js, acceso.js, api.js, util.js
 acceso.js ─► api.js, util.js
-chat.js   ─► libros.js, api.js, util.js
+chat.js   ─► libros.js, carrito.js, api.js, util.js
 panel.js  ─► api.js, util.js
 logs.js   ─► api.js, util.js
 libros.js ─► util.js
+carrito.js ─► util.js
 api.js    ─► util.js
 ```
 
-Los módulos de interfaz (chat, panel y logs) no se importan entre sí; `libros.js` solo construye las tarjetas que usa el chat. Cuando el chat necesita filtrar el log, llama a `alFiltrarTurno`, y `main.js` lo redirige a `logs.filtrarTurno`. Así cada módulo se puede leer y modificar sin conocer a los demás.
+Los módulos de interfaz (chat, panel y logs) no se importan entre sí; `libros.js` y `carrito.js` solo construyen las tarjetas que usa el chat. Cuando el chat necesita filtrar el log, llama a `alFiltrarTurno`, y `main.js` lo redirige a `logs.filtrarTurno`. Así cada módulo se puede leer y modificar sin conocer a los demás.
 
 ## Ver los cambios en vivo
 

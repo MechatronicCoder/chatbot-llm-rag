@@ -33,7 +33,7 @@ Este documento describe los componentes, el arranque, el flujo de un turno, el m
 | `app/servicios/faq.py` | Clasificador TF-IDF de preguntas frecuentes | scikit-learn |
 | `app/servicios/rag.py` | Fragmentos de PDF y Markdown, índice denso y TF-IDF, caché y MMR | pypdf, numpy, `llm.embeddings` |
 | `app/servicios/recomendador.py` | Recomendador híbrido: similitud por contenido, valoración bayesiana y filtros | `rag`, `persistencia.catalogo` |
-| `app/servicios/esquemas_herramientas.py` | Las 8 herramientas que ve el modelo, cuáles son idempotentes y cuáles son acciones | nada |
+| `app/servicios/esquemas_herramientas.py` | Las 9 herramientas que ve el modelo, cuáles son idempotentes y cuáles son acciones | nada |
 | `app/servicios/herramientas.py` | Ejecución de las herramientas | `db`, `rag`, `recomendador` |
 | `app/servicios/chat.py` | El turno completo, paso a paso | `turno`, `faq`, `rag`, `herramientas` |
 | `app/servicios/turno.py` | Ajustes, guardias de acción y búsqueda, respuesta del turno, ejecución de herramientas con sus eventos y modo demo | `herramientas`, `recomendador`, `db` |
@@ -50,10 +50,11 @@ Las dependencias van en un solo sentido: la API conoce a los servicios, los serv
 | `recomendar_libros` | lectura | Recomienda por lo que describe el cliente, con filtros de edad y categoría; excluye los libros ya ofrecidos o leídos |
 | `ficha_libro` | lectura | Ficha completa y similares que siguen disponibles |
 | `buscar_politica` | lectura | RAG sobre las políticas y el manual del consumidor |
-| `consultar_pedido` | lectura | Estado de un pedido del cliente |
-| `reservar_pedido` | acción | Reserva ejemplares y descuenta stock |
-| `cobrar_pedido` | acción | Registra el pago de una reserva |
-| `cancelar_pedido` | acción | Cancela una reserva y devuelve el stock |
+| `consultar_pedido` | lectura | Estado, líneas y montos de un pedido del cliente |
+| `actualizar_carrito` | acción | Fija la cantidad de cada libro y la zona de envío; devuelve subtotal, envío, total y un resumen redactado por el sistema |
+| `reservar_pedido` | acción | Reserva el carrito: descuenta el stock de todas las líneas y fija los montos |
+| `cobrar_pedido` | acción | Cobra un pedido reservado, o reserva y cobra un carrito; se rechaza si el total cambió en el mismo turno |
+| `cancelar_pedido` | acción | Cancela un carrito o una reserva y devuelve el stock |
 
 ## Arranque
 
@@ -143,7 +144,8 @@ El texto de cada libro combina título, autor, categoría, género, temas, prota
 
 ```mermaid
 erDiagram
-    libros ||--o{ pedidos : "se reserva en"
+    libros ||--o{ pedido_lineas : "se pide en"
+    pedidos ||--|{ pedido_lineas : "tiene"
     usuarios ||--o{ pedidos : "hace"
     pedidos ||--o{ pagos : "se cobra con"
     usuarios ||--o{ mensajes : "escribe"
@@ -165,17 +167,24 @@ erDiagram
     pedidos {
         text id PK
         text usuario_id FK
+        text estado "carrito, reservado, pagado o cancelado"
+        text zona "clave de envio en tienda.json"
+        int subtotal_cent
+        int envio_cent
+        int total_cent
+    }
+    pedido_lineas {
+        text pedido_id FK
         text isbn FK
         int cantidad
-        real precio_unitario
-        real total
-        text estado "reservado, pagado o cancelado"
+        int precio_cent
+        int orden
     }
     pagos {
         text id PK
         text pedido_id FK
         text metodo
-        real monto
+        int monto_cent
     }
     mensajes {
         text id PK
@@ -215,6 +224,7 @@ Regla de diseño: un dato, un dueño. Lo que se consulta o suma (pedidos, tokens
 | `herramienta.ejecutada` | INFO | Cada herramienta con resultado y duración |
 | `recomendacion.generada` | INFO | ISBN recomendados y motor usado |
 | `rag.recuperado` | INFO | Fragmentos elegidos, mejor puntaje y motor |
+| `carrito.actualizado` | INFO | El carrito cambió (pedido y total) |
 | `pedido.creado`, `pedido.cobrado`, `pedido.cancelado` | INFO | Cambios en pedidos |
 | `salida.bloqueada`, `salida.redactada` | WARN o INFO | La validación de salida actuó |
 | `salida.no_verificada` | WARN | La respuesta del modelo afirmaba algo que no pasó (id, pago, cancelación o cita); se pidió corrección |

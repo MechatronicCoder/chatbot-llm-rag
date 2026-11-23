@@ -4,5 +4,17 @@
   "moneda": {
     "simbolo": "S/",
     "codigo": "PEN"
+  },
+  "envio": {
+    "lima": {
+      "nombre": "Lima Metropolitana",
+      "costo": 10.0,
+      "gratis_desde": 120.0
+    },
+    "provincias": {
+      "nombre": "provincias",
+      "costo": 18.0,
+      "gratis_desde": 200.0
+    }
   }
 }

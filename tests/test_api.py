@@ -112,7 +112,8 @@ def test_pedidos_del_cliente(cliente: TestClient) -> None:
     cliente.app.state.estado.bd.reservar_pedido("u1", ISBN_MAGO, 1)  # type: ignore[attr-defined]
     datos = cliente.get("/api/pedidos/u1").json()
     assert datos["total"] == 1 and datos["pendiente"] > 0
-    assert datos["pedidos"][0]["titulo"] == "La escuela de magos"
+    assert datos["pedidos"][0]["lineas"][0]["titulo"] == "La escuela de magos"
+    assert datos["pedidos"][0]["envio"] == 10.0  # Lima, por debajo del envío gratis
 
 
 def test_logs_metricas_y_filtro_por_turno(cliente: TestClient) -> None:
