@@ -43,7 +43,7 @@ jobs:
 
     steps:
       - name: Obtener el commit de main
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ env.COMMIT_SHA }}
           persist-credentials: false
