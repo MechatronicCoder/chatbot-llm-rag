@@ -12,9 +12,9 @@
 // ---------------------------------------------------------------------------
 
 export const CLAVES = Object.freeze({
-  usuario: 'techstore.usuario',
-  tokenAdmin: 'techstore.tokenAdmin',
-  nivelLogs: 'techstore.nivelLogs',
+  usuario: 'libreria.usuario',
+  tokenAdmin: 'libreria.tokenAdmin',
+  nivelLogs: 'libreria.nivelLogs',
 });
 
 // ---------------------------------------------------------------------------
@@ -203,10 +203,19 @@ const FORMATO_DINERO = new Intl.NumberFormat('en-US', {
   maximumFractionDigits: 2,
 });
 
-/** 1299.5 → "$1,299.50". Valores no numéricos → "—". */
+let simboloMoneda = 'S/';
+
+/** Símbolo de la moneda de la tienda (llega en /api/health). */
+export function configurarMoneda(simbolo) {
+  if (typeof simbolo === 'string' && simbolo.trim()) simboloMoneda = simbolo.trim();
+}
+
+/** 1299.5 → "S/ 1,299.50". Valores no numéricos → "—". */
 export function formatearPrecio(valor) {
   const n = Number(valor);
-  return valor !== null && valor !== '' && Number.isFinite(n) ? `$${FORMATO_DINERO.format(n)}` : '—';
+  return valor !== null && valor !== '' && Number.isFinite(n)
+    ? `${simboloMoneda} ${FORMATO_DINERO.format(n)}`
+    : '—';
 }
 
 /** Número entero legible; null/undefined → "—". */

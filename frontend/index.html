@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
-  <meta name="description" content="Asistente de TechStore: catálogo, pedidos, pagos y políticas de la tienda.">
-  <title>TechStore · Asistente</title>
+  <meta name="description" content="Librero virtual: recomendaciones, catálogo de libros, pedidos, pagos y políticas.">
+  <title>Librería · Asistente</title>
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/disposicion.css">
   <link rel="stylesheet" href="css/chat.css">
@@ -18,11 +18,12 @@
   <a class="saltar" href="#entrada">Ir al campo de mensaje</a>
 
   <header class="cabecera">
-    <h1 class="marca">TechStore <span class="marca-sub">· Asistente</span></h1>
+    <h1 class="marca"><span id="marca-nombre">Librería</span> <span class="marca-sub">· Asistente</span></h1>
     <div class="estado">
       <span class="estado-indicador" id="estado-indicador" data-estado="cargando" role="status">Conectando…</span>
       <ul class="estado-meta" id="estado-meta" aria-label="Estado del servicio"></ul>
     </div>
+    <button class="enlace salir" id="salir" type="button" hidden>Salir</button>
   </header>
 
   <main class="disposicion">
@@ -35,7 +36,7 @@
       <form class="compositor" id="formulario" autocomplete="off">
         <label class="solo-lectores" for="entrada">Mensaje para el asistente</label>
         <textarea class="compositor-entrada" id="entrada" name="mensaje" rows="1"
-                  placeholder="Ej.: ¿tienen laptops? · quiero 2 Dell · ¿cuánto dura la garantía?"
+                  placeholder="Ej.: ciencia ficción parecida a Dune · ¿cuánto cuesta el envío?"
                   aria-describedby="ayuda-entrada" enterkeyhint="send"></textarea>
         <button class="boton compositor-boton" id="enviar" type="submit">Enviar</button>
         <p class="ayuda compositor-ayuda" id="ayuda-entrada">Enter envía · Shift+Enter agrega un salto de línea</p>
@@ -64,7 +65,7 @@
       <section class="bloque" aria-labelledby="titulo-catalogo">
         <h2 class="bloque-titulo" id="titulo-catalogo">Catálogo</h2>
         <label class="solo-lectores" for="buscar-catalogo">Buscar en el catálogo</label>
-        <input class="campo" id="buscar-catalogo" type="search" placeholder="Buscar producto…"
+        <input class="campo" id="buscar-catalogo" type="search" placeholder="Buscar libro, autor o ISBN…"
                autocomplete="off" aria-describedby="catalogo-resumen">
         <p class="ayuda" id="catalogo-resumen" aria-live="polite"></p>
         <div id="catalogo"><p class="vacio">Cargando catálogo…</p></div>
@@ -112,5 +113,21 @@
       </footer>
     </section>
   </main>
+
+  <!-- Acceso de la demo: visible solo si el backend tiene ACCESO_* configurado -->
+  <div class="acceso" id="acceso" role="dialog" aria-modal="true" aria-labelledby="acceso-titulo" hidden>
+    <form class="acceso-tarjeta" id="acceso-formulario" novalidate>
+      <h2 class="acceso-titulo" id="acceso-titulo">Acceso a la demo</h2>
+      <p class="acceso-texto">Ingresa con el usuario y la clave que te compartieron.</p>
+      <label class="etiqueta" for="acceso-usuario">Usuario</label>
+      <input class="campo" id="acceso-usuario" name="usuario" autocomplete="username"
+             autocapitalize="off" spellcheck="false" maxlength="60" required>
+      <label class="etiqueta" for="acceso-clave">Clave</label>
+      <input class="campo" id="acceso-clave" name="clave" type="password"
+             autocomplete="current-password" maxlength="200" required>
+      <p class="acceso-error" id="acceso-error" role="alert" hidden></p>
+      <button class="boton acceso-entrar" id="acceso-entrar" type="submit">Entrar</button>
+    </form>
+  </div>
 </body>
 </html>

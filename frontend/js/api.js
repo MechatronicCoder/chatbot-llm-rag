@@ -4,7 +4,9 @@
  * Todas las rutas son absolutas y del mismo origen. Cada función devuelve el
  * JSON de la respuesta o lanza un ErrorApi con un mensaje listo para mostrar.
  * Los endpoints de administración (logs y métricas) envían X-Admin-Token
- * cuando hay un token guardado.
+ * cuando hay un token guardado. Si el backend pide iniciar sesión (401 con
+ * `X-Acceso: requerido`), se avisa a quien se haya registrado con
+ * configurarAvisoDeAcceso() para mostrar la pantalla de acceso.
  */
 
 import { CLAVES, leerLocal, guardarLocal, borrarLocal } from './util.js';
@@ -23,7 +25,7 @@ const TIEMPO_LIMITE_CHAT_MS = 120000; // un turno con modelo y herramientas pued
  * - mensaje: texto amable, en español, apto para mostrar tal cual.
  * - reintentarEn: segundos indicados por Retry-After (solo en 429), o null.
  * - detalle: texto del campo `detail` del backend, o null.
- * - tipo: 'http' | 'red' | 'tiempo' | 'cancelada' | 'formato'.
+ * - tipo: 'http' | 'red' | 'tiempo' | 'cancelada' | 'formato' | 'acceso'.
  */
 export class ErrorApi extends Error {
   constructor(status, mensaje, { reintentarEn = null, detalle = null, tipo = 'http' } = {}) {
@@ -40,8 +42,14 @@ export class ErrorApi extends Error {
     return this.tipo === 'red' || this.tipo === 'tiempo';
   }
 
+  /** Falta el token de administración (no la sesión de acceso). */
   get sinPermiso() {
-    return this.status === 401 || this.status === 403;
+    return (this.status === 401 || this.status === 403) && this.tipo !== 'acceso';
+  }
+
+  /** El backend pide iniciar sesión con usuario y clave. */
+  get requiereAcceso() {
+    return this.tipo === 'acceso';
   }
 }
 
@@ -90,6 +98,9 @@ function errorDesdeRespuesta(respuesta, cuerpo) {
   if (status === 422) {
     return new ErrorApi(status, detalle || 'Los datos enviados no son válidos.', { detalle });
   }
+  if (status === 401 && respuesta.headers.get('X-Acceso') === 'requerido') {
+    return new ErrorApi(status, 'Inicia sesión para continuar.', { detalle, tipo: 'acceso' });
+  }
   if (status === 401 || status === 403) {
     return new ErrorApi(status, 'Se requiere un token de administración válido.', { detalle });
   }
@@ -103,6 +114,17 @@ function errorDesdeRespuesta(respuesta, cuerpo) {
     return new ErrorApi(status, `El servidor tuvo un problema (${status}). Intenta de nuevo en unos segundos.`, { detalle });
   }
   return new ErrorApi(status, detalle || `La solicitud falló (${status}).`, { detalle });
+}
+
+// ---------------------------------------------------------------------------
+// Aviso de sesión de acceso requerida
+// ---------------------------------------------------------------------------
+
+let alRequerirAcceso = null;
+
+/** Registra la función que muestra la pantalla de acceso cuando la sesión falta o venció. */
+export function configurarAvisoDeAcceso(funcion) {
+  alRequerirAcceso = typeof funcion === 'function' ? funcion : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -185,7 +207,11 @@ async function peticion(ruta, { metodo = 'GET', cuerpo, admin = false, tiempoLim
     senal?.removeEventListener('abort', alCancelar);
   }
 
-  if (!respuesta.ok) throw errorDesdeRespuesta(respuesta, datos);
+  if (!respuesta.ok) {
+    const error = errorDesdeRespuesta(respuesta, datos);
+    if (error.requiereAcceso) alRequerirAcceso?.();
+    throw error;
+  }
 
   // Un proxy o una ruta inexistente servida como HTML no debe pasar por JSON válido.
   if (typeof datos === 'string') {
@@ -203,13 +229,28 @@ export function salud(opciones = {}) {
   return peticion('/api/health', opciones);
 }
 
-/** GET /api/productos?consulta=&categoria=&limite= */
-export function buscarProductos({ consulta = '', categoria = '', limite = 8 } = {}, opciones = {}) {
+/** GET /api/acceso/estado → { requerido, autenticado, usuario } */
+export function estadoAcceso(opciones = {}) {
+  return peticion('/api/acceso/estado', opciones);
+}
+
+/** POST /api/acceso/login: la sesión queda en una cookie HttpOnly que este código no lee. */
+export function iniciarSesion({ usuario, clave }, opciones = {}) {
+  return peticion('/api/acceso/login', { ...opciones, metodo: 'POST', cuerpo: { usuario, clave } });
+}
+
+/** POST /api/acceso/logout */
+export function cerrarSesion(opciones = {}) {
+  return peticion('/api/acceso/logout', { ...opciones, metodo: 'POST' });
+}
+
+/** GET /api/libros?consulta=&categoria=&limite= */
+export function buscarLibros({ consulta = '', categoria = '', limite = 8 } = {}, opciones = {}) {
   const parametros = new URLSearchParams();
   if (consulta.trim()) parametros.set('consulta', consulta.trim());
   if (categoria) parametros.set('categoria', categoria);
   parametros.set('limite', String(limite));
-  return peticion(`/api/productos?${parametros}`, opciones);
+  return peticion(`/api/libros?${parametros}`, opciones);
 }
 
 /** GET /api/pedidos/{usuario_id} */

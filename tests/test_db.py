@@ -1,113 +1,177 @@
-"""Base de datos: transacciones, pagos, conversación y métricas."""
+"""Base de datos: sincronización del catálogo, versión del esquema, pedidos y métricas."""
 
 from __future__ import annotations
 
+import json
+import sqlite3
 from pathlib import Path
 
 import pytest
 
+from app.catalogo.carga import ErrorCatalogo
+from app.core.config import Settings
 from app.persistencia.db import BaseDatos, ErrorPedido
+from app.persistencia.esquema import ESQUEMA_VERSION
+from tests.datos_prueba import (
+    ISBN_AGOTADO,
+    ISBN_CUENTOS,
+    ISBN_DRAGON,
+    ISBN_MAGO,
+    ISBN_POEMAS,
+    ISBN_SUMAS,
+    LIBROS_PRUEBA,
+    isbn_prueba,
+)
+
+NUEVO = isbn_prueba(11)
+
+
+def reescribir_catalogo(ajustes: Settings, libros: list[dict[str, object]]) -> None:
+    ruta = ajustes.carpeta_datos / "catalogo.json"
+    ruta.write_text(json.dumps({"libros": libros}, ensure_ascii=False), encoding="utf-8")
 
 
 def test_inicializar_es_idempotente(bd: BaseDatos) -> None:
-    antes = bd.estadisticas()["productos"]
+    antes = bd.estadisticas()
     bd.inicializar()
-    assert bd.estadisticas()["productos"] == antes == 20
+    assert bd.estadisticas() == antes
+    assert antes["libros"] == len(LIBROS_PRUEBA)
+    assert bd.ultima_sincronizacion == {"nuevos": 0, "actualizados": 10, "retirados": 0}
+
+
+def test_sincroniza_nuevos_cambios_y_retirados(ajustes: Settings, bd: BaseDatos) -> None:
+    bd.reservar_pedido("alumno", ISBN_MAGO, 2)  # stock 8 -> 6
+    libros = [dict(lb) for lb in LIBROS_PRUEBA if lb["isbn"] != ISBN_POEMAS]
+    for lb in libros:
+        if lb["isbn"] == ISBN_MAGO:
+            lb["precio"] = 75.0
+    nuevo = {"isbn": NUEVO, "titulo": "Nuevo", "autor": "Z", "categoria": "novela",
+             "precio": 20, "stock": 4}  # fmt: skip
+    reescribir_catalogo(ajustes, [*libros, nuevo])
+
+    bd.inicializar()
+    assert bd.ultima_sincronizacion == {"nuevos": 1, "actualizados": 9, "retirados": 1}
+    mago = bd.obtener_libro(ISBN_MAGO)
+    assert mago is not None and mago["precio"] == 75.0
+    assert mago["stock"] == 6  # el stock de la base se conserva
+    assert bd.obtener_libro(ISBN_POEMAS) is None  # retirado: ya no se ofrece
+    assert bd.obtener_libro(NUEVO) is not None
+
+    bd.inicializar(recargar_catalogo=True)
+    assert bd.obtener_libro(ISBN_MAGO)["stock"] == 8  # type: ignore[index]
+
+
+def test_un_libro_retirado_conserva_sus_pedidos(ajustes: Settings, bd: BaseDatos) -> None:
+    pedido = bd.reservar_pedido("alumno", ISBN_POEMAS, 1)
+    reescribir_catalogo(ajustes, [lb for lb in LIBROS_PRUEBA if lb["isbn"] != ISBN_POEMAS])
+    bd.inicializar()
+    consultado = bd.consultar_pedido(pedido["pedido_id"])
+    assert consultado is not None and consultado["titulo"] == "Poemas del puerto"
+
+
+def test_un_catalogo_invalido_no_toca_la_base(ajustes: Settings, bd: BaseDatos) -> None:
+    reescribir_catalogo(ajustes, [{"isbn": "malo"}])
+    with pytest.raises(ErrorCatalogo):
+        bd.inicializar()
+    assert bd.estadisticas()["libros"] == len(LIBROS_PRUEBA)
+
+
+def test_una_base_con_otra_version_se_reconstruye(ajustes: Settings) -> None:
+    ajustes.db_path.parent.mkdir(parents=True, exist_ok=True)
+    with sqlite3.connect(ajustes.db_path) as con:  # esquema anterior (otra tienda)
+        con.execute("create table productos (codigo text primary key, nombre text)")
+        con.execute("create table pedidos (id text, codigo text)")
+    base = BaseDatos(ajustes.db_path, ajustes.carpeta_datos / "catalogo.json")
+    base.inicializar()
+    with sqlite3.connect(ajustes.db_path) as con:
+        assert con.execute("pragma user_version").fetchone()[0] == ESQUEMA_VERSION
+        tablas = {f[0] for f in con.execute("select name from sqlite_master where type='table'")}
+    assert "productos" not in tablas
+    assert base.reservar_pedido("alumno", ISBN_SUMAS, 1)["isbn"] == ISBN_SUMAS
 
 
 def test_reserva_atomica_no_vende_lo_que_no_hay(bd: BaseDatos) -> None:
-    producto = bd.obtener_producto("GPU001")
-    assert producto is not None
-    for _ in range(producto["stock"]):
-        bd.reservar_pedido("alumno", "GPU001", 1)
+    for _ in range(3):
+        bd.reservar_pedido("alumno", ISBN_POEMAS, 1)
+    with pytest.raises(ErrorPedido, match="Solo quedan 0 ejemplares"):
+        bd.reservar_pedido("alumno", ISBN_POEMAS, 1)
     with pytest.raises(ErrorPedido):
-        bd.reservar_pedido("alumno", "GPU001", 1)
-    assert bd.obtener_producto("GPU001")["stock"] == 0  # type: ignore[index]
+        bd.reservar_pedido("alumno", ISBN_AGOTADO, 1)
 
 
-def test_reserva_rechaza_cantidad_o_producto_invalido(bd: BaseDatos) -> None:
-    with pytest.raises(ErrorPedido):
-        bd.reservar_pedido("alumno", "LAPTOP001", 0)
-    with pytest.raises(ErrorPedido):
-        bd.reservar_pedido("alumno", "NO-EXISTE", 1)
+def test_reserva_rechaza_cantidad_o_isbn_invalido(bd: BaseDatos) -> None:
+    with pytest.raises(ErrorPedido, match="mayor que cero"):
+        bd.reservar_pedido("alumno", ISBN_SUMAS, 0)
+    with pytest.raises(ErrorPedido, match="No hay un libro"):
+        bd.reservar_pedido("alumno", "9780000000999", 1)
 
 
-def test_pago_cambia_el_estado_y_registra_el_pago(bd: BaseDatos) -> None:
-    pedido = bd.reservar_pedido("alumno", "LAPTOP001", 1)
+def test_reserva_acepta_isbn_con_guiones(bd: BaseDatos) -> None:
+    pedido = bd.reservar_pedido("alumno", f"{ISBN_SUMAS[:3]}-{ISBN_SUMAS[3:]}", 2)
+    assert pedido["isbn"] == ISBN_SUMAS
+    assert pedido["total"] == round(29.9 * 2, 2)
+    assert pedido["stock_restante"] == 8
+
+
+def test_pago_y_ventas(bd: BaseDatos) -> None:
+    pedido = bd.reservar_pedido("alumno", ISBN_DRAGON, 1)
     pago = bd.registrar_pago("alumno", pedido["pedido_id"], "transferencia")
     assert pago["estado"] == "pagado"
-    assert bd.consultar_pedido(pedido["pedido_id"])["estado"] == "pagado"  # type: ignore[index]
     assert len(bd.pagos_de(pedido["pedido_id"])) == 1
-    assert bd.ventas("alumno")[0]["pedido_id"] == pedido["pedido_id"]
+    venta = bd.ventas("alumno")[0]
+    assert venta["pedido_id"] == pedido["pedido_id"] and venta["titulo"] == "La montaña del dragón"
+    otro = bd.reservar_pedido("alumno", ISBN_CUENTOS, 1)
+    assert otro["pedido_id"] not in [v["pedido_id"] for v in bd.ventas()]
 
 
-def test_no_se_cobra_un_pedido_cancelado(bd: BaseDatos) -> None:
-    pedido = bd.reservar_pedido("alumno", "LAPTOP001", 1)
+def test_cancelaciones_y_cobros_invalidos(bd: BaseDatos) -> None:
+    with pytest.raises(ErrorPedido, match="No existe"):
+        bd.cancelar_pedido("PED-00000000")
+    pedido = bd.reservar_pedido("alumno", ISBN_SUMAS, 1)
     bd.cancelar_pedido(pedido["pedido_id"])
-    with pytest.raises(ErrorPedido):
+    assert bd.obtener_libro(ISBN_SUMAS)["stock"] == 10  # type: ignore[index]
+    with pytest.raises(ErrorPedido, match="no se puede cancelar"):
+        bd.cancelar_pedido(pedido["pedido_id"])
+    with pytest.raises(ErrorPedido, match="no se puede cobrar"):
         bd.registrar_pago("alumno", pedido["pedido_id"], "tarjeta")
 
 
-def test_ventas_solo_cuenta_pagados(bd: BaseDatos) -> None:
-    a = bd.reservar_pedido("alumno", "LAPTOP001", 1)
-    b = bd.reservar_pedido("alumno", "MONITOR001", 1)
-    bd.registrar_pago("alumno", b["pedido_id"], "efectivo")
-    ids = [v["pedido_id"] for v in bd.ventas()]
-    assert b["pedido_id"] in ids
-    assert a["pedido_id"] not in ids
+def test_pedidos_del_cliente_y_categorias(bd: BaseDatos) -> None:
+    bd.reservar_pedido("ana", ISBN_SUMAS, 1)
+    bd.reservar_pedido("ana", ISBN_MAGO, 1)
+    assert {p["isbn"] for p in bd.pedidos_de("ana")} == {ISBN_SUMAS, ISBN_MAGO}
+    categorias = {c["categoria"]: c["libros"] for c in bd.categorias()}
+    assert categorias["novela"] == 4 and categorias["juvenil"] == 3
 
 
-def test_guardar_turno_y_leer_historial(bd: BaseDatos) -> None:
-    bd.guardar_turno(
-        "t-1", "s-1", "alumno", "hola", "buenas", ruta="directa", tokens=(10, 5), latencia_ms=120
-    )
-    mensajes = bd.mensajes_de("s-1")
-    assert [m["rol"] for m in mensajes] == ["user", "assistant"]
-    assert mensajes[1]["tokens_entrada"] == 10
-    assert mensajes[1]["latencia_ms"] == 120
-    assert bd.contar_turnos("s-1") == 1
-
-
-def test_metricas_por_ruta(bd: BaseDatos) -> None:
-    bd.guardar_turno("t-1", "s-1", "a", "hola", "buenas", ruta="faq", latencia_ms=100)
+def test_conversacion_y_metricas(bd: BaseDatos) -> None:
+    bd.guardar_turno("t-1", "s-1", "a", "hola", "buenas", ruta="faq", latencia_ms=100,
+                     tokens=(10, 5))  # fmt: skip
     bd.guardar_turno("t-2", "s-1", "a", "hola", "buenas", ruta="faq", latencia_ms=300)
-    bd.guardar_turno("t-3", "s-1", "a", "hola", "buenas", ruta="accion", latencia_ms=200)
+    bd.guardar_turno("t-3", "s-1", "a", "hola", "buenas", ruta="recomendacion", latencia_ms=200)
+    assert [m["rol"] for m in bd.mensajes_de("s-1")][:2] == ["user", "assistant"]
+    assert bd.contar_turnos("s-1") == 3
     metricas = bd.metricas()
     assert metricas["turnos"] == 3
     assert {f["ruta"]: f["turnos"] for f in metricas["por_ruta"]}["faq"] == 2
-    assert metricas["latencia_p95"] >= metricas["latencia_p50"]
+    assert bd.borrar_sesion("s-1") == 6
 
 
-def test_borrar_sesion(bd: BaseDatos) -> None:
-    bd.guardar_turno("t-1", "s-9", "a", "hola", "buenas")
-    assert bd.borrar_sesion("s-9") == 2
-    assert bd.mensajes_de("s-9") == []
+def test_base_desde_cero(tmp_path: Path) -> None:
+    from tests.conftest import crear_ajustes
+
+    ajustes = crear_ajustes(tmp_path)
+    base = BaseDatos(ajustes.db_path, ajustes.carpeta_datos / "catalogo.json")
+    assert base.inicializar()["libros"] == len(LIBROS_PRUEBA)
 
 
-def test_busqueda_por_palabras(bd: BaseDatos) -> None:
-    assert bd.buscar_productos("laptops")[0]["categoria"] == "laptop"
-    assert bd.buscar_productos("monitores")[0]["categoria"] == "monitor"
-    assert bd.buscar_productos("tablets") == []
+def test_un_error_al_sincronizar_revierte_todo(
+    bd: BaseDatos, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def falla(*_: object, **__: object) -> dict[str, int]:
+        raise RuntimeError("disco lleno")
 
-
-def test_filtro_por_categoria(bd: BaseDatos) -> None:
-    productos = bd.buscar_productos("", categoria="Monitor")
-    assert productos and all(p["categoria"] == "monitor" for p in productos)
-
-
-def test_cancelar_pedido_inexistente_o_ya_cancelado(bd: BaseDatos) -> None:
-    with pytest.raises(ErrorPedido, match="No existe"):
-        bd.cancelar_pedido("PED-00000000")
-    pedido = bd.reservar_pedido("alumno", "LAPTOP001", 1)
-    bd.cancelar_pedido(pedido["pedido_id"])
-    with pytest.raises(ErrorPedido, match="no se puede cancelar"):
-        bd.cancelar_pedido(pedido["pedido_id"])
-
-
-def test_catalogo_invalido_no_deja_la_base_a_medias(tmp_path: Path) -> None:
-    catalogo = tmp_path / "catalogo.json"
-    catalogo.write_text('{"productos": [{"codigo": "X"}]}', encoding="utf-8")
-    base = BaseDatos(tmp_path / "t.db", catalogo)
-    with pytest.raises(Exception):  # noqa: B017 - cualquier error de carga sirve
-        base.inicializar()
-    assert base.estadisticas()["productos"] == 0
+    monkeypatch.setattr(BaseDatos, "_sincronizar", staticmethod(falla))
+    with pytest.raises(RuntimeError):
+        bd.inicializar()
+    assert bd.estadisticas()["libros"] == len(LIBROS_PRUEBA)

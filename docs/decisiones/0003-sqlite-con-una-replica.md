@@ -1,6 +1,6 @@
 # 0003 SQLite con una sola réplica
 
-Estado: aceptada
+Estado: aceptada; la carga del catálogo se precisa en [0009](0009-catalogo-como-fuente-de-verdad.md)
 Fecha: 2026-11-21
 
 ## Contexto

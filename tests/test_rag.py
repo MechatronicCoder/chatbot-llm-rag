@@ -44,8 +44,8 @@ def test_una_oracion_gigante_se_parte_igual() -> None:
 
 
 def test_busqueda_devuelve_lo_relevante(buscador: BuscadorDocumentos) -> None:
-    hallazgos = buscador.buscar("¿cuánto dura la garantía?", k=2)
-    assert hallazgos[0]["id"] == "doc-garantia"
+    hallazgos = buscador.buscar("¿puedo cambiar un libro?", k=2)
+    assert hallazgos[0]["id"] == "doc-cambios"
     assert 0 < hallazgos[0]["score"] <= 1
     assert hallazgos[0]["motor"] == "tfidf"
 
@@ -85,9 +85,9 @@ def test_con_embeddings_usa_el_motor_denso() -> None:
     buscador = BuscadorDocumentos(
         chunks_de_prueba(), ParametrosRAG(umbral_denso=0.2), embedder=embedder
     )
-    hallazgos = buscador.buscar("¿cómo conecto un monitor por HDMI?", k=1)
+    hallazgos = buscador.buscar("mi libro tiene páginas mal impresas", k=1)
     assert buscador.motor == "denso"
-    assert hallazgos[0]["id"] == "doc-monitor"
+    assert hallazgos[0]["id"] == "doc-defectos"
     assert hallazgos[0]["motor"] == "denso"
 
 
@@ -104,20 +104,38 @@ def test_la_cache_evita_recalcular_embeddings(tmp_path: Path) -> None:
 
 def test_si_la_api_de_embeddings_falla_se_usa_tfidf() -> None:
     buscador = BuscadorDocumentos(chunks_de_prueba(), embedder=EmbedderFalso(fallar=True))
-    hallazgos = buscador.buscar("¿cuánto dura la garantía?", k=1)
+    hallazgos = buscador.buscar("¿puedo cambiar un libro?", k=1)
     assert buscador.motor == "tfidf"
     assert buscador.info()["aviso"]
-    assert hallazgos[0]["id"] == "doc-garantia"
+    assert hallazgos[0]["id"] == "doc-cambios"
 
 
 def test_corpus_real_se_fragmenta() -> None:
     from app.core.config import RAIZ
     from app.servicios.rag import construir_chunks
 
-    chunks = construir_chunks(RAIZ / "datos" / "pdfs", ParametrosRAG())
-    assert len(chunks) > 100
-    assert {c.documento for c in chunks} >= {"Politica_Garantias_Devoluciones.pdf"}
+    chunks = construir_chunks(RAIZ / "datos" / "documentos", ParametrosRAG())
+    documentos = {c.documento for c in chunks}
+    assert {"politicas_libreria.md", "Manual_Consumidor_Indecopi.pdf"} <= documentos
     assert max(len(c.texto.split()) for c in chunks) <= 150
+
+
+def test_markdown_se_divide_por_secciones(tmp_path: Path) -> None:
+    from app.servicios.rag import construir_chunks, leer_markdown
+
+    texto = (
+        "Introducción sin título con varias palabras para que el fragmento tenga sentido.\n\n"
+        "# Envíos\n\n- El envío en Lima cuesta **diez soles** y llega en dos días hábiles.\n\n"
+        "## Cambios\n\n1. Un libro nuevo se puede cambiar dentro de los siete días siguientes.\n"
+    )
+    (tmp_path / "politicas.md").write_text(texto, encoding="utf-8")
+    (tmp_path / "notas.txt").write_text("se ignora", encoding="utf-8")
+    secciones = leer_markdown(tmp_path / "politicas.md")
+    assert [n for n, _ in secciones] == [1, 2, 3]
+    assert secciones[1][1].startswith("Envíos") and "**" not in secciones[1][1]
+    assert "- " not in secciones[1][1] and "1. " not in secciones[2][1]
+    chunks = construir_chunks(tmp_path, ParametrosRAG())
+    assert {c.documento for c in chunks} == {"politicas.md"}
 
 
 def test_corpus_vacio_no_rompe() -> None:
@@ -136,7 +154,7 @@ def test_si_falla_la_consulta_densa_se_usa_tfidf_en_esa_pregunta() -> None:
     buscador = BuscadorDocumentos(chunks_de_prueba(), embedder=embedder)
     buscador.indexar()
     embedder.fallar = True
-    hallazgos = buscador.buscar("¿cuánto dura la garantía?", k=1)
+    hallazgos = buscador.buscar("¿puedo cambiar un libro?", k=1)
     assert hallazgos[0]["motor"] == "tfidf"
     assert "TF-IDF" in (buscador.info()["aviso"] or "")
 

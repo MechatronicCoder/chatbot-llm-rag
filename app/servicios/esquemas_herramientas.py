@@ -1,0 +1,131 @@
+"""Esquemas JSON de las herramientas que el modelo puede llamar (function calling).
+
+Las descripciones son instrucciones para el modelo: cuándo usar cada herramienta
+importa tanto como sus parámetros.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+_ISBN = {
+    "type": "string",
+    "description": "ISBN-13 del libro, tal como lo devolvió otra herramienta",
+}
+_PEDIDO = {"type": "string", "description": "Id del pedido, por ejemplo PED-1A2B3C4D"}
+_EDAD = {"type": "integer", "minimum": 0, "maximum": 99, "description": "Edad del lector"}
+
+ESQUEMAS: list[dict[str, Any]] = [
+    {
+        "name": "buscar_libros",
+        "description": "Busca en el catálogo cuando el cliente nombra un título, un autor, una "
+        "saga, una editorial o un ISBN concreto. Devuelve precio y stock.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "consulta": {"type": "string", "description": "Título, autor, saga o ISBN"},
+                "categoria": {"type": "string", "description": "Categoría exacta, opcional"},
+                "autor": {"type": "string", "description": "Nombre del autor, opcional"},
+                "edad": _EDAD,
+                "limite": {"type": "integer", "minimum": 1, "maximum": 10},
+            },
+            "required": ["consulta"],
+        },
+    },
+    {
+        "name": "recomendar_libros",
+        "description": "Recomienda libros del catálogo cuando el cliente describe lo que busca "
+        "(tema, gusto, para qué, parecido a otro libro, tipo de protagonista). Solo devuelve "
+        "libros con stock, ordenados por parecido y valoración. Si es para un niño o un "
+        "joven y no se conoce la edad, preguntarla antes de llamar a esta herramienta.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "necesidad": {
+                    "type": "string",
+                    "description": "Lo que busca el cliente, con sus palabras y con todo lo que "
+                    "se sabe: género, temas, tono, protagonista, libros que le gustaron",
+                },
+                "edad": _EDAD,
+                "categoria": {"type": "string", "description": "Categoría exacta, opcional"},
+                "excluir": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "ISBN ya ofrecidos o ya leídos por el cliente",
+                },
+                "cantidad": {"type": "integer", "minimum": 1, "maximum": 5},
+            },
+            "required": ["necesidad"],
+        },
+    },
+    {
+        "name": "ficha_libro",
+        "description": "Devuelve la ficha completa de un libro (sinopsis, páginas, formato, "
+        "edad, valoración, stock) y libros similares disponibles para sugerir.",
+        "parameters": {
+            "type": "object",
+            "properties": {"isbn": _ISBN},
+            "required": ["isbn"],
+        },
+    },
+    {
+        "name": "reservar_pedido",
+        "description": "Reserva ejemplares de un libro para el cliente actual: descuenta stock y "
+        "crea el pedido. Solo con el libro y la cantidad confirmados por el cliente.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "isbn": _ISBN,
+                "cantidad": {"type": "integer", "minimum": 1, "description": "Ejemplares"},
+            },
+            "required": ["isbn", "cantidad"],
+        },
+    },
+    {
+        "name": "consultar_pedido",
+        "description": "Devuelve el estado, el total y el detalle de un pedido del cliente.",
+        "parameters": {
+            "type": "object",
+            "properties": {"pedido_id": _PEDIDO},
+            "required": ["pedido_id"],
+        },
+    },
+    {
+        "name": "cancelar_pedido",
+        "description": "Cancela un pedido reservado y devuelve los ejemplares al stock.",
+        "parameters": {
+            "type": "object",
+            "properties": {"pedido_id": _PEDIDO},
+            "required": ["pedido_id"],
+        },
+    },
+    {
+        "name": "cobrar_pedido",
+        "description": "Cobra un pedido reservado del cliente actual. Métodos: tarjeta, "
+        "efectivo o transferencia. Un pedido no se cobra dos veces.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "pedido_id": _PEDIDO,
+                "metodo": {"type": "string", "enum": ["tarjeta", "efectivo", "transferencia"]},
+            },
+            "required": ["pedido_id", "metodo"],
+        },
+    },
+    {
+        "name": "buscar_politica",
+        "description": "Busca en los documentos de la librería: envíos, cambios y devoluciones, "
+        "pagos, preventas y pedidos especiales, libro de reclamaciones y derechos del consumidor.",
+        "parameters": {
+            "type": "object",
+            "properties": {"pregunta": {"type": "string"}},
+            "required": ["pregunta"],
+        },
+    },
+]
+
+# Herramientas que no cambian nada: si el modelo las repite en un turno, se reutiliza el resultado.
+IDEMPOTENTES = frozenset(
+    {"buscar_libros", "recomendar_libros", "ficha_libro", "consultar_pedido", "buscar_politica"}
+)
+ACCIONES = frozenset({"reservar_pedido", "cobrar_pedido", "cancelar_pedido"})

@@ -1,216 +1,179 @@
 {
-  "tienda": "TechStore",
-  "config": {
-    "umbral_faq": 0.55,
-    "umbral_contexto": 0.25,
-    "margen": 0.03,
-    "top_k": 3
-  },
   "temas_criticos": [
-    "paga",
-    "pago",
-    "tarjeta",
-    "efectivo",
-    "financi",
-    "cuota",
-    "credito",
-    "interes",
-    "tasa",
-    "envio",
-    "envi",
-    "entrega",
-    "domicilio",
-    "delivery",
-    "mandar",
-    "pedido",
-    "garantia",
-    "devolv",
-    "reembolso",
-    "cambi",
-    "servicio tecnico",
-    "soporte",
-    "repar",
-    "mayoreo",
-    "mayorista",
-    "por mayor",
-    "corporativo",
-    "volumen",
-    "personaliz",
-    "ensambl",
-    "ubic",
-    "horario",
-    "direccion",
-    "reclam",
-    "factura",
-    "legal",
-    "regulatorio",
-    "multa",
-    "impuesto",
-    "fraude",
-    "prestamo",
-    "banco",
-    "abogado",
-    "demanda"
+    "pago", "pagar", "tarjeta", "efectivo", "transferencia", "cuota",
+    "envio", "envi", "entrega", "domicilio", "delivery", "provincia", "courier",
+    "devol", "reembolso", "cambi", "defecto", "danad", "falla",
+    "reclam", "queja", "factura", "boleta", "comprobante",
+    "fraude", "estafa", "denuncia", "indecopi", "abogado", "datos personales"
   ],
   "faqs": [
     {
       "id": "FAQ-001",
       "categoria": "pagos",
       "critico": true,
-      "pregunta": "¿Cuáles son los métodos de pago disponibles?",
+      "pregunta": "¿Qué métodos de pago aceptan?",
       "variaciones": [
         "¿cómo puedo pagar?",
-        "¿qué formas de pago aceptan?",
-        "métodos de pago",
         "¿aceptan tarjeta?",
+        "¿puedo pagar con tarjeta de crédito o débito?",
+        "¿aceptan transferencias?",
         "¿puedo pagar en efectivo?",
-        "¿se puede pagar con tarjeta de crédito?",
-        "formas de pago disponibles",
-        "¿aceptan transferencia?"
+        "¿se puede pagar contra entrega?",
+        "formas de pago",
+        "medios de pago disponibles"
       ],
-      "respuesta": "Aceptamos dos métodos de pago: tarjeta de crédito/débito (card) y efectivo. Para pagos con tarjeta, procesamos la transacción de forma segura. Para efectivo, coordinamos la entrega contra pago. No contamos con financiamiento ni pagos en cuotas."
+      "respuesta": "Aceptamos tarjetas de crédito y débito, transferencias bancarias y efectivo en la tienda o contra entrega dentro de Lima Metropolitana. No ofrecemos pagos en cuotas sin intereses."
     },
     {
       "id": "FAQ-002",
       "categoria": "envios",
       "critico": true,
-      "pregunta": "¿Hacen envíos a domicilio?",
+      "pregunta": "¿Hacen envíos a domicilio en Lima?",
       "variaciones": [
-        "¿entregan a domicilio?",
-        "¿tienen delivery?",
-        "envío a casa",
-        "¿cómo es la entrega?",
         "¿cuánto cuesta el envío?",
-        "¿en cuánto tiempo llega mi pedido?",
+        "¿cuánto demora el envío?",
+        "¿hacen delivery?",
+        "¿llevan los libros a mi casa?",
+        "costo del delivery en Lima",
         "¿el envío es gratis?",
-        "política de envíos"
+        "¿en cuánto tiempo llega mi pedido a Lima?",
+        "envío a domicilio"
       ],
-      "respuesta": "Sí, hacemos envíos a domicilio en toda la ciudad. El envío es gratis para compras superiores a $200. Para compras menores, el costo de envío es de $15. El tiempo de entrega es de 2 a 5 días hábiles."
+      "respuesta": "En Lima Metropolitana el envío cuesta S/ 10 y es gratis en compras de S/ 120 o más. Entregamos en 24 a 48 horas hábiles desde la confirmación del pago."
     },
     {
       "id": "FAQ-003",
-      "categoria": "garantia",
+      "categoria": "envios",
       "critico": true,
-      "pregunta": "¿Tienen garantía los productos?",
+      "pregunta": "¿Hacen envíos a provincias?",
       "variaciones": [
-        "¿dan garantía?",
-        "garantía de productos",
-        "¿qué garantía tienen?",
-        "¿cuánto dura la garantía?",
-        "política de garantía",
-        "¿cubren fallas de fábrica?",
-        "mi producto falló, ¿aplica garantía?"
+        "¿envían a provincia?",
+        "¿mandan libros a Arequipa?",
+        "¿llegan a Trujillo o a Cusco?",
+        "¿cuánto cuesta el envío a provincias?",
+        "¿cuánto demora un envío a provincia?",
+        "envíos fuera de Lima",
+        "¿hacen envíos a todo el Perú?"
       ],
-      "respuesta": "Todos nuestros productos tienen garantía. Laptops y componentes tienen 1 año de garantía del fabricante. Periféricos tienen 6 meses. Cubrimos defectos de fábrica, no daños por mal uso."
+      "respuesta": "Sí, enviamos a todo el Perú por courier. El envío a provincias tarda de 3 a 7 días hábiles, cuesta S/ 18 y es gratis en compras de S/ 200 o más."
     },
     {
       "id": "FAQ-004",
-      "categoria": "devoluciones",
+      "categoria": "cambios",
       "critico": true,
-      "pregunta": "¿Puedo devolver un producto?",
+      "pregunta": "¿Puedo cambiar o devolver un libro?",
       "variaciones": [
-        "política de devoluciones",
         "¿aceptan devoluciones?",
-        "quiero devolver un producto",
-        "¿puedo cambiar un producto?",
-        "devolución de productos",
-        "¿me devuelven el dinero?",
-        "¿cómo hago una devolución?"
+        "quiero devolver un libro",
+        "¿puedo cambiar un libro por otro?",
+        "me regalaron un libro repetido, ¿lo puedo cambiar?",
+        "¿cómo pido un reembolso?",
+        "política de cambios y devoluciones",
+        "¿cuántos días tengo para devolver un libro?"
       ],
-      "respuesta": "Aceptamos devoluciones dentro de los primeros 15 días después de la compra, siempre que el producto esté en su empaque original, sin uso y con todos sus accesorios. Procesamos el reembolso en 5 a 7 días hábiles."
+      "respuesta": "Sí, dentro de los 7 días calendario siguientes a la entrega, si el libro está nuevo, sin uso y con su comprobante. El reembolso se hace por el mismo medio de pago en 5 a 7 días hábiles; los libros de actividades ya usados no se pueden cambiar."
     },
     {
       "id": "FAQ-005",
-      "categoria": "tienda",
+      "categoria": "defectos",
       "critico": true,
-      "pregunta": "¿Tienen tienda física?",
+      "pregunta": "¿Qué hago si el libro llegó dañado o con fallas de impresión?",
       "variaciones": [
-        "¿dónde están ubicados?",
-        "dirección de la tienda",
-        "¿puedo visitar la tienda?",
-        "ubicación física",
-        "¿tienen local?",
-        "¿cuál es el horario de atención?",
-        "¿cómo llego a la tienda?"
+        "el libro llegó roto",
+        "mi libro tiene páginas en blanco",
+        "faltan páginas en el libro",
+        "el libro vino con un defecto de impresión",
+        "el libro llegó maltratado por el envío",
+        "me llegó un libro dañado"
       ],
-      "respuesta": "Sí, contamos con una tienda física ubicada en Av. Tecnología 123, Centro Comercial Tech Plaza, Local 45. Horario: lunes a viernes de 9:00 a 19:00; sábados de 10:00 a 18:00."
+      "respuesta": "Lo cambiamos por otro ejemplar sin costo dentro de los 30 días siguientes a la entrega; si no hay otro, devolvemos el importe completo, incluido el envío. Envíanos una foto del defecto y tu número de pedido."
     },
     {
       "id": "FAQ-006",
-      "categoria": "stock",
-      "critico": true,
-      "pregunta": "¿Tienen productos en stock?",
+      "categoria": "tienda",
+      "critico": false,
+      "pregunta": "¿Tienen tienda física?",
       "variaciones": [
-        "¿hay disponibilidad?",
-        "¿tienen existencias?",
-        "stock de productos",
-        "¿cuándo llega stock?",
-        "productos disponibles",
-        "¿está disponible la laptop Dell?",
-        "¿tienen el mouse Logitech en stock?"
+        "¿dónde están ubicados?",
+        "¿cuál es su dirección?",
+        "¿cuál es el horario de atención?",
+        "¿a qué hora abren?",
+        "¿abren los domingos?",
+        "¿puedo ir a la librería?",
+        "ubicación de la librería"
       ],
-      "respuesta": "Mantenemos stock de la mayoría de nuestros productos. Para verificar la disponibilidad de un producto específico, indícanos cuál te interesa y te confirmamos las unidades disponibles en tiempo real."
+      "respuesta": "Sí, estamos en Av. Ejemplo 123, Miraflores, Lima. Atendemos de lunes a sábado de 10:00 a 20:00 y domingos de 11:00 a 18:00."
     },
     {
       "id": "FAQ-007",
-      "categoria": "soporte",
-      "critico": true,
-      "pregunta": "¿Ofrecen servicio técnico?",
+      "categoria": "pedidos especiales",
+      "critico": false,
+      "pregunta": "¿Pueden conseguir un libro que no tienen en el catálogo?",
       "variaciones": [
-        "¿tienen soporte técnico?",
-        "servicio de reparación",
-        "¿reparan computadoras?",
-        "soporte post-venta",
-        "asistencia técnica",
-        "¿dónde reparan laptops?",
-        "necesito reparar mi laptop"
+        "¿hacen pedidos especiales?",
+        "¿pueden traer un libro por encargo?",
+        "busco un libro que no está en su catálogo",
+        "¿tienen preventas?",
+        "¿puedo reservar un libro que todavía no sale?",
+        "¿consiguen libros importados?"
       ],
-      "respuesta": "Sí, ofrecemos servicio técnico para todos los productos que vendemos. Incluye diagnóstico gratuito, reparaciones con garantía y asesoría técnica. Puedes agendar una cita llamando al (555) 123-4567."
+      "respuesta": "Sí, lo conseguimos a pedido en un plazo habitual de 2 a 4 semanas, con un adelanto del 50 % del precio. Las preventas de novedades se reservan con el pago completo y se envían el día del lanzamiento."
     },
     {
       "id": "FAQ-008",
-      "categoria": "ventas",
-      "critico": true,
-      "pregunta": "¿Venden al por mayor?",
+      "categoria": "regalos",
+      "critico": false,
+      "pregunta": "¿Envuelven los libros para regalo?",
       "variaciones": [
-        "¿hacen ventas corporativas?",
-        "compras al mayoreo",
-        "¿tienen descuentos por volumen?",
-        "ventas empresariales",
-        "precios para empresas",
-        "¿hay descuento por comprar muchas unidades?"
+        "¿tienen envoltura de regalo?",
+        "es para un regalo, ¿lo pueden envolver?",
+        "¿la envoltura tiene costo?",
+        "¿puedo agregar una tarjeta con dedicatoria?",
+        "quiero mandar el libro de regalo"
       ],
-      "respuesta": "Sí, manejamos ventas al por mayor y corporativas. Para compras superiores a 10 unidades del mismo producto ofrecemos descuentos especiales. Contáctanos para cotizaciones personalizadas."
+      "respuesta": "Sí, la envoltura para regalo es gratuita y se pide al hacer el pedido. Podemos incluir una tarjeta con un mensaje de hasta 200 caracteres y no enviamos el comprobante dentro del paquete."
     },
     {
       "id": "FAQ-009",
-      "categoria": "servicios",
+      "categoria": "comprobantes",
       "critico": true,
-      "pregunta": "¿Puedo armar una PC personalizada?",
+      "pregunta": "¿Emiten boleta o factura?",
       "variaciones": [
-        "¿arman computadoras?",
-        "PC a medida",
-        "ensamblado de PC",
-        "¿puedo elegir componentes?",
-        "armado personalizado",
-        "¿me arman una computadora?"
+        "¿me dan factura?",
+        "necesito factura con RUC",
+        "¿la boleta es electrónica?",
+        "¿cómo recibo mi comprobante de pago?",
+        "comprobante de pago"
       ],
-      "respuesta": "¡Por supuesto! Ofrecemos servicio de ensamblado de PC personalizada. Puedes elegir todos los componentes (procesador, tarjeta gráfica, RAM, almacenamiento, etc.) y nosotros armamos tu PC. El servicio de ensamblado tiene un costo de $50."
+      "respuesta": "Sí, cada compra emite una boleta o factura electrónica que llega a tu correo. Para factura necesitamos el RUC y la razón social al momento de pagar."
     },
     {
       "id": "FAQ-010",
-      "categoria": "financiamiento",
+      "categoria": "reclamos",
       "critico": true,
-      "pregunta": "¿Tienen financiamiento?",
+      "pregunta": "¿Tienen libro de reclamaciones?",
       "variaciones": [
-        "¿dan crédito?",
-        "pago en cuotas",
-        "¿puedo pagar a meses?",
-        "planes de financiamiento",
-        "¿aceptan pagos diferidos?",
-        "¿tienen meses sin intereses?"
+        "quiero presentar un reclamo",
+        "¿dónde dejo una queja?",
+        "¿cómo hago un reclamo?",
+        "libro de reclamaciones virtual",
+        "¿en cuánto tiempo responden un reclamo?"
       ],
-      "respuesta": "Actualmente solo aceptamos pagos de contado con tarjeta o efectivo. No contamos con planes de financiamiento o pagos en cuotas por el momento."
+      "respuesta": "Sí, tenemos libro de reclamaciones físico en la tienda y virtual en nuestro sitio web. Respondemos cada reclamo en un plazo máximo de 15 días hábiles."
+    },
+    {
+      "id": "FAQ-011",
+      "categoria": "recojo",
+      "critico": false,
+      "pregunta": "¿Puedo recoger mi pedido en la tienda?",
+      "variaciones": [
+        "¿tienen recojo en tienda?",
+        "prefiero recogerlo yo",
+        "¿el recojo tiene costo?",
+        "¿cuándo puedo pasar a recoger mi libro?",
+        "¿qué necesito para recoger mi pedido?"
+      ],
+      "respuesta": "Sí, sin costo, desde el día hábil siguiente a la confirmación del pago. Presenta tu número de pedido y tu documento de identidad; guardamos el pedido durante 15 días."
     }
   ]
 }

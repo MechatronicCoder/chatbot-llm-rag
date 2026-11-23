@@ -13,7 +13,7 @@ repos:
       - id: check-merge-conflict
       - id: detect-private-key
       - id: check-added-large-files
-        args: ["--maxkb=4000"] # los PDFs del corpus pesan hasta 3.5 MB
+        args: ["--maxkb=4000"] # deja margen para PDFs del corpus de varios MB
 
   # Las mismas versiones de ruff y mypy que fija uv.lock (sin duplicar versiones aquí).
   - repo: local
@@ -33,6 +33,11 @@ repos:
         entry: uv run python scripts/verificar_lineas.py
         language: system
         files: '(\.(py|js|css|html|bicep|ya?ml|sh|ps1|toml)|Dockerfile)$'
+      - id: catalogo-valido
+        name: catálogo de libros válido
+        entry: uv run python scripts/validar_catalogo.py
+        language: system
+        files: '^datos/catalogo\.json$'
       - id: mypy
         name: mypy
         entry: uv run mypy app

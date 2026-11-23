@@ -7,7 +7,7 @@
  *   a main.js, que decide cómo reflejarlo en el chat.
  */
 
-import { pedidosDe, buscarProductos, borrarSesion } from './api.js';
+import { pedidosDe, buscarLibros, borrarSesion } from './api.js';
 import {
   CLAVES,
   crear,
@@ -37,14 +37,6 @@ function claseEstado(estado) {
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '');
   return CLASE_ESTADO[clave] ?? '';
-}
-
-function textoSpecs(specs) {
-  if (!specs) return '';
-  if (typeof specs === 'string') return specs;
-  if (Array.isArray(specs)) return specs.join(' · ');
-  if (typeof specs === 'object') return Object.entries(specs).map(([k, v]) => `${k}: ${v}`).join(' · ');
-  return String(specs);
 }
 
 /**
@@ -135,7 +127,7 @@ export function iniciarPanel({ alCambiarUsuario, alRecargar, alBorrar } = {}) {
         const estado = claseEstado(p.estado);
         const titulo = [
           p.precio_unitario !== undefined ? `Precio unitario ${formatearPrecio(p.precio_unitario)}` : '',
-          p.codigo ? `Código ${p.codigo}` : '',
+          p.isbn ? `ISBN ${p.isbn}` : '',
           p.creado_en ? `Creado ${p.creado_en}` : '',
         ].filter(Boolean).join(' · ');
         return crear('li', { clase: ['item', resaltar.has(String(p.pedido_id)) && 'nuevo'], atributos: { title: titulo || null } }, [
@@ -143,7 +135,7 @@ export function iniciarPanel({ alCambiarUsuario, alRecargar, alBorrar } = {}) {
             crear('strong', { texto: p.pedido_id ?? '—' }),
             crear('span', { clase: ['etiqueta-estado', estado && `estado-${estado}`], texto: p.estado ?? '—' }),
           ]),
-          crear('div', { clase: 'item-sub', texto: `${p.cantidad ?? '?'} × ${p.nombre ?? p.codigo ?? 'producto'} — ${formatearPrecio(p.total)}` }),
+          crear('div', { clase: 'item-sub', texto: `${p.cantidad ?? '?'} × ${p.titulo ?? p.isbn ?? 'libro'} — ${formatearPrecio(p.total)}` }),
         ]);
       }),
     );
@@ -183,16 +175,16 @@ export function iniciarPanel({ alCambiarUsuario, alRecargar, alBorrar } = {}) {
   let temporizadorBusqueda = null;
 
   function pintarCatalogo(d, consulta) {
-    const productos = Array.isArray(d?.productos) ? d.productos : [];
-    const total = Number.isFinite(d?.total) ? d.total : productos.length;
+    const libros = Array.isArray(d?.libros) ? d.libros : [];
+    const total = Number.isFinite(d?.total) ? d.total : libros.length;
 
-    let resumen = plural(productos.length, 'producto');
-    if (total > productos.length) resumen = `${productos.length} de ${total} productos`;
+    let resumen = plural(libros.length, 'libro');
+    if (total > libros.length) resumen = `${libros.length} de ${total} libros`;
     if (consulta) resumen += ` para «${consulta}»`;
     ponerTexto(resumenCatalogo, resumen);
 
-    if (!productos.length) {
-      mensajeEn(cajaCatalogo, consulta ? 'No hay productos que coincidan.' : 'El catálogo está vacío.');
+    if (!libros.length) {
+      mensajeEn(cajaCatalogo, consulta ? 'No hay libros que coincidan.' : 'El catálogo está vacío.');
       return;
     }
 
@@ -200,19 +192,18 @@ export function iniciarPanel({ alCambiarUsuario, alRecargar, alBorrar } = {}) {
       crear(
         'ul',
         { clase: 'lista' },
-        productos.map((p) => {
-          const stock = Number(p.stock);
+        libros.map((lb) => {
+          const stock = Number(lb.stock);
           const agotado = Number.isFinite(stock) && stock <= 0;
-          const specs = textoSpecs(p.specs);
-          return crear('li', { clase: 'item', atributos: { title: specs || null } }, [
+          return crear('li', { clase: 'item', atributos: { title: lb.sinopsis || null } }, [
             crear('div', { clase: 'item-titulo' }, [
-              crear('strong', { texto: p.nombre ?? p.codigo ?? '—' }),
-              crear('span', { clase: 'precio', texto: formatearPrecio(p.precio) }),
+              crear('strong', { texto: lb.titulo ?? lb.isbn ?? '—' }),
+              crear('span', { clase: 'precio', texto: formatearPrecio(lb.precio) }),
             ]),
             crear('div', { clase: 'item-sub' }, [
-              [p.codigo, p.categoria].filter(Boolean).join(' · '),
+              [lb.autor, lb.categoria, lb.edad].filter(Boolean).join(' · '),
               ' · ',
-              crear('span', { clase: agotado ? 'agotado' : '', texto: agotado ? 'agotado' : `${p.stock ?? '?'} u.` }),
+              crear('span', { clase: agotado ? 'agotado' : '', texto: agotado ? 'agotado' : `${lb.stock ?? '?'} u.` }),
             ]),
           ]);
         }),
@@ -227,7 +218,7 @@ export function iniciarPanel({ alCambiarUsuario, alRecargar, alBorrar } = {}) {
     const consulta = inputBuscar.value.trim();
     cajaCatalogo.setAttribute('aria-busy', 'true');
     try {
-      const d = await buscarProductos({ consulta, limite: LIMITE_CATALOGO }, { senal: control.signal });
+      const d = await buscarLibros({ consulta, limite: LIMITE_CATALOGO }, { senal: control.signal });
       if (!control.signal.aborted) pintarCatalogo(d, consulta);
     } catch (error) {
       if (control.signal.aborted || error?.tipo === 'cancelada') return;

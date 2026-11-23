@@ -64,16 +64,14 @@ class EmbedderFalso:
     """Bolsa de palabras con vocabulario fijo: suficiente para probar el flujo denso."""
 
     VOCABULARIO = (
-        "garantia",
         "envio",
-        "devolver",
-        "monitor",
-        "hdmi",
-        "pantalla",
-        "bateria",
-        "limpiar",
-        "consumidor",
-        "ley",
+        "cambiar",
+        "paginas",
+        "impresas",
+        "reclamo",
+        "plazo",
+        "soles",
+        "comprobante",
     )
 
     def __init__(self, fallar: bool = False) -> None:

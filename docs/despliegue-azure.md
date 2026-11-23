@@ -156,6 +156,16 @@ $env:ADMIN_TOKEN = -join ($bytes | ForEach-Object { $_.ToString('x2') })
 $env:ADMIN_TOKEN | Set-Clipboard
 ```
 
+El acceso de la demo también es obligatorio en producción: un usuario (`ACCESO_USUARIO`) y el hash de su clave (`ACCESO_CLAVE_HASH`). La clave nunca va a Azure; se genera el hash desde la raíz del repositorio y se guarda solo la parte después del `=`:
+
+```powershell
+$ACCESO_USUARIO = Read-Host 'Usuario de acceso'
+uv run python scripts/hash_clave.py   # pide la clave dos veces; copiar el valor entre comillas
+$env:ACCESO_CLAVE_HASH = Read-Secreto 'ACCESO_CLAVE_HASH'
+```
+
+El script `infra/crear-app.ps1` hace todo el paso 7 de una vez: pide las claves sin mostrarlas, calcula el hash de la clave de acceso, genera el `ADMIN_TOKEN` y crea la app con la imagen más reciente del registro. Se ejecuta desde la raíz del repositorio con `powershell -ExecutionPolicy Bypass -File infra\crear-app.ps1`. Por defecto usa solo Qwen, con una clave de Model Studio para el chat (`qwen-plus`), el respaldo (`qwen-flash`) y los embeddings; `-Proveedor deepseek` usa DeepSeek para el chat, y `-Region cn` apunta a la región de Pekín si la clave es de allí.
+
 La configuración no secreta debe coincidir con la del `.env` local. Los valores siguientes son de ejemplo:
 
 ```powershell
@@ -178,6 +188,8 @@ $parametros = @(
     "llmApiKey=$env:LLM_API_KEY"
     "embeddingsApiKey=$env:EMBEDDINGS_API_KEY"
     "adminToken=$env:ADMIN_TOKEN"
+    "accesoUsuario=$ACCESO_USUARIO"
+    "accesoClaveHash=$env:ACCESO_CLAVE_HASH"
     "llmBaseUrl=$LLM_BASE_URL"
     "llmModel=$LLM_MODEL"
     "llm2BaseUrl=$LLM_2_BASE_URL"
@@ -224,7 +236,7 @@ for ($i = 1; $i -le 18; $i++) {
     Start-Sleep -Seconds 10
 }
 
-# Estado general: modo (real o demo), corpus indexado y parámetros, sin claves
+# Estado general: modo (real o demo), documentos y catálogo indexados y parámetros, sin claves
 curl.exe -s "$URL/api/health"
 
 # Endpoint protegido: requiere el encabezado X-Admin-Token
@@ -235,11 +247,11 @@ Si `/api/health` informa `"modo": "demo"`, la app arrancó sin un LLM configurad
 
 ## Despliegue continuo con GitHub Actions (OIDC)
 
-El workflow `CD` se ejecuta cuando el workflow `CI` termina con éxito en un push a `main`, o a mano desde la pestaña Actions. Construye la imagen en el runner de GitHub, la sube al registro con `docker push` (no usa `az acr build`, porque ACR Tasks puede no estar disponible en suscripciones de prueba), actualiza la Container App con la imagen etiquetada con el SHA del commit y espera hasta unos 3 minutos a que `/api/health/ready` responda 200 en la revisión nueva; si no, el job falla.
+El despliegue es el último job del workflow `CI`: corre solo en un push a `main`, es decir, cuando el dueño une un pull request, y solo si las pruebas y la imagen pasaron. Ese job llama a `.github/workflows/cd.yml`, que también se puede lanzar a mano desde `main` en la pestaña Actions. Construye la imagen en el runner de GitHub, la sube al registro con `docker push` (no usa `az acr build`, porque ACR Tasks puede no estar disponible en suscripciones de prueba), actualiza la Container App con la imagen etiquetada con el SHA del commit y espera hasta unos 3 minutos a que `/api/health/ready` responda 200 en la revisión nueva; si no, el job falla.
 
 La autenticación usa OpenID Connect: GitHub emite un token de corta duración que Entra ID acepta gracias a una credencial federada. No se guarda ninguna contraseña ni clave de Azure en GitHub.
 
-Requisitos previos: la Container App ya existe (fase 2 completada) y el archivo `.github/workflows/cd.yml` está en la rama `main`, porque los disparadores `workflow_run` solo se leen desde la rama por defecto.
+Requisito previo: la Container App ya existe (fase 2 completada). Si `main` recibe un push antes, el job de despliegue falla al actualizar una app que no existe.
 
 ### 1. Variables de trabajo
 
@@ -298,8 +310,12 @@ az role assignment create --assignee-object-id $SP_ID --assignee-principal-type 
 
 ### 5. Environment y variables en GitHub
 
+El environment se crea limitado a la rama `main`: un job que corra en cualquier otra rama no recibe credenciales de Azure, aunque alguien con permiso de escritura lance el workflow a mano o agregue uno propio en su rama.
+
 ```powershell
-gh api --method PUT "repos/$REPO/environments/produccion"
+'{"deployment_branch_policy":{"protected_branches":false,"custom_branch_policies":true}}' |
+  gh api --method PUT "repos/$REPO/environments/produccion" --input -
+gh api --method POST "repos/$REPO/environments/produccion/deployment-branch-policies" -f name=main -f type=branch
 
 gh variable set AZURE_CLIENT_ID       --repo $REPO --body $APP_ID
 gh variable set AZURE_TENANT_ID       --repo $REPO --body $TENANT
@@ -313,7 +329,7 @@ gh variable list --repo $REPO
 
 - Son variables de repositorio, no del environment: la condición del job se evalúa antes de entrar al environment y necesita leer `AZURE_CLIENT_ID`. Mientras esa variable esté vacía, el job se omite en lugar de fallar.
 - No son secretos: son identificadores. Lo que protege el acceso es la credencial federada, que solo acepta tokens de este repositorio y este environment.
-- Opcionalmente, en Settings > Environments > produccion se limita el environment a la rama `main` y se exige una aprobación manual antes de cada despliegue.
+- Para exigir además una aprobación manual antes de cada despliegue se agrega un revisor en Settings > Environments > produccion > Required reviewers.
 
 ### 6. Probar el workflow
 
@@ -322,7 +338,7 @@ gh workflow run cd.yml --repo $REPO --ref main
 gh run list --workflow cd.yml --repo $REPO --limit 3
 ```
 
-Después, cada push a `main` que pase CI despliega solo. Los pull requests no despliegan, aunque CI pase en ellos.
+Después, cada push a `main` que pase las pruebas y la imagen despliega solo. Los pull requests y los push a `dev` no despliegan: en ellos el job `Desplegar` aparece como omitido.
 
 ## Logs
 
@@ -396,7 +412,7 @@ Los precios cambian por región y con el tiempo, así que se consultan en la [ca
 
 Formas de bajar el costo:
 
-- `minReplicas = 0`. La app se apaga tras unos minutos sin solicitudes y no consume cómputo mientras está apagada. La primera solicitud después de apagarse espera el arranque completo (descarga de la imagen e indexado, más de un minuto). Además, cada apagado borra la base SQLite (pedidos, usuarios y conversaciones) y obliga a recalcular los embeddings del corpus, lo que genera llamadas extra a la API de embeddings. Sirve para una demo; no para guardar datos.
+- `minReplicas = 0`. La app se apaga tras unos minutos sin solicitudes y no consume cómputo mientras está apagada. La primera solicitud después de apagarse espera el arranque completo (descarga de la imagen e indexado, más de un minuto). Además, cada apagado borra la base SQLite (pedidos, usuarios y conversaciones) y obliga a recalcular los embeddings de los documentos y del catálogo, lo que genera llamadas extra a la API de embeddings. Sirve para una demo; no para guardar datos.
 
   Para que el cambio sea permanente se vuelve a ejecutar la fase 2 con `minReplicas=0` en `$parametros`. El atajo siguiente también funciona, pero la próxima ejecución de la fase 2 vuelve a aplicar el valor del parámetro:
 
@@ -463,8 +479,8 @@ az containerapp show --name $APP --resource-group $GRUPO --query properties.conf
 
 ### La sonda de readiness no pasa
 
-- Durante el primer minuto es normal: `/api/health/ready` responde 503 mientras se indexan los documentos.
-- Si sigue en 503, `/api/health` muestra el estado del corpus (`indexado`, `aviso`) y si la app está en modo real o demo. La causa más común es una clave, URL o modelo de embeddings incorrectos, o que el proveedor no responda. Los logs de consola muestran el error del indexado.
+- Durante el primer minuto es normal: `/api/health/ready` responde 503 mientras se indexan los documentos y el catálogo.
+- Si sigue en 503, `/api/health` muestra el estado de los documentos (`corpus`) y del catálogo (`catalogo`), cada uno con `indexado` y `aviso`, y si la app está en modo real o demo. La causa más común es una clave, URL o modelo de embeddings incorrectos, o que el proveedor no responda. Los logs de consola muestran el error del indexado.
 - Mientras la revisión nueva no esté lista, el tráfico sigue en la revisión anterior (si existe). En el primer despliegue la URL responde con error hasta que la revisión esté lista.
 
 ### Error por un secret vacío
@@ -491,9 +507,12 @@ az containerapp revision restart --name $APP --resource-group $GRUPO --revision 
 
 El reinicio es necesario para que el contenedor lea el valor nuevo, y también borra la base SQLite. Si después se ejecuta la fase 2, hay que pasar la clave nueva.
 
+La clave del acceso de la demo se cambia igual, con el secreto `acceso-clave-hash` y el hash nuevo que genera `scripts/hash_clave.py`. El reinicio cierra todas las sesiones abiertas.
+
 ### El workflow de CD no corre o falla
 
-- Job omitido (skipped): `AZURE_CLIENT_ID` está vacía, CI no terminó en éxito, CI se ejecutó por un pull request y no por un push a `main`, o el workflow de integración no se llama exactamente `CI`.
+- Job omitido (skipped): `AZURE_CLIENT_ID` está vacía, fallaron las pruebas o la imagen, o la ejecución no viene de un push a `main` (un pull request, un push a `dev` o un lanzamiento manual desde otra rama).
+- `Branch "..." is not allowed to deploy to produccion due to environment protection rules`: el job corrió en una rama distinta de `main`; es el comportamiento esperado.
 - `AADSTS70021: No matching federated identity record found`: el `subject` de la credencial federada no coincide con `repo:MechatronicCoder/chatbot-llm-rag:environment:produccion` (revisar dueño, nombre del repositorio y nombre del environment).
 - `AuthorizationFailed` al actualizar la app: falta el rol Contributor sobre el grupo de recursos o aún no se propagó.
 - La prueba de humo agota los intentos: el job imprime el estado de las revisiones y los últimos logs del sistema. Se revisa con las secciones anteriores.
@@ -502,3 +521,5 @@ El reinicio es necesario para que el contenedor lea el valor nuevo, y también b
 
 - `MissingSubscriptionRegistration`: falta registrar un proveedor (paso 2).
 - Errores de cuota o de disponibilidad en la región: las suscripciones de prueba tienen cuotas bajas. Se borra el grupo de recursos y se repite el proceso en otra región.
+- `MaxNumberOfRegionalEnvironmentsInSubExceeded` o `MaxNumberOfGlobalEnvironmentsInSubExceeded`: la prueba gratuita admite un solo entorno de Container Apps en toda la suscripción, así que cambiar de región no basta. Se lista el existente con `az containerapp env list -o table` y hay que elegir: desplegar la app en ese entorno o borrarlo (`az containerapp env delete`), después de borrar sus apps y respaldar su configuración con `az containerapp show -o yaml`. El borrado queda en estado `ScheduledForDelete` durante varios minutos y el cupo se libera recién cuando el entorno desaparece de la lista.
+- `MissingSubscription` al asignar un rol desde Git Bash: Git Bash convierte el alcance `/subscriptions/...` en una ruta de Windows. Se ejecuta el comando en PowerShell o se antepone `MSYS_NO_PATHCONV=1`.

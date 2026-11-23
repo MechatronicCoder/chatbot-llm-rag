@@ -10,7 +10,12 @@ ID_PATRON = r"^[\w.@-]{1,60}$"
 
 
 class PeticionChat(BaseModel):
-    mensaje: str = Field(..., min_length=1, max_length=4000, examples=["¿tienen laptops?"])
+    mensaje: str = Field(
+        ...,
+        min_length=1,
+        max_length=4000,
+        examples=["un libro de fantasía para mi hija de 10 años"],
+    )
     usuario_id: str = Field(default="cliente", pattern=ID_PATRON)
     session_id: str = Field(default="demo", pattern=ID_PATRON)
 
@@ -28,7 +33,9 @@ class RespuestaChatAPI(BaseModel):
     usuario_id: str
     session_id: str
     ruta: str = Field(
-        "directa", description="faq, escalar, filtro, directa, herramientas, accion, rag o demo"
+        "directa",
+        description="faq, escalar, filtro, directa, herramientas, recomendacion, accion, "
+        "rag o demo",
     )
     fuente: str = ""
     faq_id: str | None = None
@@ -37,6 +44,9 @@ class RespuestaChatAPI(BaseModel):
     pedidos: list[str] = Field(default_factory=list)
     pagos: list[str] = Field(default_factory=list)
     documentos: list[dict[str, Any]] = Field(default_factory=list)
+    libros: list[dict[str, Any]] = Field(
+        default_factory=list, description="Libros mostrados en el turno (para tarjetas)"
+    )
     modo: str = Field("real", description="real, sin_llm o demo")
     modelo: str = "—"
     endpoint: str = ""
@@ -48,25 +58,63 @@ class RespuestaChatAPI(BaseModel):
     clasificacion: dict[str, Any] | None = None
 
 
-class Producto(BaseModel):
-    codigo: str
-    nombre: str
+class LibroResumen(BaseModel):
+    isbn: str
+    titulo: str
+    autor: str
     categoria: str
+    genero: str | None = None
+    edad: str | None = None
+    formato: str | None = None
     precio: float
-    specs: str
     stock: int
+    valoracion: float | None = None
+    num_valoraciones: int = 0
+    sinopsis: str = ""
+    portada: str | None = None
 
 
-class ListaProductos(BaseModel):
+class ListaLibros(BaseModel):
     total: int
-    productos: list[Producto]
+    libros: list[LibroResumen]
+
+
+class LibroDetalle(BaseModel):
+    isbn: str
+    titulo: str
+    autor: str
+    editorial: str
+    anio: int | None
+    categoria: str
+    genero: str
+    temas: list[str]
+    protagonista: str
+    tono: str
+    edad_min: int | None
+    edad_max: int | None
+    sinopsis: str
+    formato: str
+    paginas: int | None
+    idioma: str
+    valoracion: float | None
+    num_valoraciones: int
+    similares: list[str]
+    precio: float
+    stock: int
+    portada: str | None
+
+
+class Categoria(BaseModel):
+    categoria: str
+    libros: int
 
 
 class Pedido(BaseModel):
     pedido_id: str
     usuario_id: str
-    codigo: str
-    nombre: str
+    isbn: str
+    titulo: str
+    autor: str
     cantidad: int
     precio_unitario: float
     total: float
@@ -85,3 +133,14 @@ class ListaPedidos(BaseModel):
 class SesionBorrada(BaseModel):
     session_id: str
     borrados: int
+
+
+class Credenciales(BaseModel):
+    usuario: str = Field(min_length=1, max_length=60)
+    clave: str = Field(min_length=1, max_length=200)
+
+
+class EstadoAcceso(BaseModel):
+    requerido: bool = Field(description="El acceso con usuario y clave está activado")
+    autenticado: bool
+    usuario: str | None = None

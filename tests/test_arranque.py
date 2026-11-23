@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 
 from app import main as modulo_main
 from app.api.dependencias import EstadoApp
+from app.catalogo.carga import cargar_tienda
 from app.core.config import get_settings
 from app.core.logs import RegistroEventos
 from app.llm.cliente import ClienteLLM
@@ -19,7 +20,7 @@ from app.persistencia.db import BaseDatos
 from app.servicios.chat import ServicioChat
 from app.servicios.fabrica import construir_servicio
 from app.servicios.rag import BuscadorDocumentos
-from tests.conftest import chunks_de_prueba, crear_ajustes, crear_servicio
+from tests.conftest import DATOS_REALES, chunks_de_prueba, crear_ajustes, crear_servicio
 from tests.dobles import ModeloFalso
 
 
@@ -32,16 +33,21 @@ def test_construir_servicio_con_los_datos_reales(tmp_path: Path, bd: BaseDatos) 
         embeddings_base_url="https://emb.test/v1",
         embeddings_api_key="clave",
     )
+    ajustes = ajustes.model_copy(update={"carpeta_datos": DATOS_REALES})
     servicio = construir_servicio(ajustes, RegistroEventos(None, consola=False), bd)
     assert isinstance(servicio.llm, ClienteLLM) and servicio.llm.configurado
     assert isinstance(servicio.buscador.embedder, ClienteEmbeddings)
-    assert len(servicio.buscador.chunks) > 100
-    assert "TechStore" in servicio.prompt_sistema
-    assert len(servicio.faq.faqs) == 10
+    assert servicio.recomendador.indice.embedder is servicio.buscador.embedder
+    assert {"politicas_libreria.md"} <= {c.documento for c in servicio.buscador.chunks}
+    assert servicio.tienda.nombre in servicio.prompt_sistema
+    assert "{tienda}" not in servicio.prompt_sistema and "{moneda}" not in servicio.prompt_sistema
+    assert len(servicio.faq.faqs) == 11
+    assert servicio.recomendador.info()["libros"] == bd.estadisticas()["libros"]
 
 
 def test_sin_claves_el_servicio_no_tiene_embedder(tmp_path: Path, bd: BaseDatos) -> None:
-    servicio = construir_servicio(crear_ajustes(tmp_path), RegistroEventos(None), bd)
+    ajustes = crear_ajustes(tmp_path).model_copy(update={"carpeta_datos": DATOS_REALES})
+    servicio = construir_servicio(ajustes, RegistroEventos(None), bd)
     assert servicio.buscador.embedder is None
     assert not servicio.llm.configurado
 
@@ -59,7 +65,8 @@ def armar_estado(tmp_path: Path, fabrica: object) -> EstadoApp:
     registro = RegistroEventos.desde_config(ajustes)
     bd = BaseDatos(ajustes.db_path, ajustes.carpeta_datos / "catalogo.json")
     bd.inicializar()
-    return EstadoApp(ajustes, registro, bd, fabrica=fabrica)  # type: ignore[arg-type]
+    tienda = cargar_tienda(ajustes.carpeta_datos / "tienda.json")
+    return EstadoApp(ajustes, registro, bd, tienda, fabrica=fabrica)  # type: ignore[arg-type]
 
 
 def servicio_de_prueba(tmp_path: Path) -> ServicioChat:
@@ -85,7 +92,8 @@ def test_estado_construye_una_vez_e_indexa(tmp_path: Path) -> None:
     assert estado.listo
     assert estado.obtener_servicio() is construidos[0]
     assert len(construidos) == 1
-    assert any(e["evento"] == "corpus.listo" for e in estado.registro.leer())
+    eventos = [e["evento"] for e in estado.registro.leer()]
+    assert "corpus.listo" in eventos and "catalogo.indexado" in eventos
 
 
 def test_un_error_al_preparar_queda_en_el_log(tmp_path: Path) -> None:
@@ -123,7 +131,7 @@ def test_el_ciclo_de_vida_indexa_en_segundo_plano(tmp_path: Path) -> None:
             time.sleep(0.05)
         assert cliente.get("/api/health/ready").status_code == 200
     eventos = [e["evento"] for e in servicio.registro.leer()]
-    assert "app.inicio" in eventos
+    assert "app.inicio" in eventos and "catalogo.sincronizado" in eventos
 
 
 def test_sin_carpeta_de_frontend_la_api_funciona(

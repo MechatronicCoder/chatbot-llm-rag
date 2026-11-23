@@ -1,9 +1,11 @@
 """Evalúa el chatbot con el conjunto de casos de `evaluacion/casos.json`.
 
 Cada caso abre una sesión nueva, envía sus mensajes y compara la ruta del
-último turno (faq, filtro, herramientas, accion, rag…) con la esperada; si el
-caso indica una FAQ o un documento, también se comprueba. Se usa una base de
-datos temporal: la evaluación no ensucia `var/tienda.db`.
+último turno (faq, filtro, herramientas, recomendacion, accion, rag…) con la
+esperada; si el caso indica una FAQ, un documento o un libro, también se
+comprueba. Para la recomendación se informa el acierto: cuántas veces el libro
+esperado está entre los libros que mostró el turno. Se usa una base de datos
+temporal: la evaluación no ensucia `var/tienda.db`.
 
 Uso:
     uv run python scripts/evaluar.py              # con la configuración del .env
@@ -42,6 +44,7 @@ def evaluar_caso(servicio: Any, caso: dict[str, Any]) -> dict[str, Any]:
         respuesta = servicio.responder(mensaje, sesion, sesion)
     assert respuesta is not None
     documentos = {d["documento"] for d in respuesta.documentos}
+    titulos = [lb["titulo"] for lb in respuesta.libros]
     fallos = []
     if respuesta.ruta not in caso["ruta"]:
         fallos.append(f"ruta {respuesta.ruta} (se esperaba {'/'.join(caso['ruta'])})")
@@ -49,6 +52,14 @@ def evaluar_caso(servicio: Any, caso: dict[str, Any]) -> dict[str, Any]:
         fallos.append(f"faq {respuesta.faq_id} (se esperaba {caso['faq']})")
     if caso.get("documento") and caso["documento"] not in documentos:
         fallos.append(f"documento esperado {caso['documento']} no citado")
+    libro_ok = None
+    if caso.get("libro_titulo"):
+        # un título o una lista de títulos válidos (basta con que aparezca uno)
+        esperados = caso["libro_titulo"]
+        esperados = [esperados] if isinstance(esperados, str) else esperados
+        libro_ok = any(t in titulos for t in esperados)
+        if not libro_ok:
+            fallos.append(f"ningún libro esperado mostrado ({' / '.join(esperados)})")
     return {
         "id": caso["id"],
         "categoria": caso["categoria"],
@@ -58,6 +69,7 @@ def evaluar_caso(servicio: Any, caso: dict[str, Any]) -> dict[str, Any]:
         "latencia_ms": respuesta.latencia_ms,
         "tokens": sum(respuesta.tokens),
         "respuesta": respuesta.respuesta,
+        "libro_ok": libro_ok,
     }
 
 
@@ -68,6 +80,7 @@ def informe(resultados: list[dict[str, Any]], omitidos: list[str], modo: str) ->
     por_categoria: dict[str, list[bool]] = defaultdict(list)
     for r in resultados:
         por_categoria[r["categoria"]].append(r["ok"])
+    con_libro = [r["libro_ok"] for r in resultados if r["libro_ok"] is not None]
 
     lineas = [
         f"# Evaluación del {datetime.now():%Y-%m-%d %H:%M}",
@@ -77,6 +90,7 @@ def informe(resultados: list[dict[str, Any]], omitidos: list[str], modo: str) ->
         f"- Aciertos de ruta: {aciertos}/{evaluados} ({aciertos / max(evaluados, 1):.0%})",
         f"- Latencia p50: {statistics.median(latencias):.0f} ms · máxima: {latencias[-1]} ms",
         f"- Tokens totales: {sum(r['tokens'] for r in resultados)}",
+        f"- Libro esperado entre los mostrados: {sum(con_libro)}/{len(con_libro)}",
         "",
         "| Categoría | Aciertos |",
         "|---|---|",
@@ -120,9 +134,12 @@ def main() -> int:
         inicio = time.perf_counter()
         servicio = construir_servicio(ajustes, registro, bd)
         servicio.buscador.indexar()
+        servicio.recomendador.indexar()
+        catalogo = servicio.recomendador.info()
         print(
-            f"Corpus: {len(servicio.buscador.chunks)} fragmentos, motor "
-            f"{servicio.buscador.motor} ({time.perf_counter() - inicio:.1f} s)"
+            f"Documentos: {len(servicio.buscador.chunks)} fragmentos ({servicio.buscador.motor}) · "
+            f"catálogo: {catalogo['libros']} libros ({catalogo['motor']}) · "
+            f"{time.perf_counter() - inicio:.1f} s"
         )
         hay_llm = servicio.llm.configurado
         modo = f"con LLM ({servicio.llm.modelo_principal})" if hay_llm else "sin LLM"

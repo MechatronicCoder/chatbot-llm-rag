@@ -6,13 +6,23 @@
  * - Mientras el estado sea "iniciando" (o el servidor no responda) reintenta
  *   con más frecuencia; al pasar a "ok" recarga catálogo, pedidos y logs.
  * - Mantiene los temporizadores: logs y métricas cada 3 s, salud cada 10 s.
+ * - Si el backend pide iniciar sesión, muestra la pantalla de acceso (acceso.js).
  */
 
-import { salud } from './api.js';
+import { configurarAvisoDeAcceso, salud } from './api.js';
+import { iniciarAcceso } from './acceso.js';
 import { iniciarChat } from './chat.js';
 import { iniciarPanel } from './panel.js';
 import { iniciarLogs } from './logs.js';
-import { crear, porId, ponerTexto, formatearCantidad, formatearDuracion, plural } from './util.js';
+import {
+  crear,
+  porId,
+  ponerTexto,
+  configurarMoneda,
+  formatearCantidad,
+  formatearDuracion,
+  plural,
+} from './util.js';
 
 const INTERVALO_LOGS_MS = 3000;
 const INTERVALO_SALUD_MS = 10000;
@@ -39,6 +49,13 @@ function datoMeta(etiqueta, valor, clase = '') {
 
 function pintarSalud(d) {
   const corpus = d?.corpus ?? {};
+  if (d?.tienda) {
+    configurarMoneda(d.tienda.moneda);
+    if (d.tienda.nombre) {
+      ponerTexto(porId('marca-nombre'), d.tienda.nombre);
+      document.title = `${d.tienda.nombre} · Asistente`;
+    }
+  }
 
   if (d?.estado === 'ok') {
     ponerIndicador('ok', 'En línea', `Activo desde hace ${formatearDuracion(d.uptime_s)}`);
@@ -48,7 +65,7 @@ function pintarSalud(d) {
 
   const indexado = corpus.indexado ? `listo${corpus.motor ? ` (${corpus.motor})` : ''}` : 'indexando…';
   const conteos = [
-    plural(formatearCantidad(d?.productos), 'producto'),
+    plural(formatearCantidad(d?.libros), 'libro'),
     plural(formatearCantidad(d?.pedidos), 'pedido'),
     plural(formatearCantidad(d?.pagos), 'pago'),
     plural(formatearCantidad(d?.mensajes), 'mensaje'),
@@ -64,7 +81,7 @@ function pintarSalud(d) {
     ]),
     crear('li', {
       texto: conteos,
-      atributos: { title: `${formatearCantidad(d?.usuarios)} usuarios · ${formatearCantidad(d?.unidades)} unidades` },
+      atributos: { title: `${formatearCantidad(d?.usuarios)} usuarios · ${formatearCantidad(d?.unidades)} ejemplares` },
     }),
   ];
   if (corpus.aviso) items.push(crear('li', { clase: 'aviso-corpus', texto: corpus.aviso }));
@@ -118,6 +135,12 @@ chat = iniciarChat({
   alResponder,
 });
 
+const acceso = iniciarAcceso({
+  alEntrar: () => alQuedarListo(),
+  alSalir: () => chat.limpiar(),
+});
+configurarAvisoDeAcceso(() => acceso.sesionRechazada());
+
 // ---------------------------------------------------------------------------
 // Bucle de salud
 // ---------------------------------------------------------------------------
@@ -158,7 +181,8 @@ async function revisarSalud() {
     }
   }
 
-  if (estado === 'ok' && estadoAnterior !== null && estadoAnterior !== 'ok') alQuedarListo();
+  const recienListo = estado === 'ok' && estadoAnterior !== null && estadoAnterior !== 'ok';
+  if (recienListo && !acceso.bloqueado()) alQuedarListo();
   estadoAnterior = estado;
 
   if (estado === 'iniciando') espera = REINTENTO_INICIANDO_MS;
@@ -172,14 +196,17 @@ async function revisarSalud() {
 // ---------------------------------------------------------------------------
 
 revisarSalud();
-panel.cargarCatalogo();
-panel.cargarPedidos();
-logs.refrescar();
+// Con el acceso activado, los datos se cargan recién al iniciar sesión (alEntrar).
+acceso.verificar().then((d) => {
+  if (!d?.requerido || d.autenticado) alQuedarListo();
+});
 
-setInterval(() => logs.refrescarSiActivo(), INTERVALO_LOGS_MS);
+setInterval(() => {
+  if (!acceso.bloqueado()) logs.refrescarSiActivo();
+}, INTERVALO_LOGS_MS);
 
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) return;
-  logs.refrescarSiActivo();
+  if (!acceso.bloqueado()) logs.refrescarSiActivo();
   revisarSalud();
 });
