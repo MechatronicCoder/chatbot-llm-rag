@@ -22,7 +22,10 @@ def test_flujo_de_venta_buscar_y_reservar(
         respuesta(
             tool_calls=[
                 llamada("buscar_libros", consulta="escuela de magos"),
-                llamada("reservar_pedido", isbn=ISBN_MAGO, cantidad=2),
+                llamada(
+                    "actualizar_carrito", cambios=[{"isbn": ISBN_MAGO, "cantidad": 2}], zona="lima"
+                ),
+                llamada("reservar_pedido"),
             ]
         ),
         respuesta("Reservado."),
@@ -30,13 +33,15 @@ def test_flujo_de_venta_buscar_y_reservar(
     r = servicio_con_modelo.responder("quiero 2 de La escuela de magos", "alumno", "s-venta")
     assert r.ruta == "accion" and r.modo == "real"
     pedido = servicio_con_modelo.bd.consultar_pedido(r.pedidos[0])
-    assert pedido is not None and pedido["cantidad"] == 2
+    assert pedido is not None and pedido["lineas"][0]["cantidad"] == 2
+    assert r.carrito is not None and r.carrito["estado"] == "reservado"
     assert [lb["isbn"] for lb in r.libros] == [ISBN_MAGO]
     assert r.tokens == [200, 40]
     assert servicio_con_modelo.bd.mensajes_de("s-venta")[-1]["ruta"] == "accion"
     eventos = eventos_del_turno(servicio_con_modelo, r.turno_id)
-    for esperado in ("turno.inicio", "clasificacion", "herramienta.ejecutada",
-                     "pedido.creado", "llm.llamada", "turno.fin"):  # fmt: skip
+    esperados = ("turno.inicio", "clasificacion", "herramienta.ejecutada", "carrito.actualizado",
+                 "pedido.creado", "llm.llamada", "turno.fin")  # fmt: skip
+    for esperado in esperados:
         assert esperado in eventos
 
 
@@ -47,7 +52,7 @@ def test_el_historial_guarda_isbn_y_pedido_para_el_turno_siguiente(
         respuesta(
             tool_calls=[
                 llamada("buscar_libros", consulta="escuela de magos"),
-                llamada("reservar_pedido", isbn=ISBN_MAGO, cantidad=1),
+                llamada("actualizar_carrito", cambios=[{"isbn": ISBN_MAGO, "cantidad": 1}]),
             ]
         ),
         respuesta("Reservado."),
@@ -161,7 +166,7 @@ def test_un_saludo_no_recibe_herramientas(
     servicio_con_modelo.responder("hola, buenas tardes", "a", "s-saludo")
     assert modelo.llamadas[-1]["herramientas"] is None
     servicio_con_modelo.responder("¿tienen libros de fantasía?", "a", "s-tools")
-    assert len(modelo.llamadas[-1]["herramientas"]) == 8
+    assert len(modelo.llamadas[-1]["herramientas"]) == 10
 
 
 def test_una_herramienta_repetida_se_reutiliza(
@@ -194,7 +199,10 @@ def test_mensaje_vacio_o_largo_se_rechaza(servicio: ServicioChat) -> None:
 def test_la_salida_no_recomienda_sitios_piratas(
     servicio_con_modelo: ServicioChat, modelo: ModeloFalso
 ) -> None:
-    modelo.respuestas = [respuesta("Búscalo gratis en Z-Library.")]
+    modelo.respuestas = [
+        respuesta(tool_calls=[llamada("recomendar_libros", necesidad="algo para leer")]),
+        respuesta("Búscalo gratis en Z-Library."),
+    ]
     r = servicio_con_modelo.responder("¿qué me recomiendas leer?", "a", "s-salida")
     assert "library" not in r.respuesta.lower()
     assert "salida.bloqueada" in eventos_del_turno(servicio_con_modelo, r.turno_id)

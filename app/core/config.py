@@ -67,6 +67,17 @@ class Settings(BaseSettings):
     llm_temperatura: float = Field(default=0.3, ge=0, le=2)
     llm_max_tokens: int = Field(default=700, ge=50, le=8192)
     llm_extra_body: dict[str, Any] = Field(default_factory=dict)
+    # Tope de tokens del chat en las últimas 24 horas; al pasarlo se responde en
+    # modo demo. 0 = sin tope.
+    llm_tokens_por_dia: int = Field(default=2_000_000, ge=0)
+    # Precio del modelo en USD por millón de tokens, para estimar el costo en /api/metricas
+    # (0 = no se estima). Se toma de la página de precios del proveedor.
+    precio_entrada_usd_millon: float = Field(default=0.0, ge=0)
+    precio_salida_usd_millon: float = Field(default=0.0, ge=0)
+
+    # -- reintentos ante 429, 5xx o cortes de red (chat y embeddings) ---------
+    api_reintentos: int = Field(default=2, ge=0, le=5)
+    api_espera_max_s: float = Field(default=6.0, ge=0, le=60)
 
     # -- embeddings por API ---------------------------------------------------
     embeddings_base_url: str = ""
@@ -80,6 +91,9 @@ class Settings(BaseSettings):
     faq_umbral: float = Field(default=0.55, ge=0, le=1)
     faq_margen: float = Field(default=0.03, ge=0, le=1)
     faq_contexto_min: float = Field(default=0.25, ge=0, le=1)
+    # Similitud mínima para adjuntar una FAQ al mensaje que ve el modelo. Con 0.25 se colaban
+    # FAQ ajenas en pedidos de libros (0.30 a 0.48) y lo desviaban de recomendar_libros.
+    faq_prompt_min: float = Field(default=0.5, ge=0, le=1)
 
     # -- recuperación de documentos (RAG) -------------------------------------
     rag_umbral: float = Field(default=0.35, ge=-1, le=1)
@@ -101,6 +115,8 @@ class Settings(BaseSettings):
     # -- conversación ---------------------------------------------------------
     max_mensajes: int = Field(default=8, ge=0, le=50)
     max_vueltas: int = Field(default=3, ge=1, le=10)
+    # Resumen encadenado de lo que sale de la ventana de MAX_MENSAJES (en segundo plano).
+    resumen_activo: bool = True
     limite_mensaje: int = Field(default=2000, ge=10, le=20000)
 
     # -- protección del servicio publicado ------------------------------------
@@ -187,6 +203,8 @@ class Settings(BaseSettings):
             "reco_pesos": [self.reco_peso_similitud, self.reco_peso_valoracion],
             "reco_votos_minimos": self.reco_votos_minimos,
             "limite_chat_por_minuto": self.limite_chat_por_minuto,
+            "llm_tokens_por_dia": self.llm_tokens_por_dia,
+            "api_reintentos": self.api_reintentos,
             "acceso_requerido": self.acceso_configurado,
             "log_nivel": self.log_nivel,
         }

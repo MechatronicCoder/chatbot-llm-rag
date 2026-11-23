@@ -183,6 +183,29 @@
 .libro-autor { color: var(--color-tenue); font-size: var(--texto-s); }
 .libro-datos { color: var(--color-ok-texto); font-size: var(--texto-s); }
 
+/* Tarjeta del pedido: los montos vienen calculados por el servidor */
+
+.carrito {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-linea-fuerte);
+  border-radius: var(--radio-s);
+  font-size: var(--texto-s);
+  animation: entrar-chip var(--dur-chip) var(--curva-salida) both;
+}
+.carrito-cabecera, .carrito-lineas li, .carrito-fila {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.carrito-estado { color: var(--color-aviso-texto); }
+.carrito-lineas { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 4px; }
+.carrito-importe, .carrito-fila dd { margin: 0; font-variant-numeric: tabular-nums; }
+.carrito-totales { margin: 0; padding-top: 6px; border-top: 1px solid var(--color-linea); }
+.carrito-fila dt { color: var(--color-tenue); }
+.carrito-total { font-weight: 600; color: var(--color-texto); }
+.carrito-nota { margin: 6px 0 0; color: var(--color-ok-texto); }
+
 /* Chips de metadatos */
 
 .datos {

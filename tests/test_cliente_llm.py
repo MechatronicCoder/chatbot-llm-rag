@@ -9,6 +9,7 @@ from typing import Any
 import httpx
 import pytest
 
+from app.core.logs import RegistroEventos
 from app.llm.cliente import ClienteLLM, Proveedor, SinProveedores
 
 PRINCIPAL = Proveedor("principal", "https://principal.test/v1", "clave-1", "modelo-a")
@@ -23,8 +24,15 @@ def respuesta_ok(contenido: str = "hola", **mensaje: Any) -> dict[str, Any]:
     }
 
 
-def cliente(manejador: Any, *proveedores: Proveedor) -> ClienteLLM:
-    return ClienteLLM(proveedores or (PRINCIPAL,), transporte=httpx.MockTransport(manejador))
+def cliente(
+    manejador: Any, *proveedores: Proveedor, registro: RegistroEventos | None = None
+) -> ClienteLLM:
+    return ClienteLLM(
+        proveedores or (PRINCIPAL,),
+        transporte=httpx.MockTransport(manejador),
+        esperar=lambda _: None,
+        registro=registro,
+    )
 
 
 def test_respuesta_de_texto_normalizada() -> None:
@@ -156,3 +164,62 @@ def test_desde_config_y_cierre(tmp_path: Path) -> None:
     assert c.modelo_principal == "m1"
     c.cerrar()
     assert ClienteLLM([]).modelo_principal == "sin modelo"
+
+
+# -- reintentos ------------------------------------------------------------------
+def eventos(registro: RegistroEventos) -> list[dict[str, Any]]:
+    return registro.leer(limite=20)
+
+
+def test_un_429_pasajero_se_reintenta_con_el_mismo_proveedor(registro: RegistroEventos) -> None:
+    llamadas = 0
+
+    def manejador(_: httpx.Request) -> httpx.Response:
+        nonlocal llamadas
+        llamadas += 1
+        if llamadas == 1:
+            return httpx.Response(429, json={"error": {"message": "límite de uso"}})
+        return httpx.Response(200, json=respuesta_ok("al segundo intento"))
+
+    r = cliente(manejador, PRINCIPAL, RESPALDO, registro=registro).chat([])
+    assert r.proveedor == "principal" and llamadas == 2
+    reintento = next(e for e in eventos(registro) if e["evento"] == "llm.reintento")
+    assert reintento["proveedor"] == "principal" and "429" in reintento["motivo"]
+
+
+def test_si_el_principal_no_se_recupera_el_respaldo_queda_registrado(
+    registro: RegistroEventos,
+) -> None:
+    def manejador(peticion: httpx.Request) -> httpx.Response:
+        if peticion.url.host == "principal.test":
+            return httpx.Response(503, text="caído")
+        return httpx.Response(200, json=respuesta_ok("ok"))
+
+    assert cliente(manejador, PRINCIPAL, RESPALDO, registro=registro).chat([]).proveedor == (
+        "respaldo"
+    )
+    nombres = [e["evento"] for e in eventos(registro)]
+    assert nombres.count("llm.reintento") == 2 and "llm.respaldo" in nombres
+
+
+def test_un_timeout_del_chat_pasa_al_respaldo_sin_repetir() -> None:
+    llamadas: list[str] = []
+
+    def manejador(peticion: httpx.Request) -> httpx.Response:
+        llamadas.append(peticion.url.host)
+        if peticion.url.host == "principal.test":
+            raise httpx.ReadTimeout("lento", request=peticion)
+        return httpx.Response(200, json=respuesta_ok("ok"))
+
+    assert cliente(manejador, PRINCIPAL, RESPALDO).chat([]).proveedor == "respaldo"
+    assert llamadas == ["principal.test", "respaldo.test"]
+
+
+def test_desde_config_toma_la_politica_de_reintentos(tmp_path: Path) -> None:
+    from tests.conftest import crear_ajustes
+
+    ajustes = crear_ajustes(tmp_path, api_reintentos=4, api_espera_max_s=3)
+    c = ClienteLLM.desde_config(ajustes)
+    assert c.politica.reintentos == 4 and c.politica.espera_max_s == 3
+    assert not c.politica.reintentar_timeouts
+    c.cerrar()

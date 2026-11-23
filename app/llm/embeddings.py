@@ -15,6 +15,7 @@ import httpx
 import numpy as np
 
 from app.core.config import Settings
+from app.llm.reintentos import FalloPasajero, PoliticaReintentos, post_con_reintentos
 
 Matriz = np.ndarray[Any, np.dtype[np.float32]]
 
@@ -50,7 +51,7 @@ class ClienteEmbeddings:
         dimensiones: int = 0,
         lote: int = 10,
         timeout_s: float = 30.0,
-        reintentos: int = 2,
+        politica: PoliticaReintentos | None = None,
         transporte: httpx.BaseTransport | None = None,
         esperar: Callable[[float], None] = time.sleep,
     ) -> None:
@@ -59,7 +60,7 @@ class ClienteEmbeddings:
         self.modelo = modelo
         self.dimensiones = dimensiones
         self.lote = lote
-        self.reintentos = reintentos
+        self.politica = politica or PoliticaReintentos()
         self._esperar = esperar
         self._http = httpx.Client(timeout=timeout_s, transport=transporte)
 
@@ -72,6 +73,9 @@ class ClienteEmbeddings:
             dimensiones=ajustes.embeddings_dimensiones,
             lote=ajustes.embeddings_lote,
             timeout_s=ajustes.embeddings_timeout_s,
+            politica=PoliticaReintentos(
+                reintentos=ajustes.api_reintentos, espera_max_s=ajustes.api_espera_max_s
+            ),
         )
 
     @property
@@ -91,30 +95,25 @@ class ClienteEmbeddings:
         if self.dimensiones:
             payload["dimensions"] = self.dimensiones
 
-        ultimo_error = ""
-        for intento in range(self.reintentos + 1):
-            if intento:
-                self._esperar(0.5 * 2**intento)
-            try:
-                respuesta = self._http.post(
-                    f"{self.base_url}/embeddings",
-                    json=payload,
-                    headers={"Authorization": f"Bearer {self.api_key}"},
-                )
-            except httpx.HTTPError as exc:
-                ultimo_error = f"sin respuesta ({type(exc).__name__})"
-                continue
-            if respuesta.status_code == 429 or respuesta.status_code >= 500:
-                ultimo_error = f"HTTP {respuesta.status_code}"
-                continue
-            if respuesta.status_code != 200:
-                raise ErrorEmbeddings(f"HTTP {respuesta.status_code}: {respuesta.text[:160]}")
-            try:
-                datos = sorted(respuesta.json()["data"], key=lambda d: d["index"])
-                return [d["embedding"] for d in datos]
-            except (ValueError, KeyError, TypeError) as exc:
-                raise ErrorEmbeddings(f"respuesta inválida ({type(exc).__name__})") from exc
-        raise ErrorEmbeddings(f"la API de embeddings no respondió: {ultimo_error}")
+        # Sin proveedor de respaldo: aquí también se reintenta un timeout.
+        try:
+            respuesta = post_con_reintentos(
+                self._http,
+                f"{self.base_url}/embeddings",
+                cuerpo=payload,
+                cabeceras={"Authorization": f"Bearer {self.api_key}"},
+                politica=self.politica,
+                esperar=self._esperar,
+            )
+        except FalloPasajero as exc:
+            raise ErrorEmbeddings(f"la API de embeddings no respondió: {exc}") from exc
+        if respuesta.status_code != 200:
+            raise ErrorEmbeddings(f"HTTP {respuesta.status_code}: {respuesta.text[:160]}")
+        try:
+            datos = sorted(respuesta.json()["data"], key=lambda d: d["index"])
+            return [d["embedding"] for d in datos]
+        except (ValueError, KeyError, TypeError) as exc:
+            raise ErrorEmbeddings(f"respuesta inválida ({type(exc).__name__})") from exc
 
     def embeber(self, textos: Sequence[str]) -> Matriz:
         if not textos:

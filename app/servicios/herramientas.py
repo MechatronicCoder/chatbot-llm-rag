@@ -13,6 +13,9 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from typing import Any
 
+from app.catalogo.cotizacion import resumen
+from app.core.isbn import isbns_en
+from app.persistencia.catalogo import en_presupuesto
 from app.persistencia.db import BaseDatos, ErrorPedido
 from app.servicios.esquemas_herramientas import ACCIONES, ESQUEMAS, IDEMPOTENTES
 from app.servicios.rag import BuscadorDocumentos
@@ -23,8 +26,15 @@ __all__ = ["ACCIONES", "ESQUEMAS", "IDEMPOTENTES", "Herramientas"]
 Resultado = dict[str, Any]
 
 
+MINIMO_RESULTADOS = 3
+
+
 def _edad(valor: Any) -> int | None:
     return None if valor is None or valor == "" else int(valor)
+
+
+def _precio(valor: Any) -> float | None:
+    return None if valor is None or valor == "" else float(valor)
 
 
 class Herramientas:
@@ -40,11 +50,13 @@ class Herramientas:
             "buscar_libros": self._buscar_libros,
             "recomendar_libros": self._recomendar_libros,
             "ficha_libro": self._ficha_libro,
+            "actualizar_carrito": self._actualizar_carrito,
             "reservar_pedido": self._reservar_pedido,
             "consultar_pedido": self._consultar_pedido,
             "cancelar_pedido": self._cancelar_pedido,
             "cobrar_pedido": self._cobrar_pedido,
             "buscar_politica": self._buscar_politica,
+            "derivar_a_persona": self._derivar_a_persona,
         }
 
     @staticmethod
@@ -65,6 +77,13 @@ class Herramientas:
             return {"error": f"{type(exc).__name__}: {exc}"}
 
     # -- catálogo ----------------------------------------------------------------
+    def _vivos(self, precio_min: Any = None, precio_max: Any = None) -> dict[str, Resultado]:
+        """Libros activos con stock y precio actuales, dentro del presupuesto."""
+        minimo, maximo = _precio(precio_min), _precio(precio_max)
+        return {
+            lb["isbn"]: lb for lb in self.bd.libros_activos() if en_presupuesto(lb, minimo, maximo)
+        }
+
     def _buscar_libros(
         self,
         consulta: str = "",
@@ -72,10 +91,33 @@ class Herramientas:
         autor: str | None = None,
         edad: int | None = None,
         limite: int = 5,
+        precio_max: float | None = None,
+        precio_min: float | None = None,
         **_: Any,
     ) -> Resultado:
-        libros = self.bd.buscar_libros(consulta or "", categoria, autor, _edad(edad), limite or 5)
-        return {"encontrados": len(libros), "libros": [resumen_libro(lb) for lb in libros]}
+        libros, correcciones = self.bd.buscar(
+            consulta or "", categoria, autor, _edad(edad), limite or 5,
+            _precio(precio_min), _precio(precio_max),
+        )  # fmt: skip
+        resultado: Resultado = {
+            "encontrados": len(libros),
+            "libros": [resumen_libro(lb) for lb in libros],
+        }
+        if correcciones:
+            resultado["correcciones"] = correcciones
+        # Pocos resultados: se completan con parecidos para que el cliente tenga opciones.
+        if len(libros) < MINIMO_RESULTADOS and (consulta or "").strip() and not isbns_en(consulta):
+            relacionados = self.recomendador.recomendar(
+                consulta,
+                self._vivos(precio_min, precio_max),
+                edad=_edad(edad),
+                categoria=categoria,
+                excluir=[lb["isbn"] for lb in libros],
+                cantidad=MINIMO_RESULTADOS - len(libros),
+            )
+            if relacionados:
+                resultado["relacionados"] = [{**lb, "relacionado": True} for lb in relacionados]
+        return resultado
 
     def _recomendar_libros(
         self,
@@ -84,13 +126,15 @@ class Herramientas:
         categoria: str | None = None,
         excluir: Sequence[str] | None = None,
         cantidad: int = 3,
+        precio_max: float | None = None,
+        precio_min: float | None = None,
         **_: Any,
     ) -> Resultado:
         if not (necesidad or "").strip():
             return {"error": "Falta describir qué busca el cliente."}
         recomendaciones = self.recomendador.recomendar(
             necesidad,
-            {lb["isbn"]: lb for lb in self.bd.libros_activos()},  # stock y precio actuales
+            self._vivos(precio_min, precio_max),
             edad=_edad(edad),
             categoria=categoria,
             excluir=excluir or (),
@@ -98,8 +142,9 @@ class Herramientas:
         )
         if not recomendaciones:
             return {
-                "error": "No hay libros del catálogo con stock que se parezcan a lo pedido. "
-                "Preguntar por otro tema, edad o autor; no inventar títulos."
+                "error": "No hay libros del catálogo con stock que se parezcan a lo pedido "
+                "(ni dentro del presupuesto, si lo hay). Preguntar por otro tema, edad, autor o "
+                "presupuesto; no inventar títulos."
             }
         return {"recomendaciones": recomendaciones}
 
@@ -115,18 +160,29 @@ class Herramientas:
         ]
         return {**libro, "similares_disponibles": disponibles}
 
-    # -- pedidos -----------------------------------------------------------------
-    def _reservar_pedido(
-        self, usuario_id: str, isbn: str = "", cantidad: int = 1, **_: Any
+    # -- carrito y pedidos -------------------------------------------------------
+    def _con_resumen(self, pedido: Resultado) -> Resultado:
+        """El texto con las cuentas hechas: el modelo lo muestra en vez de sumar."""
+        return {**pedido, "resumen": resumen(pedido, self.bd.tienda)}
+
+    def _actualizar_carrito(
+        self,
+        usuario_id: str,
+        cambios: Sequence[dict[str, Any]] | None = None,
+        zona: str | None = None,
+        **_: Any,
     ) -> Resultado:
-        return self.bd.reservar_pedido(usuario_id, isbn, int(cantidad))
+        return self._con_resumen(self.bd.actualizar_carrito(usuario_id, cambios or (), zona))
+
+    def _reservar_pedido(self, usuario_id: str, **_: Any) -> Resultado:
+        return self._con_resumen(self.bd.reservar_carrito(usuario_id))
 
     def _consultar_pedido(self, usuario_id: str, pedido_id: str = "", **_: Any) -> Resultado:
         pedido = self.bd.consultar_pedido(pedido_id)
         if pedido is None or pedido["usuario_id"] != usuario_id:
             # mismo mensaje en ambos casos: no se revela si existe un pedido ajeno
             return {"error": f"No existe el pedido {pedido_id!r} para este cliente."}
-        return pedido
+        return self._con_resumen(pedido)
 
     def _cancelar_pedido(self, usuario_id: str, pedido_id: str = "", **_: Any) -> Resultado:
         pedido = self.bd.consultar_pedido(pedido_id)
@@ -134,12 +190,26 @@ class Herramientas:
             return {"error": f"No existe el pedido {pedido_id!r}."}
         if pedido["usuario_id"] != usuario_id:
             return {"error": "Ese pedido pertenece a otro cliente."}
-        return self.bd.cancelar_pedido(pedido_id)
+        return self._con_resumen(self.bd.cancelar_pedido(pedido_id))
 
     def _cobrar_pedido(
         self, usuario_id: str, pedido_id: str = "", metodo: str = "tarjeta", **_: Any
     ) -> Resultado:
-        return self.bd.registrar_pago(usuario_id, pedido_id, metodo)
+        pago = self.bd.registrar_pago(usuario_id, pedido_id, metodo)
+        pedido = self.bd.consultar_pedido(pago["pedido_id"])
+        return {**self._con_resumen(pedido), **pago} if pedido else pago
+
+    # -- atención humana -----------------------------------------------------------
+    def _derivar_a_persona(self, motivo: str = "", **_: Any) -> Resultado:
+        contacto = self.bd.tienda.contacto
+        if contacto is None:
+            return {"error": "La tienda no tiene datos de contacto configurados."}
+        return {
+            "derivado": True,
+            "motivo": (motivo or "")[:200],
+            **contacto.model_dump(),
+            "mensaje": "Una persona del equipo continúa la atención por estos medios.",
+        }
 
     # -- documentos --------------------------------------------------------------
     def _buscar_politica(self, pregunta: str = "", **_: Any) -> Resultado:

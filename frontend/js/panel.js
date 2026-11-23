@@ -25,6 +25,7 @@ const DEMORA_BUSQUEDA_MS = 300;
 
 /** Estados de pedido conocidos → clase visual. "reservado" equivale a pendiente de pago. */
 const CLASE_ESTADO = Object.freeze({
+  carrito: 'pendiente',
   pendiente: 'pendiente',
   reservado: 'pendiente',
   pagado: 'pagado',
@@ -125,17 +126,21 @@ export function iniciarPanel({ alCambiarUsuario, alRecargar, alBorrar } = {}) {
       { clase: 'lista' },
       pedidos.map((p) => {
         const estado = claseEstado(p.estado);
+        const lineas = Array.isArray(p.lineas) ? p.lineas : [];
+        const envio = p.envio === null || p.envio === undefined ? 'sin zona de envío'
+          : `envío ${p.envio ? formatearPrecio(p.envio) : 'gratis'}`;
         const titulo = [
-          p.precio_unitario !== undefined ? `Precio unitario ${formatearPrecio(p.precio_unitario)}` : '',
-          p.isbn ? `ISBN ${p.isbn}` : '',
+          lineas.map((l) => `${l.cantidad} × ${l.titulo} (${formatearPrecio(l.importe)})`).join(', '),
+          envio,
           p.creado_en ? `Creado ${p.creado_en}` : '',
         ].filter(Boolean).join(' · ');
+        const unidades = Number(p.unidades) || 0;
         return crear('li', { clase: ['item', resaltar.has(String(p.pedido_id)) && 'nuevo'], atributos: { title: titulo || null } }, [
           crear('div', { clase: 'item-titulo' }, [
             crear('strong', { texto: p.pedido_id ?? '—' }),
             crear('span', { clase: ['etiqueta-estado', estado && `estado-${estado}`], texto: p.estado ?? '—' }),
           ]),
-          crear('div', { clase: 'item-sub', texto: `${p.cantidad ?? '?'} × ${p.titulo ?? p.isbn ?? 'libro'} — ${formatearPrecio(p.total)}` }),
+          crear('div', { clase: 'item-sub', texto: `${unidades} ${unidades === 1 ? 'libro' : 'libros'} — ${formatearPrecio(p.total)}` }),
         ]);
       }),
     );

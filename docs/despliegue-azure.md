@@ -293,6 +293,8 @@ az ad app federated-credential create --id $APP_ID --parameters "@$archivo"
 Remove-Item $archivo
 ```
 
+GitHub puede presentar el `subject` con los identificadores numéricos del dueño y del repositorio, por ejemplo `repo:MechatronicCoder@179059922/chatbot-llm-rag@1466231886:environment:produccion`. Si el primer despliegue falla con `AADSTS700213`, el mensaje de error muestra el `subject` exacto: se crea una segunda credencial igual a la anterior con otro `name` y ese `subject`. Ambas aceptan solo este repositorio y el environment `produccion`.
+
 ### 4. Roles de la entidad de servicio
 
 - Contributor sobre el grupo de recursos, para actualizar la Container App.
@@ -420,6 +422,14 @@ Formas de bajar el costo:
 az containerapp update --name $APP --resource-group $GRUPO --min-replicas 0
 ```
 
+- Ajustar el tope de tokens del chat (`LLM_TOKENS_POR_DIA`, 2 000 000 por defecto). Al pasarlo, la app responde en modo demo hasta que el consumo de las últimas 24 horas baje; `tokens_24h` en `/api/metricas` muestra cuánto va. El conteo sale de la base SQLite, así que se reinicia cada vez que se crea una revisión nueva o la réplica se apaga: es una protección contra un abuso dentro del día, no un límite de facturación. Ese límite, o al menos una alerta de gasto, se configura en la consola del proveedor del modelo. Para cambiar el tope sin volver a desplegar:
+
+```powershell
+az containerapp update --name $APP --resource-group $GRUPO --set-env-vars LLM_TOKENS_POR_DIA=500000
+```
+
+  Para que el valor sea permanente se agrega a `variablesAdicionales` en la fase 2.
+
 - Borrar imágenes viejas del registro: cada despliegue continuo sube una etiqueta nueva.
 
 ```powershell
@@ -513,7 +523,7 @@ La clave del acceso de la demo se cambia igual, con el secreto `acceso-clave-has
 
 - Job omitido (skipped): `AZURE_CLIENT_ID` está vacía, fallaron las pruebas o la imagen, o la ejecución no viene de un push a `main` (un pull request, un push a `dev` o un lanzamiento manual desde otra rama).
 - `Branch "..." is not allowed to deploy to produccion due to environment protection rules`: el job corrió en una rama distinta de `main`; es el comportamiento esperado.
-- `AADSTS70021: No matching federated identity record found`: el `subject` de la credencial federada no coincide con `repo:MechatronicCoder/chatbot-llm-rag:environment:produccion` (revisar dueño, nombre del repositorio y nombre del environment).
+- `AADSTS70021` o `AADSTS700213: No matching federated identity record found`: el `subject` que presenta GitHub no coincide con ninguna credencial federada. El error muestra el `subject` presentado; si incluye identificadores numéricos (`repo:Dueño@123/repo@456:environment:produccion`), se agrega una credencial con ese valor exacto (paso 3). Si no, revisar dueño, nombre del repositorio y nombre del environment.
 - `AuthorizationFailed` al actualizar la app: falta el rol Contributor sobre el grupo de recursos o aún no se propagó.
 - La prueba de humo agota los intentos: el job imprime el estado de las revisiones y los últimos logs del sistema. Se revisa con las secciones anteriores.
 

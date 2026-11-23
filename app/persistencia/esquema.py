@@ -9,9 +9,12 @@ from typing import Any
 
 # Se incrementa cada vez que cambia una tabla. Una base con otra versión se
 # reconstruye al arrancar: guarda datos de demostración, no históricos.
-ESQUEMA_VERSION = 2
+ESQUEMA_VERSION = 4
 
-TABLAS = ("pagos", "pedidos", "mensajes", "usuarios", "libros", "productos")
+TABLAS = (
+    "pagos", "pedido_lineas", "pedidos", "mensajes", "resumenes", "consumo_extra", "usuarios",
+    "libros", "productos",
+)  # fmt: skip
 
 ESQUEMA = """
 create table if not exists libros (
@@ -46,22 +49,33 @@ create table if not exists usuarios (
     email       text,
     creado_en   text not null
 );
+-- Un pedido empieza como carrito y pasa a reservado, pagado o cancelado.
+-- Los montos se guardan en céntimos enteros: nada de redondeos de coma flotante.
 create table if not exists pedidos (
     id              text primary key,
     usuario_id      text not null references usuarios(id),
-    isbn            text not null references libros(isbn),
-    cantidad        integer not null,
-    precio_unitario real not null,
-    total           real not null,
-    estado          text not null,          -- reservado | pagado | cancelado
-    creado_en       text not null
+    estado          text not null,          -- carrito | reservado | pagado | cancelado
+    zona            text,                   -- clave de envio en tienda.json; null sin elegir
+    subtotal_cent   integer not null default 0,
+    envio_cent      integer,
+    total_cent      integer not null default 0,
+    creado_en       text not null,
+    actualizado_en  text not null
 );
-create index if not exists idx_pedidos_usuario on pedidos(usuario_id);
+create index if not exists idx_pedidos_usuario on pedidos(usuario_id, estado);
+create table if not exists pedido_lineas (
+    pedido_id   text not null references pedidos(id),
+    isbn        text not null references libros(isbn),
+    cantidad    integer not null check (cantidad > 0),
+    precio_cent integer not null,           -- precio al agregar; se congela al reservar
+    orden       integer not null,
+    primary key (pedido_id, isbn)
+);
 create table if not exists pagos (
     id          text primary key,
     pedido_id   text not null references pedidos(id),
     metodo      text not null,              -- tarjeta | efectivo | transferencia
-    monto       real not null,
+    monto_cent  integer not null,
     estado      text not null,
     creado_en   text not null
 );
@@ -84,6 +98,21 @@ create table if not exists mensajes (
 );
 create index if not exists idx_mensajes_sesion on mensajes(sesion_id);
 create index if not exists idx_mensajes_turno on mensajes(turno_id);
+-- Resumen encadenado de lo que ya no entra en la ventana del historial.
+create table if not exists resumenes (
+    sesion_id       text primary key,
+    texto           text not null,
+    cubiertos       integer not null,       -- mensajes de la sesión que ya resume
+    actualizado_en  text not null
+);
+-- Tokens que no son de un turno (los resúmenes): también cuentan para el tope diario.
+create table if not exists consumo_extra (
+    id          integer primary key autoincrement,
+    sesion_id   text not null,
+    motivo      text not null,
+    tokens      integer not null,
+    creado_en   text not null
+);
 """
 
 # Columnas del libro que vienen del archivo del catálogo (todas menos `activo`).
@@ -117,18 +146,3 @@ def fila_a_libro(fila: sqlite3.Row) -> dict[str, Any]:
     libro["temas"] = json.loads(fila["temas"])
     libro["similares"] = json.loads(fila["similares"])
     return libro
-
-
-def fila_a_pedido(fila: sqlite3.Row) -> dict[str, Any]:
-    return {
-        "pedido_id": fila["id"],
-        "usuario_id": fila["usuario_id"],
-        "isbn": fila["isbn"],
-        "titulo": fila["titulo"],
-        "autor": fila["autor"],
-        "cantidad": fila["cantidad"],
-        "precio_unitario": fila["precio_unitario"],
-        "total": fila["total"],
-        "estado": fila["estado"],
-        "creado_en": fila["creado_en"],
-    }

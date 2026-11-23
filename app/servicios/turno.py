@@ -40,7 +40,12 @@ RE_ACCION = re.compile(
     r"resérvala|reservala|resérvalo|reservalo|cancela|cancélalo|cancelalo|compra|cómprala|"
     r"comprala|cómpralo|compralo|apártalo|apartalo|me lo llevo|me la llevo|lo quiero|"
     r"la quiero|los quiero|quiero comprar|quiero reservar|quiero pedir|quiero el libro|"
-    r"quiero ese libro|quiero este libro)\b|\bPED-[A-Z0-9]{4,}\b|" + RE_ISBN.pattern,
+    r"quiero ese libro|quiero este libro|agrega|agrégalo|agregalo|añade|añádelo|añadelo|quita|"
+    r"quítalo|quitalo)\b|\bPED-[A-Z0-9]{4,}\b|"
+    # el carrito o el pedido propio: la FAQ no los conoce ("¿cuánto me falta para el envío gratis?")
+    r"\b(?:mi|el) (?:carrito|pedido)\b|\bme falta\b|"
+    # pedir una persona es una acción: la resuelve derivar_a_persona, con el contacto
+    r"\bhablar con (?:una persona|alguien|un asesor|un humano|un encargado)\b|" + RE_ISBN.pattern,
     # un ISBN-13 (con o sin guiones) es un libro concreto: lo resuelven las herramientas
     re.IGNORECASE,
 )
@@ -50,6 +55,9 @@ RE_ACCION = re.compile(
 # un libro": lo resuelven las herramientas. "Libro de reclamaciones" sí es FAQ.
 RE_BUSQUEDA = re.compile(
     r"\b(busco|buscando|recomi[eé]nda(me|s)?|recomiendas|sug[ie][eé]re(me)?|sugieres)\b|"
+    # "me das un libro", "quiero una novela" ("quiero devolver un libro" no: va a la FAQ)
+    r"\b(me das|dame|quiero|necesito|tienes|tienen)\s+(un|una|algún|algun|alguna)\s+"
+    r"(libro|novela|cuento)\b|"
     r"\b(un|una|algún|algun|algo)\s+(libro|novela|cuento|cómic|comic)\b"
     r"(?!\s+de\s+reclamaciones)\s*(para|de|sobre|que|como|parecid[oa]|similar|con)\b|"
     r"\blibros\s+(de|sobre|para(?!\s+regalo)|como|parecidos|similares|con)\b|"
@@ -57,8 +65,24 @@ RE_BUSQUEDA = re.compile(
     re.IGNORECASE,
 )
 
+# Una pregunta de seguimiento ("¿y para 12 años?", "¿y en tapa dura?", "y a provincias")
+# depende del mensaje anterior: la FAQ, que solo ve el mensaje, la respondería sin contexto.
+RE_SEGUIMIENTO = re.compile(r"^[\s¿¡]*(?:y|e|pero|entonces|tambi[eé]n)\b", re.IGNORECASE)
+
+
+def es_seguimiento(mensaje: str) -> bool:
+    """Un mensaje corto que empieza con "y", "pero", "entonces"…: continúa el anterior."""
+    return bool(RE_SEGUIMIENTO.search(mensaje)) and len(mensaje.split()) <= 8
+
+
 # "para mi hijo de 5 años" -> 5 (solo para el modo demo; con modelo, lo deduce el LLM)
 RE_EDAD = re.compile(r"\b(\d{1,2})\s*años\b", re.IGNORECASE)
+
+# Confirmación fija: el cliente ve el total que calculó el sistema antes de que se cobre.
+AVISO_COBRO = (
+    "No se cobró: el total de este pedido cambió en este mismo turno y el cliente todavía no "
+    "lo vio. Muéstrale el resumen y pregúntale si confirma el pago."
+)
 
 MENSAJE_ESCALADO = (
     "Esa consulta la responde mejor un asesor humano; queda registrada. "
@@ -72,6 +96,7 @@ class AjustesChat:
     max_vueltas: int = 3
     limite_mensaje: int = 2000
     faq_contexto_min: float = 0.25
+    faq_prompt_min: float = 0.5
     temperatura: float = 0.3
     max_tokens: int = 700
     llm_lento_ms: int = 4000
@@ -83,6 +108,7 @@ class AjustesChat:
             max_vueltas=ajustes.max_vueltas,
             limite_mensaje=ajustes.limite_mensaje,
             faq_contexto_min=ajustes.faq_contexto_min,
+            faq_prompt_min=ajustes.faq_prompt_min,
             temperatura=ajustes.llm_temperatura,
             max_tokens=ajustes.llm_max_tokens,
             llm_lento_ms=ajustes.llm_lento_ms,
@@ -112,6 +138,7 @@ class RespuestaChat:
     turno_id: str = ""
     aviso: str | None = None
     clasificacion: dict[str, Any] | None = None
+    carrito: dict[str, Any] | None = None  # el último pedido o carrito que tocó el turno
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -128,6 +155,8 @@ class Acumulado:
     libros: list[dict[str, Any]] = field(default_factory=list)
     tokens: list[int] = field(default_factory=lambda: [0, 0])
     cache: dict[str, dict[str, Any]] = field(default_factory=dict)
+    cotizados: set[str] = field(default_factory=set)  # pedidos cuyo total cambió en el turno
+    carrito: dict[str, Any] | None = None
 
     def sumar_uso(self, uso: dict[str, int]) -> None:
         self.tokens[0] += uso.get("prompt_tokens", 0)
@@ -144,6 +173,8 @@ class Acumulado:
 
 def ruta_de(usadas: list[dict[str, Any]]) -> str:
     nombres = {u["nombre"] for u in usadas}
+    if "derivar_a_persona" in nombres:
+        return "escalar"
     if "buscar_politica" in nombres:
         return "rag"
     if nombres & ACCIONES:
@@ -226,7 +257,11 @@ def ejecutar_llamada(
         return acumulado.cache[firma]
 
     t0 = time.perf_counter()
-    resultado = herramientas.ejecutar(nombre, tc["arguments"], usuario_id)
+    pedido_id = str((tc["arguments"] or {}).get("pedido_id", "")).upper()
+    if nombre == "cobrar_pedido" and pedido_id in acumulado.cotizados:
+        resultado: dict[str, Any] = {"error": AVISO_COBRO}
+    else:
+        resultado = herramientas.ejecutar(nombre, tc["arguments"], usuario_id)
     ms = int((time.perf_counter() - t0) * 1000)
     if nombre in IDEMPOTENTES:
         acumulado.cache[firma] = resultado
@@ -245,8 +280,8 @@ def ejecutar_llamada(
     registro.info(
         "herramienta.ejecutada", turno_id, herramienta=nombre, ok=ok, ms=ms, resumen=resumen
     )
-    if nombre == "buscar_libros" and resultado.get("libros"):
-        acumulado.agregar_libros(resultado["libros"])
+    if nombre == "buscar_libros":
+        acumulado.agregar_libros(resultado.get("libros", []) + resultado.get("relacionados", []))
     if nombre == "recomendar_libros" and resultado.get("recomendaciones"):
         acumulado.agregar_libros(resultado["recomendaciones"])
         registro.info(
@@ -266,10 +301,15 @@ def ejecutar_llamada(
             mejor=acumulado.documentos[0]["score"],
             motor=acumulado.documentos[0].get("motor"),
         )
-    if nombre == "reservar_pedido" and resultado.get("pedido_id"):
-        acumulado.pedidos.append(resultado["pedido_id"])
+    if "lineas" in resultado:  # cualquier herramienta de pedidos devuelve el pedido completo
+        acumulado.carrito = resultado
+    if nombre in ("actualizar_carrito", "reservar_pedido") and ok:
+        if resultado["pedido_id"] not in acumulado.pedidos:
+            acumulado.pedidos.append(resultado["pedido_id"])
+        if nombre == "actualizar_carrito":
+            acumulado.cotizados.add(resultado["pedido_id"])
         registro.info(
-            "pedido.creado",
+            "carrito.actualizado" if nombre == "actualizar_carrito" else "pedido.creado",
             turno_id,
             pedido=resultado["pedido_id"],
             total=resultado.get("total"),
@@ -282,6 +322,8 @@ def ejecutar_llamada(
             pago=resultado["pago_id"],
             pedido=resultado.get("pedido_id"),
         )
+    if nombre == "derivar_a_persona" and ok:  # aviso: alguien del equipo tiene que atenderlo
+        registro.aviso("derivacion.solicitada", turno_id, motivo=resultado["motivo"][:120])
     if nombre == "cancelar_pedido" and resultado.get("estado") == "cancelado":
         registro.info("pedido.cancelado", turno_id, pedido=resultado.get("pedido_id"))
     return resultado

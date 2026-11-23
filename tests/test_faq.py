@@ -9,6 +9,7 @@ import pytest
 from app.core.logs import RegistroEventos
 from app.persistencia.db import BaseDatos
 from app.servicios.chat import ServicioChat
+from app.servicios.contexto import mensajes_iniciales
 from app.servicios.faq import IndiceFAQ
 from app.servicios.rag import BuscadorDocumentos
 from tests.conftest import crear_ajustes, crear_servicio
@@ -80,10 +81,20 @@ def test_umbral_configurable(
 
 
 def test_el_contexto_de_faq_llega_al_modelo(servicio_con_modelo: ServicioChat) -> None:
-    """Si la FAQ no gana pero se parece, el modelo la recibe como contexto verificado."""
-    servicio_con_modelo.responder("¿y si quiero pagar en cuotas sin intereses?", "a", "s-ctx")
-    sistema = servicio_con_modelo.llm.llamadas[0]["mensajes"][0]["content"]  # type: ignore[attr-defined]
-    assert "Preguntas frecuentes verificadas" in sistema
+    """Si la FAQ no gana pero se parece, el modelo la recibe como contexto verificado.
+
+    Va al final del mensaje del cliente y no en el de sistema: así el prefijo del prompt
+    no cambia entre turnos y el proveedor lo sirve de su caché.
+    """
+    mensaje = "quiero comprar con factura, ¿hacen factura con RUC?"  # la acción va al modelo
+    servicio_con_modelo.responder(mensaje, "a", "s-ctx")
+    mensajes = servicio_con_modelo.llm.llamadas[0]["mensajes"]  # type: ignore[attr-defined]
+    assert "Preguntas frecuentes" not in mensajes[0]["content"]
+    assert mensajes[0]["content"] == servicio_con_modelo.prompt_sistema
+    assert mensajes[-1]["content"].startswith(mensaje)
+    assert "preguntas frecuentes verificadas" in mensajes[-1]["content"]
+    guardado = servicio_con_modelo.bd.mensajes_de("s-ctx")[0]["contenido_redactado"]
+    assert "preguntas frecuentes" not in guardado  # el historial guarda solo lo que escribió
 
 
 def test_una_base_de_faqs_vacia_es_un_error() -> None:
@@ -111,3 +122,19 @@ def test_patron_de_busqueda_de_libros(mensaje: str, es_busqueda: bool) -> None:
     from app.servicios.turno import RE_BUSQUEDA
 
     assert bool(RE_BUSQUEDA.search(mensaje)) is es_busqueda
+
+
+def test_una_faq_poco_parecida_no_se_adjunta_al_pedido_de_un_libro(
+    servicio_con_modelo: ServicioChat,
+) -> None:
+    """Una FAQ de devoluciones con similitud 0.30 desviaba "quiero ciencia ficción con robots"."""
+    mensaje = "quiero ciencia ficción con robots que investigan crímenes"
+    sin_minimo = mensajes_iniciales(
+        "P", servicio_con_modelo.faq, servicio_con_modelo.bd, mensaje, "s", saludo=False, limite=8
+    )
+    con_minimo = mensajes_iniciales(
+        "P", servicio_con_modelo.faq, servicio_con_modelo.bd, mensaje, "s",
+        saludo=False, limite=8, faq_minimo=0.5,
+    )  # fmt: skip
+    assert "preguntas frecuentes" in sin_minimo[-1]["content"]
+    assert con_minimo[-1]["content"] == mensaje

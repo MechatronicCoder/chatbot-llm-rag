@@ -60,6 +60,26 @@ def evaluar_caso(servicio: Any, caso: dict[str, Any]) -> dict[str, Any]:
         libro_ok = any(t in titulos for t in esperados)
         if not libro_ok:
             fallos.append(f"ningún libro esperado mostrado ({' / '.join(esperados)})")
+    if (textos := caso.get("contiene")) and not any(t in respuesta.respuesta for t in textos):
+        fallos.append(f"la respuesta no menciona {' ni '.join(textos)}")
+    if (tope := caso.get("precio_max")) is not None:
+        caros = [lb["titulo"] for lb in respuesta.libros if lb["precio"] > tope]
+        if not respuesta.libros or caros:
+            fallos.append(
+                f"libros sobre el presupuesto de {tope}: {', '.join(caros) or 'ninguno mostrado'}"
+            )
+    if esperado := caso.get("carrito"):
+        # el pedido que tocó el último turno: estado y cantidad de libros
+        carrito = respuesta.carrito or {}
+        if carrito.get("estado") not in esperado["estado"]:
+            fallos.append(
+                f"pedido {carrito.get('estado')} (se esperaba {'/'.join(esperado['estado'])})"
+            )
+        if "unidades" in esperado and carrito.get("unidades") != esperado["unidades"]:
+            fallos.append(
+                f"{carrito.get('unidades')} libros en el pedido "
+                f"(se esperaban {esperado['unidades']})"
+            )
     return {
         "id": caso["id"],
         "categoria": caso["categoria"],

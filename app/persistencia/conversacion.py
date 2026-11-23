@@ -1,9 +1,10 @@
-"""Mensajes de cada sesión (siempre redactados) y métricas por ruta."""
+"""Mensajes de cada sesión (siempre redactados), su resumen y métricas por ruta."""
 
 from __future__ import annotations
 
 import json
 import uuid
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from app.persistencia.conexion import Conexion
@@ -92,10 +93,63 @@ class RepositorioConversacion(Conexion):
             ).fetchone()
         return int(fila[0])
 
+    def contar_mensajes(self, sesion_id: str) -> int:
+        with self.conectar() as con:
+            fila = con.execute(
+                "select count(*) from mensajes where sesion_id = ?", (sesion_id,)
+            ).fetchone()
+        return int(fila[0])
+
+    def mensajes_entre(self, sesion_id: str, desde: int, hasta: int) -> list[dict[str, Any]]:
+        """Mensajes de la posición `desde` a `hasta` (sin incluirla), en orden de inserción."""
+        with self.conectar() as con:
+            filas = con.execute(
+                "select * from mensajes where sesion_id = ? order by rowid limit ? offset ?",
+                (sesion_id, max(0, hasta - desde), max(0, desde)),
+            ).fetchall()
+        return [dict(f) for f in filas]
+
     def borrar_sesion(self, sesion_id: str) -> int:
         with self.conectar() as con:
             cursor = con.execute("delete from mensajes where sesion_id = ?", (sesion_id,))
+            con.execute("delete from resumenes where sesion_id = ?", (sesion_id,))
         return int(cursor.rowcount)
+
+    # -- resumen de las conversaciones largas ------------------------------------
+    def resumen_de(self, sesion_id: str) -> dict[str, Any] | None:
+        with self.conectar() as con:
+            fila = con.execute(
+                "select * from resumenes where sesion_id = ?", (sesion_id,)
+            ).fetchone()
+        return dict(fila) if fila else None
+
+    def guardar_resumen(self, sesion_id: str, texto: str, cubiertos: int, tokens: int) -> None:
+        """Guarda el resumen y sus tokens, que también cuentan para el tope diario."""
+        ahora = momento_actual()
+        with self.conectar() as con:
+            con.execute(
+                "insert into resumenes (sesion_id, texto, cubiertos, actualizado_en) "
+                "values (?, ?, ?, ?) on conflict(sesion_id) do update set texto = excluded.texto, "
+                "cubiertos = excluded.cubiertos, actualizado_en = excluded.actualizado_en",
+                (sesion_id, texto, cubiertos, ahora),
+            )
+            con.execute(
+                "insert into consumo_extra (sesion_id, motivo, tokens, creado_en) "
+                "values (?, 'resumen', ?, ?)",
+                (sesion_id, tokens, ahora),
+            )
+
+    def tokens_ultimas_24h(self) -> int:
+        """Tokens gastados en las últimas 24 horas, turnos y resúmenes (para el tope)."""
+        desde = (datetime.now(UTC) - timedelta(hours=24)).isoformat(timespec="seconds")
+        with self.conectar() as con:
+            fila = con.execute(
+                "select (select coalesce(sum(tokens_entrada + tokens_salida), 0) from mensajes "
+                "where creado_en >= ?) + (select coalesce(sum(tokens), 0) from consumo_extra "
+                "where creado_en >= ?)",
+                (desde, desde),
+            ).fetchone()
+        return int(fila[0])
 
     def metricas(self) -> dict[str, Any]:
         with self.conectar() as con:
@@ -126,4 +180,5 @@ class RepositorioConversacion(Conexion):
             "tokens_salida": sum(f["salida"] or 0 for f in por_ruta),
             "latencia_p50": percentil(latencias, 0.50),
             "latencia_p95": percentil(latencias, 0.95),
+            "tokens_24h": self.tokens_ultimas_24h(),
         }

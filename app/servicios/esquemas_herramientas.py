@@ -14,12 +14,16 @@ _ISBN = {
 }
 _PEDIDO = {"type": "string", "description": "Id del pedido, por ejemplo PED-1A2B3C4D"}
 _EDAD = {"type": "integer", "minimum": 0, "maximum": 99, "description": "Edad del lector"}
+_PRECIO_MAX = {"type": "number", "minimum": 0, "description": "Presupuesto máximo en soles"}
+_PRECIO_MIN = {"type": "number", "minimum": 0, "description": "Precio mínimo en soles"}
 
 ESQUEMAS: list[dict[str, Any]] = [
     {
         "name": "buscar_libros",
         "description": "Busca en el catálogo cuando el cliente nombra un título, un autor, una "
-        "saga, una editorial o un ISBN concreto. Devuelve precio y stock.",
+        "saga, una editorial o un ISBN concreto. Devuelve precio y stock. Tolera errores de "
+        "tipeo (`correcciones` dice cómo se entendió). Si encuentra menos de tres libros, agrega "
+        "`relacionados`: parecidos a lo pedido, pero no lo que pidió.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -27,6 +31,8 @@ ESQUEMAS: list[dict[str, Any]] = [
                 "categoria": {"type": "string", "description": "Categoría exacta, opcional"},
                 "autor": {"type": "string", "description": "Nombre del autor, opcional"},
                 "edad": _EDAD,
+                "precio_max": _PRECIO_MAX,
+                "precio_min": _PRECIO_MIN,
                 "limite": {"type": "integer", "minimum": 1, "maximum": 10},
             },
             "required": ["consulta"],
@@ -48,6 +54,8 @@ ESQUEMAS: list[dict[str, Any]] = [
                 },
                 "edad": _EDAD,
                 "categoria": {"type": "string", "description": "Categoría exacta, opcional"},
+                "precio_max": _PRECIO_MAX,
+                "precio_min": _PRECIO_MIN,
                 "excluir": {
                     "type": "array",
                     "items": {"type": "string"},
@@ -69,17 +77,40 @@ ESQUEMAS: list[dict[str, Any]] = [
         },
     },
     {
-        "name": "reservar_pedido",
-        "description": "Reserva ejemplares de un libro para el cliente actual: descuenta stock y "
-        "crea el pedido. Solo con el libro y la cantidad confirmados por el cliente.",
+        "name": "actualizar_carrito",
+        "description": "Agrega, cambia o quita libros del carrito del cliente y fija la zona de "
+        "envío. Devuelve el carrito con subtotal, envío y total calculados por el sistema y un "
+        "`resumen` listo para mostrar: nunca sumes ni calcules el envío tú. Sin argumentos, "
+        "devuelve el carrito actual.",
         "parameters": {
             "type": "object",
             "properties": {
-                "isbn": _ISBN,
-                "cantidad": {"type": "integer", "minimum": 1, "description": "Ejemplares"},
+                "cambios": {
+                    "type": "array",
+                    "description": "Un elemento por libro, con la cantidad FINAL de ese libro en "
+                    "el carrito (0 lo quita). Los libros que no se nombran quedan igual.",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "isbn": _ISBN,
+                            "cantidad": {"type": "integer", "minimum": 0, "maximum": 10},
+                        },
+                        "required": ["isbn", "cantidad"],
+                    },
+                },
+                "zona": {
+                    "type": "string",
+                    "enum": ["lima", "provincias"],
+                    "description": "lima = Lima Metropolitana; provincias = resto del país",
+                },
             },
-            "required": ["isbn", "cantidad"],
         },
+    },
+    {
+        "name": "reservar_pedido",
+        "description": "Reserva el carrito del cliente: descuenta stock y fija los montos. "
+        "Necesita libros en el carrito y la zona de envío. No cobra.",
+        "parameters": {"type": "object", "properties": {}},
     },
     {
         "name": "consultar_pedido",
@@ -92,7 +123,7 @@ ESQUEMAS: list[dict[str, Any]] = [
     },
     {
         "name": "cancelar_pedido",
-        "description": "Cancela un pedido reservado y devuelve los ejemplares al stock.",
+        "description": "Cancela un carrito o un pedido reservado; lo reservado vuelve al stock.",
         "parameters": {
             "type": "object",
             "properties": {"pedido_id": _PEDIDO},
@@ -101,8 +132,9 @@ ESQUEMAS: list[dict[str, Any]] = [
     },
     {
         "name": "cobrar_pedido",
-        "description": "Cobra un pedido reservado del cliente actual. Métodos: tarjeta, "
-        "efectivo o transferencia. Un pedido no se cobra dos veces.",
+        "description": "Cobra un pedido del cliente actual (un carrito se reserva y cobra a la "
+        "vez). Solo si el cliente ya vio el total y pidió pagar. Métodos: tarjeta, efectivo o "
+        "transferencia. Un pedido no se cobra dos veces.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -110,6 +142,18 @@ ESQUEMAS: list[dict[str, Any]] = [
                 "metodo": {"type": "string", "enum": ["tarjeta", "efectivo", "transferencia"]},
             },
             "required": ["pedido_id", "metodo"],
+        },
+    },
+    {
+        "name": "derivar_a_persona",
+        "description": "Pasa la atención a una persona del equipo cuando el cliente lo pide o "
+        "el caso no se resuelve con las herramientas (un reclamo, un pedido especial, un "
+        "problema con un pago). Registra el motivo y devuelve el teléfono, el correo y el "
+        "horario de atención. No pidas datos personales al cliente.",
+        "parameters": {
+            "type": "object",
+            "properties": {"motivo": {"type": "string", "description": "Qué necesita, en breve"}},
+            "required": ["motivo"],
         },
     },
     {
@@ -128,4 +172,4 @@ ESQUEMAS: list[dict[str, Any]] = [
 IDEMPOTENTES = frozenset(
     {"buscar_libros", "recomendar_libros", "ficha_libro", "consultar_pedido", "buscar_politica"}
 )
-ACCIONES = frozenset({"reservar_pedido", "cobrar_pedido", "cancelar_pedido"})
+ACCIONES = frozenset({"actualizar_carrito", "reservar_pedido", "cobrar_pedido", "cancelar_pedido"})

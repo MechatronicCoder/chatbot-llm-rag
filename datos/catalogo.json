@@ -458,6 +458,36 @@
       "portada": null
     },
     {
+      "isbn": "9788445070963",
+      "titulo": "La sombra del torturador (El libro del sol nuevo 1)",
+      "autor": "Gene Wolfe",
+      "editorial": "Minotauro",
+      "anio": 1980,
+      "categoria": "novela",
+      "genero": "fantasía",
+      "temas": [
+        "torturadores",
+        "futuro lejano",
+        "exilio",
+        "gremio",
+        "memoria"
+      ],
+      "protagonista": "Severian, aprendiz del gremio de los torturadores",
+      "tono": "enigmático",
+      "edad_min": 16,
+      "edad_max": null,
+      "sinopsis": "Severian, aprendiz del gremio de los torturadores en el mundo de Urth, es expulsado por mostrar misericordia con una prisionera. Su viaje fuera de la ciudad lo lleva a conocer un mundo extraño y decadente. Primer volumen de El libro del Sol Nuevo.",
+      "formato": "tapa dura",
+      "paginas": 348,
+      "idioma": "español",
+      "valoracion": 4.0,
+      "num_valoraciones": 21,
+      "similares": [],
+      "precio": 98.44,
+      "stock": 2,
+      "portada": null
+    },
+    {
       "isbn": "9788419688361",
       "titulo": "Powerless",
       "autor": "Lauren Roberts",
@@ -615,6 +645,40 @@
       "portada": null
     },
     {
+      "isbn": "9788401335839",
+      "titulo": "La Torre Oscura (La Torre Oscura 7)",
+      "autor": "Stephen King",
+      "editorial": "Plaza y Janes",
+      "anio": 2004,
+      "categoria": "novela",
+      "genero": "fantasía",
+      "temas": [
+        "pistoleros",
+        "fin del mundo",
+        "destino",
+        "mundos paralelos",
+        "búsqueda"
+      ],
+      "protagonista": "Roland Deschain, el último pistolero",
+      "tono": "épico",
+      "edad_min": 16,
+      "edad_max": null,
+      "sinopsis": "Roland y su ka-tet se acercan al final de su viaje hacia la Torre Oscura, mientras los miembros del grupo se dispersan por distintos tiempos y lugares. Los enemigos se acercan y deben enfrentar peligros decisivos. Es el cierre de la saga de King.",
+      "formato": "tapa dura",
+      "paginas": 992,
+      "idioma": "español",
+      "valoracion": 4.3,
+      "num_valoraciones": 26,
+      "similares": [
+        "9788466392341",
+        "9786073167871",
+        "9781984898722"
+      ],
+      "precio": 90.04,
+      "stock": 1,
+      "portada": null
+    },
+    {
       "isbn": "9788445016190",
       "titulo": "La gran cacería (La Rueda del Tiempo 2)",
       "autor": "Robert Jordan",
@@ -735,9 +799,9 @@
       "valoracion": 4.1,
       "num_valoraciones": 197,
       "similares": [
+        "9788401335839",
         "9786073167871",
-        "9781984898722",
-        "9780593311233"
+        "9781984898722"
       ],
       "precio": 71.1,
       "stock": 4,
@@ -1959,6 +2023,36 @@
       "portada": null
     },
     {
+      "isbn": "9788417507473",
+      "titulo": "Carbono alterado",
+      "autor": "Richard K. Morgan",
+      "editorial": "Ediciones Gigamesh",
+      "anio": 2002,
+      "categoria": "novela",
+      "genero": "ciencia ficción",
+      "temas": [
+        "conciencia digital",
+        "inmortalidad",
+        "neo-noir",
+        "asesinato",
+        "cyberpunk"
+      ],
+      "protagonista": "Takeshi Kovacs, un exsoldado de élite reencarnado en un cuerpo ajeno",
+      "tono": "oscuro",
+      "edad_min": 18,
+      "edad_max": null,
+      "sinopsis": "En un futuro donde la conciencia puede trasladarse a otros cuerpos, el exsoldado Takeshi Kovacs revive para investigar el asesinato de un millonario. Su investigación lo sumerge en un mundo de corrupción, violencia y secretos de los más ricos.",
+      "formato": "tapa dura",
+      "paginas": 688,
+      "idioma": "español",
+      "valoracion": 3.8,
+      "num_valoraciones": 67,
+      "similares": [],
+      "precio": 91.18,
+      "stock": 17,
+      "portada": null
+    },
+    {
       "isbn": "9788445006740",
       "titulo": "Crónicas marcianas",
       "autor": "Ray Bradbury",
@@ -2625,9 +2719,9 @@
       "valoracion": 3.8,
       "num_valoraciones": 50,
       "similares": [
+        "9788401335839",
         "9788466392341",
-        "9781984898722",
-        "9780593311233"
+        "9781984898722"
       ],
       "precio": 174.46,
       "stock": 1,
@@ -2762,7 +2856,8 @@
       "num_valoraciones": 6,
       "similares": [
         "9788440662279",
-        "9788440673381"
+        "9788440666611",
+        "9780671851248"
       ],
       "precio": 75.33,
       "stock": 11,
@@ -3023,7 +3118,8 @@
       "num_valoraciones": 15,
       "similares": [
         "9788440662286",
-        "9788440673381"
+        "9788440666611",
+        "9780671851248"
       ],
       "precio": 85.59,
       "stock": 7,
@@ -3098,6 +3194,40 @@
       "portada": null
     },
     {
+      "isbn": "9788440666611",
+      "titulo": "La sonámbula (La calle del terror 11)",
+      "autor": "R. L. Stine",
+      "editorial": "Ediciones B",
+      "anio": 1990,
+      "categoria": "juvenil",
+      "genero": "terror",
+      "temas": [
+        "sonambulismo",
+        "trabajo de verano",
+        "misterio",
+        "secretos",
+        "suspense"
+      ],
+      "protagonista": "Mayra Barnes, una joven que empieza a caminar dormida",
+      "tono": "intrigante",
+      "edad_min": 12,
+      "edad_max": 17,
+      "sinopsis": "Mayra empieza un trabajo de verano con la anciana señora Cottler, en la calle del Terror. Poco después comienza a sufrir episodios de sonambulismo y se despierta fuera de casa, mientras descubre que la anciana oculta algo inquietante.",
+      "formato": "tapa blanda",
+      "paginas": 153,
+      "idioma": "español",
+      "valoracion": 3.9,
+      "num_valoraciones": 9,
+      "similares": [
+        "9788440662286",
+        "9788440662279",
+        "9780671851248"
+      ],
+      "precio": 107.11,
+      "stock": 8,
+      "portada": null
+    },
+    {
       "isbn": "9788401499876",
       "titulo": "Ojos De Fuego",
       "autor": "Stephen King",
@@ -3129,6 +3259,40 @@
       ],
       "precio": 75.33,
       "stock": 17,
+      "portada": null
+    },
+    {
+      "isbn": "9780671851248",
+      "titulo": "Missing (Fear Street)",
+      "autor": "R. L. Stine",
+      "editorial": "Pocket Books",
+      "anio": 1990,
+      "categoria": "juvenil",
+      "genero": "terror",
+      "temas": [
+        "desaparición",
+        "secretos",
+        "misterio",
+        "adolescentes",
+        "grupos de odio"
+      ],
+      "protagonista": "Mark y su hermana, adolescentes cuyos padres desaparecen sin dejar rastro",
+      "tono": "inquietante",
+      "edad_min": 12,
+      "edad_max": 17,
+      "sinopsis": "Unos hermanos adolescentes se quedan solos en casa cuando sus padres no regresan, no llaman y no dejan ninguna nota. Mientras buscan respuestas, descubren que la desaparición está ligada a la siniestra calle Fear Street y a personas peligrosas.",
+      "formato": "bolsillo",
+      "paginas": 160,
+      "idioma": "inglés",
+      "valoracion": 2.7,
+      "num_valoraciones": 9,
+      "similares": [
+        "9788440673381",
+        "9788440677556",
+        "9788440666826"
+      ],
+      "precio": 35.96,
+      "stock": 8,
       "portada": null
     },
     {
@@ -3187,8 +3351,9 @@
       "valoracion": 3.9,
       "num_valoraciones": 9,
       "similares": [
-        "9788440662286",
-        "9788440662279"
+        "9780671851248",
+        "9788440677556",
+        "9788440666826"
       ],
       "precio": 130.18,
       "stock": 10,
@@ -3385,9 +3550,9 @@
       "valoracion": 3.9,
       "num_valoraciones": 104,
       "similares": [
+        "9788401335839",
         "9788466392341",
-        "9781984898722",
-        "9780593311233"
+        "9781984898722"
       ],
       "precio": 131.2,
       "stock": 17,
@@ -3424,6 +3589,74 @@
       "portada": null
     },
     {
+      "isbn": "9788440677556",
+      "titulo": "Callejón sin salida (La calle del terror 20)",
+      "autor": "R. L. Stine",
+      "editorial": "Grupo Zeta",
+      "anio": 1995,
+      "categoria": "juvenil",
+      "genero": "terror",
+      "temas": [
+        "secreto",
+        "accidente",
+        "chantaje",
+        "amigos",
+        "asesinato"
+      ],
+      "protagonista": "Natalie, una adolescente que comparte un terrible secreto con sus amigos",
+      "tono": "angustiante",
+      "edad_min": 12,
+      "edad_max": 17,
+      "sinopsis": "Natalie y sus amigos guardan un secreto desde la noche de niebla en que alguien murió en un camino sin salida. Ahora alguien intenta asegurarse de que nunca se sepa la verdad y está dispuesto a matar para lograrlo.",
+      "formato": "tapa blanda",
+      "paginas": 149,
+      "idioma": "español",
+      "valoracion": 4.0,
+      "num_valoraciones": 11,
+      "similares": [
+        "9780671851248",
+        "9788440673381",
+        "9788440666826"
+      ],
+      "precio": 53.87,
+      "stock": 6,
+      "portada": null
+    },
+    {
+      "isbn": "9788440666826",
+      "titulo": "Noche en la isla (La calle del terror 10)",
+      "autor": "R. L. Stine",
+      "editorial": "Grupo Zeta",
+      "anio": 1989,
+      "categoria": "juvenil",
+      "genero": "terror",
+      "temas": [
+        "excursión",
+        "isla",
+        "extraño peligroso",
+        "amigos",
+        "miedo"
+      ],
+      "protagonista": "Della O'Connor, una joven que organiza una excursión sin adultos",
+      "tono": "trepidante",
+      "edad_min": 12,
+      "edad_max": 17,
+      "sinopsis": "Los miembros de un club de excursionismo deciden pasar la noche en la isla de Fear Island sin adultos, convencidos de que nada saldrá mal. Pero cuando Della se pierde en el bosque, un extraño peligroso la acecha y la noche se convierte en una pesadilla.",
+      "formato": "tapa blanda",
+      "paginas": 151,
+      "idioma": "español",
+      "valoracion": 2.9,
+      "num_valoraciones": 9,
+      "similares": [
+        "9780671851248",
+        "9788440673381",
+        "9788440677556"
+      ],
+      "precio": 69.17,
+      "stock": 14,
+      "portada": null
+    },
+    {
       "isbn": "9781984898685",
       "titulo": "Mr. Mercedes",
       "autor": "Stephen King",
@@ -3449,9 +3682,9 @@
       "valoracion": 4.1,
       "num_valoraciones": 57,
       "similares": [
+        "9788401335839",
         "9788466392341",
-        "9781984898722",
-        "9780593311233"
+        "9781984898722"
       ],
       "precio": 72.16,
       "stock": 5,
@@ -3549,6 +3782,40 @@
       ],
       "precio": 75.33,
       "stock": 6,
+      "portada": null
+    },
+    {
+      "isbn": "9780590459921",
+      "titulo": "Bienvenidos a la casa de la muerte (Escalofríos 1)",
+      "autor": "R. L. Stine",
+      "editorial": "Scholastic",
+      "anio": 1992,
+      "categoria": "juvenil",
+      "genero": "terror",
+      "temas": [
+        "casa embrujada",
+        "mudanza",
+        "hermanos",
+        "pueblo extraño",
+        "fantasmas"
+      ],
+      "protagonista": "Amanda y Josh, dos hermanos que se mudan a una casa que parece embrujada",
+      "tono": "inquietante",
+      "edad_min": 9,
+      "edad_max": 13,
+      "sinopsis": "Amanda y Josh se mudan a una vieja casa que les parece rara y quizá embrujada, en el extraño pueblo de Dark Falls. Sus padres no les creen y les piden que hagan amigos, pero lo que descubren es cada vez más aterrador.",
+      "formato": "tapa blanda",
+      "paginas": 144,
+      "idioma": "español",
+      "valoracion": 4.2,
+      "num_valoraciones": 39,
+      "similares": [
+        "9788440662286",
+        "9788440662279",
+        "9788440666611"
+      ],
+      "precio": 29.39,
+      "stock": 15,
       "portada": null
     },
     {
@@ -5342,6 +5609,176 @@
       "portada": null
     },
     {
+      "isbn": "9780263772449",
+      "titulo": "The Other Woman",
+      "autor": "Jessica Steele",
+      "editorial": "Harlequin Mills & Boon",
+      "anio": 1980,
+      "categoria": "novela",
+      "genero": "romance",
+      "temas": [
+        "malentendido",
+        "jefe y empleada",
+        "rumores",
+        "amor",
+        "oficina"
+      ],
+      "protagonista": "Georgina, una empleada acusada injustamente por su nuevo jefe",
+      "tono": "romántico",
+      "edad_min": 16,
+      "edad_max": null,
+      "sinopsis": "Georgina descubre que su nuevo jefe, Tallis York, cree que mantiene una aventura con el primo de este. Mientras se indigna por el rumor, se da cuenta de que le importa mucho más de lo esperado la opinión que él tiene de ella.",
+      "formato": "tapa blanda",
+      "paginas": 192,
+      "idioma": "inglés",
+      "valoracion": 4.0,
+      "num_valoraciones": 29,
+      "similares": [
+        "9788439620495",
+        "9788439621843",
+        "9788439616214"
+      ],
+      "precio": 69.96,
+      "stock": 16,
+      "portada": null
+    },
+    {
+      "isbn": "9788439620495",
+      "titulo": "Pasaporte a la felicidad",
+      "autor": "Jessica Steele",
+      "editorial": "Harlequin Espanola",
+      "anio": 1990,
+      "categoria": "novela",
+      "genero": "romance",
+      "temas": [
+        "desengaño",
+        "italia",
+        "viaje",
+        "prometido infiel",
+        "amor"
+      ],
+      "protagonista": "Jayme Warren, que descubre la infidelidad de su prometido en Italia",
+      "tono": "romántico",
+      "edad_min": 16,
+      "edad_max": null,
+      "sinopsis": "Jayme viaja por Italia siguiendo la pista de su prometido y lo encuentra con otra mujer. Tras un accidente, el atractivo Nerone Mondadori la ayuda y empieza a ocuparse de su vida de una manera que ella no esperaba.",
+      "formato": "tapa blanda",
+      "paginas": 187,
+      "idioma": "español",
+      "valoracion": 3.8,
+      "num_valoraciones": 17,
+      "similares": [
+        "9780263772449",
+        "9788439621843",
+        "9788439616214"
+      ],
+      "precio": 119.68,
+      "stock": 17,
+      "portada": null
+    },
+    {
+      "isbn": "9788439621843",
+      "titulo": "Corazón oculto",
+      "autor": "Jessica Steele",
+      "editorial": "Harlequin Iberica",
+      "anio": 1990,
+      "categoria": "novela",
+      "genero": "romance",
+      "temas": [
+        "sacrificio familiar",
+        "culpa injusta",
+        "industrial",
+        "venganza",
+        "amor no correspondido"
+      ],
+      "protagonista": "Mornay, que asume una culpa ajena para proteger a su hermana",
+      "tono": "romántico",
+      "edad_min": 16,
+      "edad_max": null,
+      "sinopsis": "Mornay carga con la culpa de un atropello que cometió alguien de su familia para proteger a su hermana. El industrial Brad Kendrick, que la acusa, la somete a un castigo mientras ella lucha contra el amor que siente por él.",
+      "formato": "tapa blanda",
+      "paginas": 192,
+      "idioma": "español",
+      "valoracion": 3.5,
+      "num_valoraciones": 13,
+      "similares": [
+        "9780263772449",
+        "9788439620495",
+        "9788439616214"
+      ],
+      "precio": 91.77,
+      "stock": 8,
+      "portada": null
+    },
+    {
+      "isbn": "9788439616214",
+      "titulo": "Cuando el amor se acaba",
+      "autor": "Jessica Steele",
+      "editorial": "Harlequin Española",
+      "anio": 1988,
+      "categoria": "novela",
+      "genero": "romance",
+      "temas": [
+        "falso compromiso",
+        "engaño",
+        "empresario",
+        "perdón",
+        "segundas oportunidades"
+      ],
+      "protagonista": "Whitney Lawford, quien acepta hacerse pasar por la prometida de Sloan",
+      "tono": "romántico",
+      "edad_min": 16,
+      "edad_max": null,
+      "sinopsis": "Tras una noche inesperada, Whitney acepta fingir ser la prometida del empresario Sloan Illingworth cuando su compromiso se rompe. Al descubrir cómo él la engañó, jura no perdonarlo, pero las circunstancias terminan cambiando.",
+      "formato": "tapa blanda",
+      "paginas": 189,
+      "idioma": "español",
+      "valoracion": 3.4,
+      "num_valoraciones": 25,
+      "similares": [
+        "9780263772449",
+        "9788439620495",
+        "9788439621843"
+      ],
+      "precio": 46.9,
+      "stock": 6,
+      "portada": null
+    },
+    {
+      "isbn": "9788439617594",
+      "titulo": "Tuya para siempre",
+      "autor": "Jessica Steele",
+      "editorial": "Harlequin Española",
+      "anio": 1989,
+      "categoria": "novela",
+      "genero": "romance",
+      "temas": [
+        "grecia",
+        "malentendido",
+        "prima",
+        "atracción",
+        "empresario"
+      ],
+      "protagonista": "Kendra, que viaja a Atenas para ayudar a su prima Faye",
+      "tono": "romántico",
+      "edad_min": 16,
+      "edad_max": null,
+      "sinopsis": "Kendra viaja a Grecia para apoyar a su prima Faye en una crisis matrimonial. Allí choca con Damon Niarkos, socio del marido de Faye, que la toma por una oportunista, aunque ella lo encuentra irresistible.",
+      "formato": "tapa blanda",
+      "paginas": 187,
+      "idioma": "español",
+      "valoracion": 4.1,
+      "num_valoraciones": 14,
+      "similares": [
+        "9780263772449",
+        "9788439620495",
+        "9788439621843"
+      ],
+      "precio": 95.57,
+      "stock": 5,
+      "portada": null
+    },
+    {
       "isbn": "9788418945182",
       "titulo": "La Hipótesis del Amor",
       "autor": "Ali Hazelwood",
@@ -5466,6 +5903,104 @@
       "portada": null
     },
     {
+      "isbn": "9788439617389",
+      "titulo": "Tan cerca y tan lejos",
+      "autor": "Jessica Steele",
+      "editorial": "Harlequin Española",
+      "anio": 1986,
+      "categoria": "novela",
+      "genero": "romance",
+      "temas": [
+        "jefe y empleada",
+        "prejuicios",
+        "soltero",
+        "atracción",
+        "oficina"
+      ],
+      "protagonista": "Kacie Peters, secretaria acusada de querer seducir a su jefe",
+      "tono": "romántico",
+      "edad_min": 16,
+      "edad_max": null,
+      "sinopsis": "En su primer día de trabajo, Kacie recibe de su jefe, Elliot Quantrell, insinuaciones sobre su reputación. Aunque piensa renunciar, algo en él la atrae, y no sabe cómo ganarse su aprobación sin confirmar sus sospechas.",
+      "formato": "tapa blanda",
+      "paginas": 187,
+      "idioma": "español",
+      "valoracion": 3.8,
+      "num_valoraciones": 9,
+      "similares": [
+        "9780263772449",
+        "9788439620495",
+        "9788439621843"
+      ],
+      "precio": 91.25,
+      "stock": 4,
+      "portada": null
+    },
+    {
+      "isbn": "9788439634478",
+      "titulo": "Camino al edén",
+      "autor": "Jessica Steele",
+      "editorial": "Harlequin Ibérica",
+      "anio": 1992,
+      "categoria": "novela",
+      "genero": "romance",
+      "temas": [
+        "desamparo",
+        "madrastra",
+        "ayuda inesperada",
+        "cuento de hadas",
+        "amor"
+      ],
+      "protagonista": "Bevin Pemberton, una joven sin trabajo ni hogar",
+      "tono": "romántico",
+      "edad_min": 16,
+      "edad_max": null,
+      "sinopsis": "Bevin, sin empleo, dinero ni hogar, ve cómo un desconocido, Jarvis Devilliers, aparece con una solución a sus problemas. Todo parece un cuento de hadas moderno, aunque ella se pregunta qué precio tendrá que pagar por esa ayuda.",
+      "formato": "tapa blanda",
+      "paginas": 125,
+      "idioma": "español",
+      "valoracion": 3.0,
+      "num_valoraciones": 10,
+      "similares": [
+        "9780263772449",
+        "9788439620495",
+        "9788439621843"
+      ],
+      "precio": 69.59,
+      "stock": 14,
+      "portada": null
+    },
+    {
+      "isbn": "9780373334865",
+      "titulo": "La esposa secreta",
+      "autor": "Lynne Graham",
+      "editorial": "Harlequin",
+      "anio": 1997,
+      "categoria": "novela",
+      "genero": "romance",
+      "temas": [
+        "matrimonio por conveniencia",
+        "millonario griego",
+        "secretos",
+        "boda secreta",
+        "amor"
+      ],
+      "protagonista": "Rosie, que acepta casarse en secreto con el magnate Constantine Voulos",
+      "tono": "romántico",
+      "edad_min": 16,
+      "edad_max": null,
+      "sinopsis": "Rosie acepta un matrimonio secreto con el magnate griego Constantine Voulos, quien le ofrece dinero y un divorcio rápido. Cuanto más tiempo pasa con él, más difícil le resulta ser solo una esposa temporal, y su propio secreto podría salir a la luz.",
+      "formato": "tapa blanda",
+      "paginas": 188,
+      "idioma": "español",
+      "valoracion": 4.2,
+      "num_valoraciones": 13,
+      "similares": [],
+      "precio": 116.72,
+      "stock": 8,
+      "portada": null
+    },
+    {
       "isbn": "9788418483912",
       "titulo": "Hunting Adeline (Te Encontraré)",
       "autor": "H. D. Carlton",
@@ -5498,6 +6033,40 @@
       "portada": null
     },
     {
+      "isbn": "9780263789546",
+      "titulo": "Farewell to Love",
+      "autor": "Jessica Steele",
+      "editorial": "Harlequin Mills & Boon",
+      "anio": 1989,
+      "categoria": "novela",
+      "genero": "romance",
+      "temas": [
+        "matrimonio por interés",
+        "traición",
+        "huida",
+        "herencia",
+        "amor"
+      ],
+      "protagonista": "Meredith Simmons, que descubre el motivo real del matrimonio de Ryan",
+      "tono": "romántico",
+      "edad_min": 16,
+      "edad_max": null,
+      "sinopsis": "Meredith se enamora de Ryan Carlisle a primera vista, hasta que el día de su boda escucha que él solo se casa con ella por sus acciones. Dolida y furiosa, decide marcharse sin saber adónde ir ni qué hacer, aunque ya no puede seguir viviendo junto a él.",
+      "formato": "tapa blanda",
+      "paginas": 384,
+      "idioma": "inglés",
+      "valoracion": 2.9,
+      "num_valoraciones": 18,
+      "similares": [
+        "9780263772449",
+        "9788439620495",
+        "9788439621843"
+      ],
+      "precio": 79.82,
+      "stock": 1,
+      "portada": null
+    },
+    {
       "isbn": "9788412483703",
       "titulo": "La Caricia de la Oscuridad",
       "autor": "Scarlett St. Clair",
@@ -5525,6 +6094,36 @@
       "similares": [],
       "precio": 108.77,
       "stock": 9,
+      "portada": null
+    },
+    {
+      "isbn": "9780373683154",
+      "titulo": "Promesa de felicidad",
+      "autor": "Betty Neels",
+      "editorial": "Harlequin",
+      "anio": 1979,
+      "categoria": "novela",
+      "genero": "romance",
+      "temas": [
+        "enfermera",
+        "amor no correspondido",
+        "mascotas",
+        "barón holandés",
+        "madrastra"
+      ],
+      "protagonista": "Becky, una enfermera que huye de su madrastra",
+      "tono": "romántico",
+      "edad_min": 16,
+      "edad_max": null,
+      "sinopsis": "Becky deja a su egoísta madrastra y a su hermanastro para empezar una nueva vida como enfermera. Un encuentro casual con el barón Raukema van den Eck le da trabajo cuidando a su madre, y se enamora sin esperanza de él.",
+      "formato": "bolsillo",
+      "paginas": 160,
+      "idioma": "español",
+      "valoracion": 3.9,
+      "num_valoraciones": 12,
+      "similares": [],
+      "precio": 36.25,
+      "stock": 13,
       "portada": null
     },
     {
@@ -5590,6 +6189,40 @@
       "portada": null
     },
     {
+      "isbn": "9788439630395",
+      "titulo": "La primera vez",
+      "autor": "Jessica Steele",
+      "editorial": "Harlequin Ibérica",
+      "anio": 1990,
+      "categoria": "novela",
+      "genero": "romance",
+      "temas": [
+        "egipto",
+        "jefe tirano",
+        "secretaria",
+        "viaje",
+        "atracción"
+      ],
+      "protagonista": "Josslyn, una secretaria enviada temporalmente a Egipto",
+      "tono": "romántico",
+      "edad_min": 16,
+      "edad_max": null,
+      "sinopsis": "Josslyn recibe un encargo inesperado en Egipto y se alegra, hasta que conoce a su jefe, Thane Addison, dominante y exigente. Pese a ello, vislumbra otra personalidad bajo su arrogancia, y eso le da motivos para querer quedarse.",
+      "formato": "tapa blanda",
+      "paginas": 126,
+      "idioma": "español",
+      "valoracion": 3.6,
+      "num_valoraciones": 10,
+      "similares": [
+        "9780263772449",
+        "9788439620495",
+        "9788439621843"
+      ],
+      "precio": 79.02,
+      "stock": 1,
+      "portada": null
+    },
+    {
       "isbn": "9798890984869",
       "titulo": "Alchemised",
       "autor": "SenLinYu",
@@ -5647,6 +6280,36 @@
       "num_valoraciones": 4,
       "similares": [],
       "precio": 80.51,
+      "stock": 2,
+      "portada": null
+    },
+    {
+      "isbn": "9780373338337",
+      "titulo": "Salvada por el jeque",
+      "autor": "Jane Porter",
+      "editorial": "Harlequin",
+      "anio": 2005,
+      "categoria": "novela",
+      "genero": "romance",
+      "temas": [
+        "jeque",
+        "amante",
+        "virgen",
+        "pasión",
+        "viajes"
+      ],
+      "protagonista": "Keira, una mujer independiente elegida como novia por un jeque",
+      "tono": "romántico",
+      "edad_min": 16,
+      "edad_max": null,
+      "sinopsis": "El jeque Kalen Nuri ha tenido muchas amantes, pero ninguna ha logrado retener su interés. Keira, hermosa e independiente, rechaza ser suya a pesar de los lujos, aunque él la ha elegido como su futura novia.",
+      "formato": "bolsillo",
+      "paginas": 160,
+      "idioma": "español",
+      "valoracion": 4.1,
+      "num_valoraciones": 11,
+      "similares": [],
+      "precio": 41.51,
       "stock": 2,
       "portada": null
     },

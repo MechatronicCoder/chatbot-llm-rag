@@ -218,7 +218,15 @@ def ver_logs(
 
 @admin.get("/metricas")
 def metricas(estado: Estado) -> dict[str, Any]:
-    return estado.bd.metricas()
+    datos = estado.bd.metricas()
+    entrada, salida = (
+        estado.ajustes.precio_entrada_usd_millon,
+        estado.ajustes.precio_salida_usd_millon,
+    )
+    if entrada or salida:  # estimado: no descuenta los tokens que el proveedor sirve de caché
+        costo = datos["tokens_entrada"] * entrada + datos["tokens_salida"] * salida
+        datos["costo_estimado_usd"] = round(costo / 1_000_000, 4)
+    return datos
 
 
 @admin.get("/ventas.csv", response_class=Response)
@@ -233,7 +241,9 @@ def ventas_csv(estado: Estado, usuario_id: Annotated[str | None, Query()] = None
         "autor": "autor",
         "cantidad": "cantidad",
         "precio_unitario": "precio_unitario",
-        "total": "total",
+        "importe": "importe",
+        "envio": "envio_pedido",
+        "total": "total_pedido",
         "estado": "estado",
         "creado_en": "creado_en",
     }

@@ -81,6 +81,7 @@ Respuesta (campos principales):
 | `ruta` | `faq`, `escalar`, `filtro`, `directa`, `herramientas`, `recomendacion`, `accion`, `rag` o `demo` |
 | `modo` | `real` (respondió el LLM), `sin_llm` (FAQ, filtro o escalado) o `demo` (sin proveedor) |
 | `libros` | Libros que mostró el turno (búsqueda, recomendación o ficha), sin repetidos; el frontend los pinta como tarjetas. `similitud`, `puntaje` y `motor` solo vienen en las recomendaciones |
+| `carrito` | El último pedido o carrito que tocó el turno, con la misma forma que en `/api/pedidos`; `null` si el turno no tocó ninguno. Los montos los calcula el sistema |
 | `documentos` | Fragmentos usados por el RAG: documento, página o sección, texto y puntaje |
 | `tokens` | Tokens de entrada y salida sumando todas las llamadas del turno |
 | `turno_id` | Identificador para filtrar el log de este turno |
@@ -110,7 +111,7 @@ Invoke-RestMethod "http://localhost:8000/api/politicas"
 | `/api/libros?consulta=&categoria=&autor=&edad=&limite=` | `{total, libros: [...]}` con el resumen de cada libro (mismos campos que `libros` en el chat). `consulta` busca palabras completas en título, autor, editorial, categoría, género, protagonista, temas e ISBN; `edad` devuelve los libros cuyo rango la incluye; `limite` va de 1 a 20 |
 | `/api/libros/{isbn}` | Ficha completa con todos los campos del catálogo (ver el README, sección "Catálogo de libros"); acepta el ISBN con guiones; 404 si no existe o fue retirado |
 | `/api/categorias` | `[{categoria, libros}]`, de la categoría con más libros a la de menos |
-| `/api/pedidos/{usuario_id}` | `{usuario_id, total, pendiente, pagado, pedidos: [{pedido_id, isbn, titulo, autor, cantidad, precio_unitario, total, estado, creado_en}]}` |
+| `/api/pedidos/{usuario_id}` | `{usuario_id, total, pendiente, pagado, pedidos: [...]}`, del más nuevo al más viejo. Cada pedido trae `pedido_id`, `estado` (`carrito`, `reservado`, `pagado` o `cancelado`), `zona` y `zona_nombre` del envío, `lineas` (`isbn`, `titulo`, `autor`, `cantidad`, `precio_unitario`, `importe`), `unidades`, `subtotal`, `envio` (`null` mientras falte la zona), `total`, `falta_para_envio_gratis` y `creado_en`. Un carrito vacío no se lista |
 | `/api/politicas` | Documentos y cantidad de fragmentos indexados |
 
 Solo se listan libros activos: un libro que desaparece de `datos/catalogo.json` deja de aparecer, pero sus pedidos se conservan.
@@ -139,6 +140,6 @@ Invoke-WebRequest "http://localhost:8000/api/ventas.csv" -Headers $h -OutFile ve
 | Ruta | Respuesta |
 |---|---|
 | `/api/logs?n=&nivel=&turno=` | `{nivel_minimo, total, eventos}`, del más nuevo al más viejo |
-| `/api/metricas` | Turnos por ruta, tokens totales, latencia p50 y p95 |
+| `/api/metricas` | Turnos por ruta, tokens totales y de las últimas 24 horas (`tokens_24h`, lo que mide el tope `LLM_TOKENS_POR_DIA`), latencia p50 y p95; con `PRECIO_*_USD_MILLON` configurados, también `costo_estimado_usd`, que no descuenta los tokens servidos de la caché del proveedor |
 | `/api/sesion/{session_id}` | Mensajes guardados (siempre redactados) |
-| `/api/ventas.csv?usuario_id=` | Pedidos pagados separados por `;`, con las columnas pedido, usuario, isbn, titulo, autor, cantidad, precio_unitario, total, estado y creado_en |
+| `/api/ventas.csv?usuario_id=` | Una fila por libro vendido en pedidos pagados, separada por `;`, con las columnas pedido, usuario, isbn, titulo, autor, cantidad, precio_unitario, importe, envio_pedido, total_pedido, estado y creado_en |
