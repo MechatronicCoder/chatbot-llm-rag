@@ -25,6 +25,7 @@ frontend/
 └── js/
     ├── main.js         arranque, estado de la cabecera y temporizadores
     ├── api.js          cliente HTTP, ErrorApi y token de administración
+    ├── acceso.js       pantalla de acceso de la demo y botón Salir
     ├── util.js         escape de HTML, formato, localStorage seguro, ayudas de DOM
     ├── chat.js         hilo, burbujas, chips, indicador de escritura, envío
     ├── libros.js       tarjetas de los libros de cada respuesta
@@ -37,7 +38,8 @@ frontend/
 | Módulo | Responsabilidad | Exporta |
 |---|---|---|
 | `util.js` | Funciones puras y ayudas de DOM. No depende de ningún otro módulo. | `escaparHtml`, `formatear`, `ponerHtmlFormateado`, `leerLocal`, `guardarLocal`, `borrarLocal`, `CLAVES`, `crear`, `porId`, `vaciar`, `ponerTexto`, `prefiereMenosMovimiento`, `cercaDelFinal`, `desplazarA`, `irAlFinal`, `haySeleccionDentro`, moneda (`configurarMoneda`), formateadores (`formatearPrecio`, `formatearMs`, `formatearHora`, `formatearDuracion`, `formatearPuntaje`, `formatearCantidad`, `plural`, `resumir`) |
-| `api.js` | Una función por endpoint, tiempo límite, cancelación, traducción de errores HTTP a mensajes legibles, cabecera `X-Admin-Token`. | `ErrorApi`, `segundosDeRetryAfter`, `salud`, `buscarLibros`, `pedidosDe`, `enviarMensaje`, `borrarSesion`, `leerLogs`, `leerMetricas`, `obtenerTokenAdmin`, `guardarTokenAdmin`, `borrarTokenAdmin` |
+| `api.js` | Una función por endpoint, tiempo límite, cancelación, traducción de errores HTTP a mensajes legibles, cabecera `X-Admin-Token` y aviso a `acceso.js` ante un `401` con `X-Acceso: requerido`. | `ErrorApi`, `segundosDeRetryAfter`, `configurarAvisoDeAcceso`, `estadoAcceso`, `iniciarSesion`, `cerrarSesion`, `salud`, `buscarLibros`, `pedidosDe`, `enviarMensaje`, `borrarSesion`, `leerLogs`, `leerMetricas`, `obtenerTokenAdmin`, `guardarTokenAdmin`, `borrarTokenAdmin` |
+| `acceso.js` | Pantalla de acceso (usuario y clave) que bloquea la página si el backend lo pide, y botón Salir. La sesión es una cookie HttpOnly que el código nunca lee. | `iniciarAcceso({ alEntrar, alSalir })` → `{ verificar, mostrar, sesionRechazada, bloqueado }` |
 | `chat.js` | Todo lo que ocurre dentro del hilo y del formulario de envío. | `iniciarChat({ obtenerUsuario, alFiltrarTurno, alResponder })` → `{ enviar, limpiar, anotar, marcarTurno }` |
 | `libros.js` | Tarjetas de los libros de una respuesta: título, autor, precio, stock, valoración y edad, siempre como texto. | `tarjetasDeLibros(libros)` → `<ul>` o `null` |
 | `panel.js` | Columna del cliente: id (guardado en localStorage), recargar, borrar conversación, pedidos y catálogo. | `iniciarPanel({ alCambiarUsuario, alRecargar, alBorrar })` → `{ usuario, cargarPedidos, cargarCatalogo }` |
@@ -47,7 +49,8 @@ frontend/
 ### Dependencias
 
 ```
-main.js   ─► chat.js, panel.js, logs.js, api.js, util.js
+main.js   ─► chat.js, panel.js, logs.js, acceso.js, api.js, util.js
+acceso.js ─► api.js, util.js
 chat.js   ─► libros.js, api.js, util.js
 panel.js  ─► api.js, util.js
 logs.js   ─► api.js, util.js
@@ -97,6 +100,9 @@ Todas las rutas son del mismo origen. Las respuestas son JSON.
 
 | Método y ruta | Función en `api.js` | Uso en la interfaz |
 |---|---|---|
+| `GET /api/acceso/estado` | `estadoAcceso()` | Al arrancar: si hay que mostrar la pantalla de acceso |
+| `POST /api/acceso/login` | `iniciarSesion({ usuario, clave })` | Formulario de acceso |
+| `POST /api/acceso/logout` | `cerrarSesion()` | Botón Salir |
 | `GET /api/health` | `salud()` | Cabecera: nombre de la tienda, moneda, estado, modelo, modo, corpus, contadores de libros y ejemplares, versión |
 | `GET /api/libros?consulta=&categoria=&limite=8` | `buscarLibros({ consulta, categoria, limite })` | Catálogo de libros y búsqueda por título, autor o ISBN (con cancelación de la búsqueda anterior) |
 | `GET /api/pedidos/{usuario_id}` | `pedidosDe(usuarioId)` | Lista de pedidos y totales pendiente/pagado |
@@ -342,3 +348,5 @@ Lista de revisión manual con el backend en marcha:
 - La cabecera y el título de la pestaña muestran el nombre de `datos/tienda.json`.
 - Backend detenido: la cabecera pasa a "Sin conexión" y vuelve sola a "En línea" al reiniciarlo.
 - Con token de administración configurado: el panel de logs pide el token y, tras guardarlo, muestra los eventos.
+- Con el acceso configurado: la pantalla de acceso cubre la página sin pedir datos protegidos; una clave incorrecta muestra el error y vacía el campo; al entrar se cargan catálogo, pedidos y logs; Salir vuelve a la pantalla.
+- Ante un `401` con `X-Acceso: requerido` (sesión vencida), `api.js` avisa a `acceso.js`, que vuelve a mostrar la pantalla; ese `401` no abre el formulario del token de administración.

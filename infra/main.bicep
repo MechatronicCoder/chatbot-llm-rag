@@ -59,6 +59,13 @@ param embeddingsApiKey string = ''
 @description('ADMIN_TOKEN: protege /api/logs, /api/metricas, /api/sesion y /api/ventas.csv. Obligatorio en producción.')
 param adminToken string = ''
 
+@description('ACCESO_USUARIO: usuario del acceso de la demo. Obligatorio en producción.')
+param accesoUsuario string = ''
+
+@secure()
+@description('ACCESO_CLAVE_HASH: hash PBKDF2 de la clave de acceso (scripts/hash_clave.py), nunca la clave. Obligatorio en producción.')
+param accesoClaveHash string = ''
+
 // ---------------------------------------------------------------------------
 // Configuración no secreta (vacío = no se define la variable de entorno)
 // ---------------------------------------------------------------------------
@@ -111,6 +118,7 @@ var secretosObligatorios = [
   { name: 'llm-api-key', value: llmApiKey }
   { name: 'embeddings-api-key', value: embeddingsApiKey }
   { name: 'admin-token', value: adminToken }
+  { name: 'acceso-clave-hash', value: accesoClaveHash }
 ]
 
 // Los opcionales vacíos no crean secret (Container Apps rechaza secrets vacíos).
@@ -124,6 +132,8 @@ var variablesFijas = [
   { name: 'LLM_API_KEY', secretRef: 'llm-api-key' }
   { name: 'EMBEDDINGS_API_KEY', secretRef: 'embeddings-api-key' }
   { name: 'ADMIN_TOKEN', secretRef: 'admin-token' }
+  { name: 'ACCESO_USUARIO', value: accesoUsuario }
+  { name: 'ACCESO_CLAVE_HASH', secretRef: 'acceso-clave-hash' }
 ]
 
 var variablesSecretasOpcionales = empty(llm2ApiKey) ? [] : [{ name: 'LLM_2_API_KEY', secretRef: 'llm-2-api-key' }]

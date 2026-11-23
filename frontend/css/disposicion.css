@@ -231,3 +231,55 @@
     min-height: 44px;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Acceso de la demo
+   --------------------------------------------------------------------------- */
+.salir {
+  margin-left: auto;
+}
+
+.acceso {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: var(--esp-4);
+  background: rgb(10 12 16 / 0.92);
+}
+
+.acceso-tarjeta {
+  display: grid;
+  gap: var(--esp-2);
+  width: min(100%, 360px);
+  padding: var(--esp-5);
+  border: 1px solid var(--color-linea-fuerte);
+  border-radius: var(--radio-l);
+  background: var(--color-panel);
+}
+
+.acceso-titulo {
+  margin: 0;
+  font-size: 18px;
+}
+
+.acceso-texto {
+  margin: 0 0 var(--esp-2);
+  color: var(--color-tenue);
+}
+
+.acceso-error {
+  margin: 0;
+  color: var(--color-error-texto);
+}
+
+.acceso-entrar {
+  margin-top: var(--esp-2);
+  background: var(--color-acento);
+  color: #fff;
+}
+
+.acceso-entrar:hover {
+  background: var(--color-acento-hover);
+}

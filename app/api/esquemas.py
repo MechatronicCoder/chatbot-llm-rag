@@ -133,3 +133,14 @@ class ListaPedidos(BaseModel):
 class SesionBorrada(BaseModel):
     session_id: str
     borrados: int
+
+
+class Credenciales(BaseModel):
+    usuario: str = Field(min_length=1, max_length=60)
+    clave: str = Field(min_length=1, max_length=200)
+
+
+class EstadoAcceso(BaseModel):
+    requerido: bool = Field(description="El acceso con usuario y clave está activado")
+    autenticado: bool
+    usuario: str | None = None

@@ -156,6 +156,16 @@ $env:ADMIN_TOKEN = -join ($bytes | ForEach-Object { $_.ToString('x2') })
 $env:ADMIN_TOKEN | Set-Clipboard
 ```
 
+El acceso de la demo también es obligatorio en producción: un usuario (`ACCESO_USUARIO`) y el hash de su clave (`ACCESO_CLAVE_HASH`). La clave nunca va a Azure; se genera el hash desde la raíz del repositorio y se guarda solo la parte después del `=`:
+
+```powershell
+$ACCESO_USUARIO = Read-Host 'Usuario de acceso'
+uv run python scripts/hash_clave.py   # pide la clave dos veces; copiar el valor entre comillas
+$env:ACCESO_CLAVE_HASH = Read-Secreto 'ACCESO_CLAVE_HASH'
+```
+
+El script `infra/crear-app.ps1` hace todo el paso 7 de una vez: pide las claves sin mostrarlas, calcula el hash de la clave de acceso, genera el `ADMIN_TOKEN` y crea la app con la imagen más reciente del registro. Se ejecuta desde la raíz del repositorio con `powershell -ExecutionPolicy Bypass -File infra\crear-app.ps1`.
+
 La configuración no secreta debe coincidir con la del `.env` local. Los valores siguientes son de ejemplo:
 
 ```powershell
@@ -178,6 +188,8 @@ $parametros = @(
     "llmApiKey=$env:LLM_API_KEY"
     "embeddingsApiKey=$env:EMBEDDINGS_API_KEY"
     "adminToken=$env:ADMIN_TOKEN"
+    "accesoUsuario=$ACCESO_USUARIO"
+    "accesoClaveHash=$env:ACCESO_CLAVE_HASH"
     "llmBaseUrl=$LLM_BASE_URL"
     "llmModel=$LLM_MODEL"
     "llm2BaseUrl=$LLM_2_BASE_URL"
@@ -490,6 +502,8 @@ az containerapp revision restart --name $APP --resource-group $GRUPO --revision 
 ```
 
 El reinicio es necesario para que el contenedor lea el valor nuevo, y también borra la base SQLite. Si después se ejecuta la fase 2, hay que pasar la clave nueva.
+
+La clave del acceso de la demo se cambia igual, con el secreto `acceso-clave-hash` y el hash nuevo que genera `scripts/hash_clave.py`. El reinicio cierra todas las sesiones abiertas.
 
 ### El workflow de CD no corre o falla
 

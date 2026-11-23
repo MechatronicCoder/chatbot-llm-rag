@@ -15,10 +15,12 @@ import threading
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request, Response
+from fastapi import Depends, FastAPI, Request, Response
 from fastapi.staticfiles import StaticFiles
 
 from app import __version__
+from app.api.acceso import exigir_sesion
+from app.api.acceso import router as acceso
 from app.api.dependencias import EstadoApp
 from app.api.rutas import admin, router
 from app.catalogo.carga import cargar_tienda
@@ -92,8 +94,11 @@ def crear_app(
             respuesta.headers.setdefault("Content-Security-Policy", ajustes.content_security_policy)
         return respuesta
 
-    app.include_router(router)
-    app.include_router(admin)
+    # Con ACCESO_* configurado, toda la API salvo salud y acceso pide sesión.
+    protegidas = [Depends(exigir_sesion)]
+    app.include_router(acceso)
+    app.include_router(router, dependencies=protegidas)
+    app.include_router(admin, dependencies=protegidas)
     if CARPETA_FRONTEND.is_dir():
         # Se monta al final: las rutas /api tienen prioridad sobre los archivos.
         app.mount("/", StaticFiles(directory=CARPETA_FRONTEND, html=True), name="frontend")

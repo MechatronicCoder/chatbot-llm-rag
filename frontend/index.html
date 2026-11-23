@@ -23,6 +23,7 @@
       <span class="estado-indicador" id="estado-indicador" data-estado="cargando" role="status">Conectando…</span>
       <ul class="estado-meta" id="estado-meta" aria-label="Estado del servicio"></ul>
     </div>
+    <button class="enlace salir" id="salir" type="button" hidden>Salir</button>
   </header>
 
   <main class="disposicion">
@@ -112,5 +113,21 @@
       </footer>
     </section>
   </main>
+
+  <!-- Acceso de la demo: visible solo si el backend tiene ACCESO_* configurado -->
+  <div class="acceso" id="acceso" role="dialog" aria-modal="true" aria-labelledby="acceso-titulo" hidden>
+    <form class="acceso-tarjeta" id="acceso-formulario" novalidate>
+      <h2 class="acceso-titulo" id="acceso-titulo">Acceso a la demo</h2>
+      <p class="acceso-texto">Ingresa con el usuario y la clave que te compartieron.</p>
+      <label class="etiqueta" for="acceso-usuario">Usuario</label>
+      <input class="campo" id="acceso-usuario" name="usuario" autocomplete="username"
+             autocapitalize="off" spellcheck="false" maxlength="60" required>
+      <label class="etiqueta" for="acceso-clave">Clave</label>
+      <input class="campo" id="acceso-clave" name="clave" type="password"
+             autocomplete="current-password" maxlength="200" required>
+      <p class="acceso-error" id="acceso-error" role="alert" hidden></p>
+      <button class="boton acceso-entrar" id="acceso-entrar" type="submit">Entrar</button>
+    </form>
+  </div>
 </body>
 </html>

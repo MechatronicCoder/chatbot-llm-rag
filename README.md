@@ -53,6 +53,7 @@ El caso es la Librería Letra Viva, con un catálogo de ejemplo. Todo el conteni
 
 Qué hace:
 
+- Pide usuario y clave antes de usar el chat, con intentos limitados contra bots, para que nadie más gaste el crédito de los modelos (ver [Seguridad](#seguridad)).
 - Sigue el flujo completo de venta en el chat: entender qué busca el cliente, recomendar o encontrar libros, mostrar la ficha, reservar, cobrar y confirmar.
 - Recomienda libros por significado, filtrando por edad y stock y ordenando por parecido y valoración (ver [Recomendación de libros](#recomendación-de-libros)).
 - Pregunta la edad del lector cuando el libro es para un niño o un joven y no la sabe.
@@ -67,7 +68,7 @@ Qué no hace, a propósito:
 
 - No inventa libros: solo recomienda y vende lo que devolvió una herramienta.
 - No permite que el cliente califique libros: usa la valoración que trae el catálogo.
-- No autentica usuarios: el identificador del cliente viene del navegador. Es suficiente para una demo, no para producción.
+- No tiene cuentas por cliente: hay un único acceso de demo (usuario y clave) que protege toda la app, y el identificador del cliente viene del navegador. Es suficiente para una demo, no para producción.
 - No procesa pagos reales: el cobro registra el pago en la base de datos.
 - No persiste datos entre reinicios en Azure: SQLite vive en el disco del contenedor (ver [decisión 0003](docs/decisiones/0003-sqlite-con-una-replica.md)).
 - No ayuda a conseguir copias no autorizadas de libros.
@@ -333,6 +334,8 @@ En macOS o Linux: `python3.12 -m venv .venv` y `source .venv/bin/activate`.
 - http://localhost:8000/docs: documentación interactiva de la API.
 - http://localhost:8000/api/health: estado, modo (real o demo), tienda, documentos y catálogo indexados, y contadores.
 
+En local no se pide usuario ni clave mientras `ACCESO_USUARIO` y `ACCESO_CLAVE_HASH` estén vacíos. Para probar el acceso se genera la línea del hash con `uv run python scripts/hash_clave.py`, se pega en `.env` junto con `ACCESO_USUARIO` y se reinicia la app.
+
 ## Configuración
 
 Todas las variables están documentadas en [.env.example](.env.example). Las principales:
@@ -351,6 +354,8 @@ Todas las variables están documentadas en [.env.example](.env.example). Las pri
 | `RECO_VOTOS_MINIMOS` | Votos a partir de los cuales una valoración pesa más que la media del catálogo | 20 |
 | `LIMITE_CHAT_POR_MINUTO` | Mensajes por minuto por IP | 20 |
 | `ADMIN_TOKEN` | Protege logs, métricas, historial y ventas | vacío en local; obligatorio en producción |
+| `ACCESO_USUARIO`, `ACCESO_CLAVE_HASH` | Usuario y hash de la clave del acceso de la demo; el hash se genera con `uv run python scripts/hash_clave.py` | vacíos en local (sin login); obligatorios en producción |
+| `ACCESO_INTENTOS_POR_IP`, `ACCESO_HORAS_SESION` | Intentos de inicio de sesión por IP cada 15 minutos y duración de la sesión | 5 y 8 |
 | `LOG_FORMATO` | `texto` en local, `json` en Azure | texto |
 
 Si un valor no tiene el tipo o el rango esperado (por ejemplo `RAG_MMR_LAMBDA=1.5`), la aplicación no arranca y el error indica la variable. El nombre de la tienda y la moneda no son variables de entorno: están en `datos/tienda.json`.
@@ -390,19 +395,22 @@ La documentación interactiva está en `/docs`. Resumen:
 | GET | `/api/health` | Estado, modo, tienda, documentos, catálogo y contadores | público |
 | GET | `/api/health/live` | El proceso responde (liveness) | público |
 | GET | `/api/health/ready` | Documentos y catálogo indexados (readiness) | público |
-| GET | `/api/libros` | Búsqueda en el catálogo con filtros de categoría, autor y edad | público |
-| GET | `/api/libros/{isbn}` | Ficha completa de un libro | público |
-| GET | `/api/categorias` | Categorías con su cantidad de libros | público |
-| GET | `/api/pedidos/{usuario_id}` | Pedidos y totales del cliente | público |
-| GET | `/api/politicas` | Documentos y fragmentos indexados | público |
-| POST | `/api/chat` | Un turno de conversación | público, con límite por IP |
-| DELETE | `/api/sesiones/{session_id}` | Borra la conversación | público |
-| GET | `/api/sesion/{session_id}` | Historial guardado | administración |
-| GET | `/api/logs` | Últimos eventos, filtrables por nivel y turno | administración |
-| GET | `/api/metricas` | Turnos por ruta, tokens, latencia p50 y p95 | administración |
-| GET | `/api/ventas.csv` | Pedidos pagados | administración |
+| GET | `/api/acceso/estado` | Si el acceso está activo y si hay sesión | público |
+| POST | `/api/acceso/login` | Inicia sesión con usuario y clave | público, con límite de intentos |
+| POST | `/api/acceso/logout` | Cierra la sesión | público |
+| GET | `/api/libros` | Búsqueda en el catálogo con filtros de categoría, autor y edad | sesión |
+| GET | `/api/libros/{isbn}` | Ficha completa de un libro | sesión |
+| GET | `/api/categorias` | Categorías con su cantidad de libros | sesión |
+| GET | `/api/pedidos/{usuario_id}` | Pedidos y totales del cliente | sesión |
+| GET | `/api/politicas` | Documentos y fragmentos indexados | sesión |
+| POST | `/api/chat` | Un turno de conversación | sesión, con límite por IP |
+| DELETE | `/api/sesiones/{session_id}` | Borra la conversación | sesión |
+| GET | `/api/sesion/{session_id}` | Historial guardado | sesión y administración |
+| GET | `/api/logs` | Últimos eventos, filtrables por nivel y turno | sesión y administración |
+| GET | `/api/metricas` | Turnos por ruta, tokens, latencia p50 y p95 | sesión y administración |
+| GET | `/api/ventas.csv` | Pedidos pagados | sesión y administración |
 
-Las rutas de administración piden el encabezado `X-Admin-Token` cuando `ADMIN_TOKEN` está definido. Ejemplos con PowerShell en [docs/api.md](docs/api.md).
+"Sesión" significa que, con `ACCESO_USUARIO` y `ACCESO_CLAVE_HASH` configurados, la ruta responde 401 hasta iniciar sesión; sin esas variables (en local) queda abierta. Las rutas de administración piden además el encabezado `X-Admin-Token` cuando `ADMIN_TOKEN` está definido. Ejemplos con PowerShell en [docs/api.md](docs/api.md).
 
 ## Pruebas y calidad
 
@@ -449,7 +457,8 @@ El informe se guarda en `evaluacion/resultados/` con la tasa de aciertos por cat
 | Pedidos de copias piratas | Guardia antes del modelo; el librero ofrece el libro del catálogo |
 | El modelo inventa libros, precios, stock o pedidos | Esos datos solo salen de las herramientas; el prompt lo exige |
 | Un cliente opera pedidos de otro | El usuario viene de la sesión, no de los argumentos del modelo; la base lo verifica |
-| Abuso del endpoint público y gasto de la API | Límite de mensajes por minuto por IP y tope de tokens por respuesta |
+| Uso del chat por terceros o bots y gasto de la API | Acceso con usuario y clave: la clave solo existe como hash PBKDF2 fuera del repositorio, la sesión va en una cookie HttpOnly y SameSite=Strict, y los intentos se limitan por IP y en total |
+| Abuso del chat con sesión | Límite de mensajes por minuto por IP y tope de tokens por respuesta |
 | Exposición de logs y ventas | Rutas de administración con `X-Admin-Token` |
 | Inyección de scripts en el navegador | Content-Security-Policy estricta, escape de todo el contenido dinámico y portadas solo con rutas locales |
 | Claves filtradas | `.env` fuera de Git, secretos de Container Apps y OIDC en el despliegue |
@@ -458,7 +467,7 @@ El informe se guarda en `evaluacion/resultados/` con la tasa de aciertos por cat
 
 La infraestructura está en [infra/main.bicep](infra/main.bicep) y crea: Log Analytics, Azure Container Registry, una identidad administrada para descargar la imagen, el entorno de Container Apps y la app con HTTPS, secretos y sondas de salud.
 
-El despliegue se hace en dos fases: primero la infraestructura base, luego se sube la imagen y se crea la app. La guía paso a paso, con los comandos en PowerShell, está en [docs/despliegue-azure.md](docs/despliegue-azure.md).
+El despliegue se hace en dos fases: primero la infraestructura base, luego se sube la imagen y se crea la app. La guía paso a paso, con los comandos en PowerShell, está en [docs/despliegue-azure.md](docs/despliegue-azure.md). El script `infra/crear-app.ps1` crea la app de la fase 2 pidiendo las claves de los modelos y la clave del acceso de la demo, sin guardarlas en ningún archivo.
 
 Puntos a tener en cuenta:
 
@@ -488,6 +497,7 @@ Cada decisión importante está documentada con su contexto, las alternativas y 
 - [0007 Flujo de ramas con main y dev](docs/decisiones/0007-flujo-de-ramas.md)
 - [0008 Recomendación híbrida dentro del flujo de venta](docs/decisiones/0008-recomendacion-hibrida.md)
 - [0009 El archivo del catálogo como fuente de verdad](docs/decisiones/0009-catalogo-como-fuente-de-verdad.md)
+- [0011 Acceso de demo con usuario y clave](docs/decisiones/0011-acceso-de-demo.md)
 
 ## Flujo de trabajo del equipo
 
