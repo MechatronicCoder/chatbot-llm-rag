@@ -233,7 +233,9 @@ def ventas_csv(estado: Estado, usuario_id: Annotated[str | None, Query()] = None
         "autor": "autor",
         "cantidad": "cantidad",
         "precio_unitario": "precio_unitario",
-        "total": "total",
+        "importe": "importe",
+        "envio": "envio_pedido",
+        "total": "total_pedido",
         "estado": "estado",
         "creado_en": "creado_en",
     }

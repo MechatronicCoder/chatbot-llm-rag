@@ -150,11 +150,16 @@ def test_advertencias_de_datos_opcionales(tmp_path: Path) -> None:
 
 # -- tienda ------------------------------------------------------------------------
 def test_tienda(tmp_path: Path) -> None:
-    datos = {"nombre": "Libros X", "moneda": {"simbolo": "S/", "codigo": "PEN"}}
+    envio = {"lima": {"nombre": "Lima", "costo": 10, "gratis_desde": 120}}
+    datos = {"nombre": "Libros X", "moneda": {"simbolo": "S/", "codigo": "PEN"}, "envio": envio}
     tienda = cargar_tienda(escribir(tmp_path, datos, "tienda.json"))
     assert tienda.precio(1234.5) == "S/ 1,234.50"
+    assert tienda.envio["lima"].gratis_desde == 120
     with pytest.raises(ErrorCatalogo, match=r"tienda\.json"):
         cargar_tienda(escribir(tmp_path, {"nombre": ""}, "tienda.json"))
+    sin_envio = {**datos, "envio": {}}
+    with pytest.raises(ErrorCatalogo, match="envio"):
+        cargar_tienda(escribir(tmp_path, sin_envio, "tienda.json"))
 
 
 def test_portada_relativa_valida() -> None:

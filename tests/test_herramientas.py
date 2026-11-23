@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from app.servicios.chat import ServicioChat
-from app.servicios.herramientas import ESQUEMAS
+from app.servicios.herramientas import ESQUEMAS, Herramientas
 from tests.datos_prueba import (
     ISBN_AGOTADO,
     ISBN_CUENTOS,
@@ -56,37 +56,65 @@ def test_ficha_con_similares_disponibles(servicio: ServicioChat) -> None:
     assert "error" in servicio.herramientas.ejecutar("ficha_libro", {"isbn": "9780000000999"}, "a")
 
 
+def carrito(h: Herramientas, usuario: str, *items: tuple[str, int], zona: str | None = "lima"):  # type: ignore[no-untyped-def]
+    cambios = [{"isbn": isbn, "cantidad": cantidad} for isbn, cantidad in items]
+    return h.ejecutar("actualizar_carrito", {"cambios": cambios, "zona": zona}, usuario)
+
+
 def test_reservar_descuenta_stock(servicio: ServicioChat) -> None:
-    r = servicio.herramientas.ejecutar("reservar_pedido", {"isbn": ISBN_MAGO, "cantidad": 2}, "a")
-    assert r["pedido_id"].startswith("PED-") and r["titulo"] == "La escuela de magos"
+    h = servicio.herramientas
+    c = carrito(h, "a", (ISBN_MAGO, 2))
+    assert c["estado"] == "carrito" and "Total: S/" in c["resumen"]
+    assert servicio.bd.obtener_libro(ISBN_MAGO)["stock"] == 8  # type: ignore[index]
+    r = h.ejecutar("reservar_pedido", {}, "a")
+    assert r["pedido_id"] == c["pedido_id"] and r["estado"] == "reservado"
+    assert r["lineas"][0]["titulo"] == "La escuela de magos" and "reservado" in r["resumen"]
     assert servicio.bd.obtener_libro(ISBN_MAGO)["stock"] == 6  # type: ignore[index]
-    falta = servicio.herramientas.ejecutar(
-        "reservar_pedido", {"isbn": ISBN_POEMAS, "cantidad": 50}, "a"
-    )
-    assert "Solo quedan 3" in falta["error"]
+    assert "Solo quedan 3" in carrito(h, "a", (ISBN_POEMAS, 5))["error"]
+    assert "de 0 a 10" in carrito(h, "a", (ISBN_POEMAS, 50))["error"]
 
 
 def test_cobrar_una_vez_y_solo_lo_propio(servicio: ServicioChat) -> None:
     h = servicio.herramientas
-    pedido = h.ejecutar("reservar_pedido", {"isbn": ISBN_DRAGON, "cantidad": 1}, "dueno")
+    carrito(h, "dueno", (ISBN_DRAGON, 1))
+    pedido = h.ejecutar("reservar_pedido", {}, "dueno")
     argumentos = {"pedido_id": pedido["pedido_id"], "metodo": "tarjeta"}
     assert "otro cliente" in h.ejecutar("cobrar_pedido", argumentos, "intruso")["error"]
-    assert h.ejecutar("cobrar_pedido", argumentos, "dueno")["estado"] == "pagado"
+    pagado = h.ejecutar("cobrar_pedido", argumentos, "dueno")
+    assert pagado["estado"] == "pagado" and pagado["monto"] == pedido["total"]
+    assert pagado["pago_id"].startswith("PAG-") and "pagado" in pagado["resumen"]
     assert "pagado" in h.ejecutar("cobrar_pedido", argumentos, "dueno")["error"]
     consulta_ajena = h.ejecutar("consultar_pedido", {"pedido_id": pedido["pedido_id"]}, "intruso")
     assert "error" in consulta_ajena and "dragón" not in str(consulta_ajena)
     propia = h.ejecutar("consultar_pedido", {"pedido_id": pedido["pedido_id"]}, "dueno")
-    assert propia["estado"] == "pagado"
+    assert propia["estado"] == "pagado" and propia["resumen"]
+
+
+def test_un_carrito_se_cobra_directo_si_tiene_zona(servicio: ServicioChat) -> None:
+    h = servicio.herramientas
+    sin_zona = carrito(h, "a", (ISBN_SUMAS, 1), zona=None)
+    assert "falta elegir la zona" in sin_zona["resumen"]
+    argumentos = {"pedido_id": sin_zona["pedido_id"], "metodo": "efectivo"}
+    assert "Falta la zona" in h.ejecutar("cobrar_pedido", argumentos, "a")["error"]
+    assert "Falta la zona" in h.ejecutar("reservar_pedido", {}, "a")["error"]
+    carrito(h, "a", zona="provincias")
+    assert h.ejecutar("cobrar_pedido", argumentos, "a")["estado"] == "pagado"
+    assert servicio.bd.obtener_libro(ISBN_SUMAS)["stock"] == 9  # type: ignore[index]
 
 
 def test_metodo_invalido_y_cancelaciones(servicio: ServicioChat) -> None:
     h = servicio.herramientas
-    pedido = h.ejecutar("reservar_pedido", {"isbn": ISBN_SUMAS, "cantidad": 3}, "a")["pedido_id"]
+    carrito(h, "a", (ISBN_SUMAS, 3))
+    pedido = h.ejecutar("reservar_pedido", {}, "a")["pedido_id"]
     assert "error" in h.ejecutar("cobrar_pedido", {"pedido_id": pedido, "metodo": "cripto"}, "a")
     assert "otro cliente" in h.ejecutar("cancelar_pedido", {"pedido_id": pedido}, "b")["error"]
-    assert h.ejecutar("cancelar_pedido", {"pedido_id": pedido}, "a")["estado"] == "cancelado"
+    cancelado = h.ejecutar("cancelar_pedido", {"pedido_id": pedido}, "a")
+    assert cancelado["estado"] == "cancelado" and cancelado["unidades_devueltas"] == 3
     assert servicio.bd.obtener_libro(ISBN_SUMAS)["stock"] == 10  # type: ignore[index]
     assert "No existe" in h.ejecutar("cancelar_pedido", {"pedido_id": "PED-NADA"}, "a")["error"]
+    abierto = carrito(h, "a", (ISBN_MAGO, 1))["pedido_id"]
+    vaciado = h.ejecutar("cancelar_pedido", {"pedido_id": abierto}, "a")
+    assert vaciado["estado"] == "cancelado" and vaciado["unidades_devueltas"] == 0
 
 
 def test_buscar_politica_usa_el_rag(servicio: ServicioChat) -> None:
@@ -99,8 +127,10 @@ def test_buscar_politica_usa_el_rag(servicio: ServicioChat) -> None:
 def test_errores_de_uso_no_rompen(servicio: ServicioChat) -> None:
     h = servicio.herramientas
     assert "desconocida" in h.ejecutar("borrar_todo", {}, "a")["error"]
-    sin_cantidad = h.ejecutar("reservar_pedido", {"isbn": ISBN_SUMAS, "cantidad": None}, "a")
+    sin_cantidad = carrito(h, "a", (ISBN_SUMAS, None))  # type: ignore[arg-type]
     assert "Argumentos inválidos" in sin_cantidad["error"]
+    assert "Zona de envío desconocida" in carrito(h, "a", zona="marte")["error"]
+    assert "No hay un carrito abierto" in h.ejecutar("reservar_pedido", {}, "a")["error"]
     edad_rara = h.ejecutar("buscar_libros", {"consulta": "x", "edad": "muchos"}, "a")
     assert "Argumentos inválidos" in edad_rara["error"]
 
@@ -114,11 +144,15 @@ def test_error_inesperado_de_una_herramienta(servicio: ServicioChat, monkeypatch
     assert r == {"error": "RuntimeError: base caída"}
 
 
-def test_los_esquemas_declaran_las_ocho_herramientas() -> None:
+def test_los_esquemas_declaran_las_nueve_herramientas(servicio: ServicioChat) -> None:
+    carro = next(e for e in ESQUEMAS if e["name"] == "actualizar_carrito")
+    zonas = carro["parameters"]["properties"]["zona"]["enum"]
+    assert set(zonas) == set(servicio.bd.tienda.envio)  # el esquema y tienda.json coinciden
     assert {e["name"] for e in ESQUEMAS} == {
         "buscar_libros",
         "recomendar_libros",
         "ficha_libro",
+        "actualizar_carrito",
         "reservar_pedido",
         "consultar_pedido",
         "cancelar_pedido",

@@ -66,7 +66,7 @@ def test_un_libro_retirado_conserva_sus_pedidos(ajustes: Settings, bd: BaseDatos
     reescribir_catalogo(ajustes, [lb for lb in LIBROS_PRUEBA if lb["isbn"] != ISBN_POEMAS])
     bd.inicializar()
     consultado = bd.consultar_pedido(pedido["pedido_id"])
-    assert consultado is not None and consultado["titulo"] == "Poemas del puerto"
+    assert consultado is not None and consultado["lineas"][0]["titulo"] == "Poemas del puerto"
 
 
 def test_un_catalogo_invalido_no_toca_la_base(ajustes: Settings, bd: BaseDatos) -> None:
@@ -87,7 +87,7 @@ def test_una_base_con_otra_version_se_reconstruye(ajustes: Settings) -> None:
         assert con.execute("pragma user_version").fetchone()[0] == ESQUEMA_VERSION
         tablas = {f[0] for f in con.execute("select name from sqlite_master where type='table'")}
     assert "productos" not in tablas
-    assert base.reservar_pedido("alumno", ISBN_SUMAS, 1)["isbn"] == ISBN_SUMAS
+    assert base.reservar_pedido("alumno", ISBN_SUMAS, 1)["lineas"][0]["isbn"] == ISBN_SUMAS
 
 
 def test_reserva_atomica_no_vende_lo_que_no_hay(bd: BaseDatos) -> None:
@@ -108,9 +108,9 @@ def test_reserva_rechaza_cantidad_o_isbn_invalido(bd: BaseDatos) -> None:
 
 def test_reserva_acepta_isbn_con_guiones(bd: BaseDatos) -> None:
     pedido = bd.reservar_pedido("alumno", f"{ISBN_SUMAS[:3]}-{ISBN_SUMAS[3:]}", 2)
-    assert pedido["isbn"] == ISBN_SUMAS
-    assert pedido["total"] == round(29.9 * 2, 2)
-    assert pedido["stock_restante"] == 8
+    assert pedido["lineas"][0]["isbn"] == ISBN_SUMAS
+    assert (pedido["subtotal"], pedido["envio"], pedido["total"]) == (59.8, 10.0, 69.8)
+    assert bd.obtener_libro(ISBN_SUMAS)["stock"] == 8  # type: ignore[index]
 
 
 def test_pago_y_ventas(bd: BaseDatos) -> None:
@@ -139,7 +139,7 @@ def test_cancelaciones_y_cobros_invalidos(bd: BaseDatos) -> None:
 def test_pedidos_del_cliente_y_categorias(bd: BaseDatos) -> None:
     bd.reservar_pedido("ana", ISBN_SUMAS, 1)
     bd.reservar_pedido("ana", ISBN_MAGO, 1)
-    assert {p["isbn"] for p in bd.pedidos_de("ana")} == {ISBN_SUMAS, ISBN_MAGO}
+    assert {p["lineas"][0]["isbn"] for p in bd.pedidos_de("ana")} == {ISBN_SUMAS, ISBN_MAGO}
     categorias = {c["categoria"]: c["libros"] for c in bd.categorias()}
     assert categorias["novela"] == 4 and categorias["juvenil"] == 3
 

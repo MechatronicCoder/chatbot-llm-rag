@@ -7,6 +7,7 @@ del archivo (libro, ISBN y campo) para corregirlos de una sola vez.
 from __future__ import annotations
 
 import json
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -31,6 +32,15 @@ class Moneda(BaseModel):
     codigo: str = Field(min_length=3, max_length=3)
 
 
+class ZonaEnvio(BaseModel):
+    """Tarifa de envío de una zona: costo fijo, gratis desde cierto subtotal."""
+
+    model_config = ConfigDict(extra="forbid")
+    nombre: str = Field(min_length=1, max_length=60)
+    costo: Decimal = Field(ge=0, max_digits=8, decimal_places=2)
+    gratis_desde: Decimal | None = Field(default=None, ge=0, max_digits=8, decimal_places=2)
+
+
 class Tienda(BaseModel):
     """Identidad de la tienda: se usa en el prompt, en los textos y en el frontend."""
 
@@ -38,8 +48,10 @@ class Tienda(BaseModel):
     nombre: str = Field(min_length=1, max_length=80)
     descripcion: str = Field(default="", max_length=300)
     moneda: Moneda
+    # Zonas de envío ("lima", "provincias"): el código calcula el envío, no el modelo.
+    envio: dict[str, ZonaEnvio] = Field(min_length=1)
 
-    def precio(self, valor: float) -> str:
+    def precio(self, valor: float | Decimal) -> str:
         return f"{self.moneda.simbolo} {valor:,.2f}"
 
 

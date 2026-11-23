@@ -4,7 +4,7 @@ Las pruebas automáticas comprueban que el código hace lo que se espera con un 
 
 ## Conjunto de casos
 
-`evaluacion/casos.json` tiene 28 casos en 8 categorías:
+`evaluacion/casos.json` tiene 31 casos en 9 categorías:
 
 | Categoría | Casos | Qué se espera |
 |---|---|---|
@@ -13,7 +13,8 @@ Las pruebas automáticas comprueban que el código hace lo que se espera con un 
 | cortesia | 2 | Ruta `directa`, sin herramientas |
 | catalogo | 3 | Ruta `herramientas` y el libro esperado, por título (Dune) y por autor (Mary Shelley); un título que no está en el catálogo no se inventa |
 | recomendacion | 6 | Ruta `recomendacion` y uno de los libros esperados entre los mostrados (gatos para un niño de 9 años, misterio en una isla, terror para 13 años, robots detectives, distopía); si falta la edad del lector, el librero la pregunta |
-| accion | 2 | Ruta `accion`, incluida una conversación de dos turnos (reservar y pagar) |
+| accion | 2 | Ruta `accion` y el pedido en el estado esperado, incluida una conversación de dos turnos (armar el carrito y pagar) |
+| carrito | 3 | Ruta `accion` y el carrito con la cantidad de libros esperada: varios libros a la vez, quitar uno y preguntar cuánto falta para el envío gratis |
 | rag | 3 | Ruta `rag` y, cuando se indica, el documento esperado entre los citados |
 | fuera_de_alcance | 2 | Ruta `directa`, sin inventar catálogo ni políticas |
 
@@ -40,11 +41,11 @@ Con el clasificador TF-IDF y las guardias, sin ninguna API configurada:
 | faq | 7/7 |
 | seguridad | 3/3 |
 
-Los 10 casos se resuelven en milisegundos y sin tokens. Los 18 casos restantes requieren el modelo y se miden con las claves configuradas.
+Los 10 casos se resuelven en milisegundos y sin tokens. Los 21 casos restantes requieren el modelo y se miden con las claves configuradas.
 
 ## Resultado con modelo
 
-Con `qwen-plus` (respaldo `qwen-flash`) y `text-embedding-v4` en la región de Singapur, sobre el catálogo de entonces, de 180 libros (los 20 con precio referencial se agregaron después):
+Con `qwen-plus` (respaldo `qwen-flash`) y `text-embedding-v4` en la región de Singapur, sobre el catálogo de 200 libros y con el carrito:
 
 | Categoría | Aciertos |
 |---|---|
@@ -52,12 +53,13 @@ Con `qwen-plus` (respaldo `qwen-flash`) y `text-embedding-v4` en la región de S
 | seguridad | 3/3 |
 | cortesia | 2/2 |
 | catalogo | 3/3 |
-| recomendacion | 5/6 |
+| recomendacion | 6/6 |
 | accion | 2/2 |
+| carrito | 3/3 |
 | rag | 3/3 |
 | fuera_de_alcance | 2/2 |
 
-En total 27/28 rutas (96 %) y el libro esperado en 7 de 8 casos, con una latencia mediana de 1,7 s y unos 82 000 tokens para todo el conjunto. El caso que varía entre ejecuciones es una recomendación en la que el modelo a veces hace una pregunta antes de recomendar. Antes de ajustar el prompt y de agregar la verificación de respuestas, el mismo conjunto daba 19/28: el modelo pedía detalles en lugar de recomendar, pedía confirmación en lugar de reservar y respondía políticas sin consultar los documentos.
+En total 31/31 rutas y el libro esperado en los 8 casos que lo piden, con una latencia mediana de 3,5 s y unos 125 000 tokens para todo el conjunto. La primera corrida con el carrito dio 30/31 y mostró dos fallos que se corrigieron: el modelo preguntaba "¿deseas agregarlo al carrito?" en lugar de agregarlo, y "¿cuánto me falta para el envío gratis?" lo respondía la FAQ, que no conoce el carrito. Antes de ajustar el prompt y de agregar la verificación de respuestas, el conjunto de 28 casos daba 19/28: el modelo pedía detalles en lugar de recomendar, pedía confirmación en lugar de reservar y respondía políticas sin consultar los documentos.
 
 ## Calibrar el umbral del RAG
 

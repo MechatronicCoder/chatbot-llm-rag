@@ -56,6 +56,9 @@ class RespuestaChatAPI(BaseModel):
     turno_id: str = ""
     aviso: str | None = None
     clasificacion: dict[str, Any] | None = None
+    carrito: Pedido | None = Field(
+        None, description="El último pedido o carrito que tocó el turno, con sus montos"
+    )
 
 
 class LibroResumen(BaseModel):
@@ -109,16 +112,27 @@ class Categoria(BaseModel):
     libros: int
 
 
-class Pedido(BaseModel):
-    pedido_id: str
-    usuario_id: str
+class LineaPedido(BaseModel):
     isbn: str
     titulo: str
     autor: str
     cantidad: int
     precio_unitario: float
+    importe: float
+
+
+class Pedido(BaseModel):
+    pedido_id: str
+    usuario_id: str
+    estado: str = Field(description="carrito, reservado, pagado o cancelado")
+    zona: str | None = Field(None, description="Zona de envío; null si falta elegirla")
+    zona_nombre: str | None = None
+    lineas: list[LineaPedido]
+    unidades: int
+    subtotal: float
+    envio: float | None = Field(None, description="null mientras falte la zona")
     total: float
-    estado: str
+    falta_para_envio_gratis: float | None = None
     creado_en: str
 
 

@@ -13,6 +13,7 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from typing import Any
 
+from app.catalogo.cotizacion import resumen
 from app.persistencia.db import BaseDatos, ErrorPedido
 from app.servicios.esquemas_herramientas import ACCIONES, ESQUEMAS, IDEMPOTENTES
 from app.servicios.rag import BuscadorDocumentos
@@ -40,6 +41,7 @@ class Herramientas:
             "buscar_libros": self._buscar_libros,
             "recomendar_libros": self._recomendar_libros,
             "ficha_libro": self._ficha_libro,
+            "actualizar_carrito": self._actualizar_carrito,
             "reservar_pedido": self._reservar_pedido,
             "consultar_pedido": self._consultar_pedido,
             "cancelar_pedido": self._cancelar_pedido,
@@ -115,18 +117,29 @@ class Herramientas:
         ]
         return {**libro, "similares_disponibles": disponibles}
 
-    # -- pedidos -----------------------------------------------------------------
-    def _reservar_pedido(
-        self, usuario_id: str, isbn: str = "", cantidad: int = 1, **_: Any
+    # -- carrito y pedidos -------------------------------------------------------
+    def _con_resumen(self, pedido: Resultado) -> Resultado:
+        """El texto con las cuentas hechas: el modelo lo muestra en vez de sumar."""
+        return {**pedido, "resumen": resumen(pedido, self.bd.tienda)}
+
+    def _actualizar_carrito(
+        self,
+        usuario_id: str,
+        cambios: Sequence[dict[str, Any]] | None = None,
+        zona: str | None = None,
+        **_: Any,
     ) -> Resultado:
-        return self.bd.reservar_pedido(usuario_id, isbn, int(cantidad))
+        return self._con_resumen(self.bd.actualizar_carrito(usuario_id, cambios or (), zona))
+
+    def _reservar_pedido(self, usuario_id: str, **_: Any) -> Resultado:
+        return self._con_resumen(self.bd.reservar_carrito(usuario_id))
 
     def _consultar_pedido(self, usuario_id: str, pedido_id: str = "", **_: Any) -> Resultado:
         pedido = self.bd.consultar_pedido(pedido_id)
         if pedido is None or pedido["usuario_id"] != usuario_id:
             # mismo mensaje en ambos casos: no se revela si existe un pedido ajeno
             return {"error": f"No existe el pedido {pedido_id!r} para este cliente."}
-        return pedido
+        return self._con_resumen(pedido)
 
     def _cancelar_pedido(self, usuario_id: str, pedido_id: str = "", **_: Any) -> Resultado:
         pedido = self.bd.consultar_pedido(pedido_id)
@@ -134,12 +147,14 @@ class Herramientas:
             return {"error": f"No existe el pedido {pedido_id!r}."}
         if pedido["usuario_id"] != usuario_id:
             return {"error": "Ese pedido pertenece a otro cliente."}
-        return self.bd.cancelar_pedido(pedido_id)
+        return self._con_resumen(self.bd.cancelar_pedido(pedido_id))
 
     def _cobrar_pedido(
         self, usuario_id: str, pedido_id: str = "", metodo: str = "tarjeta", **_: Any
     ) -> Resultado:
-        return self.bd.registrar_pago(usuario_id, pedido_id, metodo)
+        pago = self.bd.registrar_pago(usuario_id, pedido_id, metodo)
+        pedido = self.bd.consultar_pedido(pago["pedido_id"])
+        return {**self._con_resumen(pedido), **pago} if pedido else pago
 
     # -- documentos --------------------------------------------------------------
     def _buscar_politica(self, pregunta: str = "", **_: Any) -> Resultado:
