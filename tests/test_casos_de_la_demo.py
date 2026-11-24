@@ -319,3 +319,35 @@ def test_no_dice_que_falta_pagar_lo_que_ya_se_pago(bd: BaseDatos) -> None:
     assert (
         revisar_respuesta("Tu pedido ya está pagado.", consultado, bd, "ana", "¿ya pagué?") is None
     )
+
+
+# -- 13. al corregir un plazo, el bot dejó de decir si el pedido estaba pagado ----------
+def test_la_correccion_pide_seguir_respondiendo_la_pregunta() -> None:
+    from app.core.seguridad import validar_salida
+    from app.servicios.problema import NOTA
+
+    assert "responde igual lo que preguntó el cliente" in NOTA
+    # la nota sigue siendo una línea interna: si el modelo la copia, no llega al cliente
+    assert "Revisión interna" not in validar_salida(f"{NOTA}\nTu pedido está pagado.")[0]
+
+
+# -- 14. "¿ya está pagado mi pedido?": el bot pedía el id en vez de consultarlo ------------
+def test_consultar_pedido_sin_id_devuelve_el_ultimo_del_cliente(
+    servicio: ServicioChat, bd: BaseDatos
+) -> None:
+    h = servicio.herramientas
+    assert h.ejecutar("consultar_pedido", {}, "ana") == {"error": "Este cliente no tiene pedidos."}
+    primero = bd.actualizar_carrito("ana", [{"isbn": ISBN_MAGO, "cantidad": 1}], "lima")
+    bd.registrar_pago("ana", primero["pedido_id"], "efectivo")
+    segundo = bd.actualizar_carrito("ana", [{"isbn": ISBN_SUMAS, "cantidad": 1}], "lima")
+    d = h.ejecutar("consultar_pedido", {}, "ana")
+    assert d["pedido_id"] == segundo["pedido_id"] and "resumen" in d
+    assert d["otros_pedidos"] == [
+        {"pedido_id": primero["pedido_id"], "estado": "pagado", "total": primero["total"]}
+    ]
+    # con id, como antes, y nunca los pedidos de otro cliente
+    assert (
+        h.ejecutar("consultar_pedido", {"pedido_id": primero["pedido_id"]}, "ana")["estado"]
+        == "pagado"
+    )
+    assert "error" in h.ejecutar("consultar_pedido", {}, "otro")
