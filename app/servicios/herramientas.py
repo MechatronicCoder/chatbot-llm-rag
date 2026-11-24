@@ -180,6 +180,17 @@ class Herramientas:
         return self._con_resumen(self.bd.reservar_carrito(usuario_id))
 
     def _consultar_pedido(self, usuario_id: str, pedido_id: str = "", **_: Any) -> Resultado:
+        if not (pedido_id or "").strip():
+            # "¿ya está pagado mi pedido?": sin id, el último pedido del cliente de la sesión.
+            # Antes el modelo le pedía el id al cliente aunque lo tenía en el historial.
+            pedidos = self.bd.pedidos_de(usuario_id)
+            if not pedidos:
+                return {"error": "Este cliente no tiene pedidos."}
+            otros = [
+                {"pedido_id": p["pedido_id"], "estado": p["estado"], "total": p["total"]}
+                for p in pedidos[1:5]
+            ]
+            return {**self._con_resumen(pedidos[0]), "otros_pedidos": otros}
         pedido = self.bd.consultar_pedido(pedido_id)
         if pedido is None or pedido["usuario_id"] != usuario_id:
             # mismo mensaje en ambos casos: no se revela si existe un pedido ajeno
