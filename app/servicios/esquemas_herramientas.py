@@ -121,11 +121,13 @@ ESQUEMAS: list[dict[str, Any]] = [
     },
     {
         "name": "consultar_pedido",
-        "description": "Devuelve el estado, el total y el detalle de un pedido del cliente.",
+        "description": "Devuelve el estado, el total y el detalle de un pedido del cliente. "
+        "Sin pedido_id devuelve su pedido más reciente (y en otros_pedidos, los anteriores): "
+        "úsala así cuando pregunte si su pedido está pagado o reservado, sin pedirle el id.",
         "parameters": {
             "type": "object",
             "properties": {"pedido_id": _PEDIDO},
-            "required": ["pedido_id"],
+            "required": [],
         },
     },
     {
