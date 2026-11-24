@@ -1,5 +1,5 @@
 /* Asistente de librería — Chat: hilo, burbujas, sugerencias, indicador de escritura, chips y formulario.
-   Orden de carga en index.html: base, disposicion, chat, paneles, responsive, animaciones. */
+   Orden de carga en index.html: base, disposicion, vistas, chat, tarjetas, paneles, responsive, animaciones. */
 
 /* 5. Chat ------------------------------------------------------------------ */
 
@@ -9,14 +9,17 @@
   border-right: 1px solid var(--color-linea);
 }
 
+/* En pantallas anchas la conversación se centra en --ancho-hilo: las líneas no se estiran
+   y el compositor queda alineado con los mensajes. */
 .hilo {
+  --margen-hilo: max(var(--esp-6), calc((100% - var(--ancho-hilo)) / 2));
   position: relative; /* offsetTop de los mensajes se mide contra el hilo */
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: var(--esp-4) var(--esp-5);
+  gap: var(--esp-4);
+  padding: var(--esp-6) var(--margen-hilo);
   overflow-y: auto;
   overscroll-behavior: contain;
 }
@@ -27,8 +30,9 @@
 
 .msg {
   max-width: min(100%, var(--ancho-burbuja));
-  padding: 9px 12px;
+  padding: var(--esp-3) var(--esp-4);
   border-radius: var(--radio-l);
+  line-height: 1.55;
   overflow-wrap: anywhere;
   animation: entrar var(--dur-mensaje) var(--curva-salida) both;
 }
@@ -36,14 +40,25 @@
 .msg.u {
   align-self: flex-end;
   background: var(--color-burbuja-cliente);
+  color: var(--color-texto-cliente);
   border-bottom-right-radius: var(--radio-s);
+}
+
+.msg.u:not(:first-child) {
+  margin-top: var(--esp-3); /* cada pregunta abre un turno nuevo: más aire antes */
 }
 
 .msg.b {
   align-self: flex-start;
+  width: min(100%, var(--ancho-burbuja));
   border: 1px solid var(--color-linea);
   border-bottom-left-radius: var(--radio-s);
-  background: var(--color-panel);
+  background: var(--color-superficie);
+  box-shadow: 0 1px 2px rgb(21 21 21 / 0.06);
+}
+
+.msg.b.escribiendo {
+  width: auto;
 }
 
 .msg.error {
@@ -113,7 +128,7 @@
   padding: 5px 12px;
   border: 1px solid var(--color-linea);
   border-radius: var(--radio-pildora);
-  background: var(--color-panel);
+  background: var(--color-superficie);
   color: var(--color-texto);
   font: inherit;
   font-size: var(--texto-s);
@@ -157,71 +172,15 @@
   animation-delay: calc(var(--dur-puntos) * 0.3);
 }
 
-/* Tarjetas de libros mostrados en la respuesta */
-
-.libros {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: var(--esp-2, 8px);
-  margin: 10px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.libro {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 8px 10px;
-  border: 1px solid var(--color-linea);
-  border-radius: var(--radio-s);
-  background: var(--color-fondo, transparent);
-  animation: entrar-chip var(--dur-chip) var(--curva-salida) both;
-}
-
-.libro-titulo { color: var(--color-texto); }
-.libro-autor { color: var(--color-tenue); font-size: var(--texto-s); }
-.libro-datos { color: var(--color-ok-texto); font-size: var(--texto-s); }
-
-/* Tarjeta del pedido: los montos vienen calculados por el servidor */
-
-.carrito {
-  margin-top: 8px;
-  padding: 10px 12px;
-  border: 1px solid var(--color-linea-fuerte);
-  border-radius: var(--radio-s);
-  font-size: var(--texto-s);
-  animation: entrar-chip var(--dur-chip) var(--curva-salida) both;
-}
-.carrito-cabecera, .carrito-lineas li, .carrito-fila {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-}
-.carrito-estado { color: var(--color-aviso-texto); }
-.carrito-lineas { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 4px; }
-.carrito-importe, .carrito-fila dd { margin: 0; font-variant-numeric: tabular-nums; }
-.carrito-totales { margin: 0; padding-top: 6px; border-top: 1px solid var(--color-linea); }
-.carrito-fila dt { color: var(--color-tenue); }
-.carrito-total { font-weight: 600; color: var(--color-texto); }
-.carrito-nota { margin: 6px 0 0; color: var(--color-ok-texto); }
-.carrito-pago { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
-.carrito-metodo { padding: 6px 8px; border-radius: var(--radio-s); border: 1px solid var(--color-linea-fuerte); background: var(--color-panel-alto); color: var(--color-texto); }
-.carrito-pagar { padding: 6px 14px; border: 0; border-radius: var(--radio-s); background: var(--color-acento); color: #fff; font-weight: 600; cursor: pointer; }
-.carrito-pagar:hover:not(:disabled) { background: var(--color-acento-hover); }
-.carrito-pagar:disabled, .carrito-metodo:disabled { opacity: 0.55; cursor: not-allowed; }
-.carrito-aviso { flex-basis: 100%; margin: 0; color: var(--color-tenue); }
-.carrito-numero { flex: 1 1 180px; padding: 6px 8px; border-radius: var(--radio-s); border: 1px solid var(--color-linea-fuerte); background: var(--color-panel-alto); color: var(--color-texto); }
-.carrito-numero[hidden] { display: none; }
-
-/* Chips de metadatos */
+/* Chips de metadatos: los datos técnicos del turno, al pie de la respuesta y discretos */
 
 .datos {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
-  margin: 8px 0 0;
-  padding: 0;
+  gap: var(--esp-1) 6px;
+  margin: var(--esp-3) 0 0;
+  padding: var(--esp-2) 0 0;
+  border-top: 1px solid var(--color-linea);
   list-style: none;
 }
 
@@ -356,7 +315,7 @@
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: end;
   gap: 6px var(--esp-2);
-  padding: var(--esp-3) var(--esp-5) var(--esp-2);
+  padding: var(--esp-4) max(var(--esp-6), calc((100% - var(--ancho-hilo)) / 2)) var(--esp-3);
   border-top: 1px solid var(--color-linea);
 }
 
@@ -366,7 +325,7 @@
   padding: 11px 12px;
   border: 1px solid var(--color-linea);
   border-radius: var(--radio-m);
-  background: var(--color-panel);
+  background: var(--color-superficie);
   color: var(--color-texto);
   font: inherit;
   line-height: 1.45;

@@ -60,9 +60,13 @@ RE_CARRITO_CAMBIADO = re.compile(
 )
 # "algo de terror…", "algún libro…": pedidos que RE_BUSQUEDA no cubre
 RE_ALGO = re.compile(r"\b(?:algo|alg[uú]n)\b", re.IGNORECASE)
-# "quiero el libro Drácula", "me llevo el primero": pedir un libro concreto (no buscar uno)
+# "quiero el libro Drácula", "me llevo el primero": pedir un libro concreto (no buscar uno).
+# "Quiero ver la ficha de…" (la tarjeta del libro) pide información, no comprar: en la demo
+# la regla lo tomó por compra y obligó al modelo a agregarlo al carrito.
 RE_COMPRA = re.compile(
-    r"\b(?:quiero|me llevo|me lo llevo|dame|compro|comprar|agrega|añade)\b", re.IGNORECASE
+    r"\b(?:quiero|dame)\b(?!\s+(?:ver|saber|conocer|leer|m[aá]s|la\s+ficha|informaci|detalles))"
+    r"|\b(?:me llevo|me lo llevo|compro|comprar|agrega|añade)\b",
+    re.IGNORECASE,
 )
 PEDIDOS = {"actualizar_carrito", "reservar_pedido"}
 # el libro es para un menor: preguntar la edad antes de recomendar es lo correcto

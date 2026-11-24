@@ -20,7 +20,7 @@ import {
 } from './util.js';
 
 const USUARIO_POR_DEFECTO = 'cliente-01';
-const LIMITE_CATALOGO = 8;
+const LIMITE_CATALOGO = 500; // el catálogo entero; la lista tiene su propio scroll
 const DEMORA_BUSQUEDA_MS = 300;
 
 /** Estados de pedido conocidos → clase visual. "reservado" equivale a pendiente de pago. */
@@ -186,6 +186,7 @@ export function iniciarPanel({ alCambiarUsuario, alRecargar, alBorrar } = {}) {
     let resumen = plural(libros.length, 'libro');
     if (total > libros.length) resumen = `${libros.length} de ${total} libros`;
     if (consulta) resumen += ` para «${consulta}»`;
+    else resumen += ' con stock';
     ponerTexto(resumenCatalogo, resumen);
 
     if (!libros.length) {
