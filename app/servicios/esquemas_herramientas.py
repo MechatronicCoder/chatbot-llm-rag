@@ -23,7 +23,9 @@ ESQUEMAS: list[dict[str, Any]] = [
         "description": "Busca en el catálogo cuando el cliente nombra un título, un autor, una "
         "saga, una editorial o un ISBN concreto. Devuelve precio y stock. Tolera errores de "
         "tipeo (`correcciones` dice cómo se entendió). Si encuentra menos de tres libros, agrega "
-        "`relacionados`: parecidos a lo pedido, pero no lo que pidió.",
+        "`relacionados`: parecidos a lo pedido, pero no lo que pidió. Con consulta vacía (o un "
+        "género) y `orden`, lista el catálogo ordenado: úsala para 'los mejor valorados', 'los "
+        "más baratos' o 'los más caros'.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -34,6 +36,11 @@ ESQUEMAS: list[dict[str, Any]] = [
                 "precio_max": _PRECIO_MAX,
                 "precio_min": _PRECIO_MIN,
                 "limite": {"type": "integer", "minimum": 1, "maximum": 10},
+                "orden": {
+                    "type": "string",
+                    "enum": ["valoracion", "precio_asc", "precio_desc"],
+                    "description": "Mejor valorados primero (por defecto), más baratos o más caros",
+                },
             },
             "required": ["consulta"],
         },

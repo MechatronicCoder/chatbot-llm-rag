@@ -95,3 +95,15 @@ def test_llm_configurado_requiere_url_clave_y_modelo(tmp_path: Path) -> None:
         tmp_path, llm_base_url="https://x.test", llm_api_key="k", llm_model="m"
     )
     assert completo.llm_configurado
+
+
+def test_el_env_example_documenta_todas_las_variables() -> None:
+    """Quien clona el repo encuentra en .env.example cada variable que lee la app."""
+    import re
+
+    from app.core.config import Settings
+
+    ejemplo = (RAIZ / ".env.example").read_text(encoding="utf-8")
+    documentadas = set(re.findall(r"^#?\s*([A-Z][A-Z0-9_]+)=", ejemplo, re.MULTILINE))
+    faltan = [campo.upper() for campo in Settings.model_fields if campo.upper() not in documentadas]
+    assert faltan == []

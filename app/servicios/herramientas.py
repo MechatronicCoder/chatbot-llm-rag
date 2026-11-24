@@ -28,6 +28,7 @@ Resultado = dict[str, Any]
 
 
 MINIMO_RESULTADOS = 3
+LIMITE_HERRAMIENTA = 10  # el modelo ve a lo más 10 libros por búsqueda, aunque pida más
 
 
 def _edad(valor: Any) -> int | None:
@@ -93,11 +94,12 @@ class Herramientas:
         limite: int = 5,
         precio_max: float | None = None,
         precio_min: float | None = None,
+        orden: str | None = None,
         **_: Any,
     ) -> Resultado:
         libros, correcciones = self.bd.buscar(
-            consulta or "", categoria, autor, _edad(edad), limite or 5,
-            _precio(precio_min), _precio(precio_max),
+            consulta or "", categoria, autor, _edad(edad), min(limite or 5, LIMITE_HERRAMIENTA),
+            _precio(precio_min), _precio(precio_max), orden,
         )  # fmt: skip
         resultado: Resultado = {
             "encontrados": len(libros),

@@ -39,6 +39,7 @@ from app.api.esquemas import (
     Tarjeta,
 )
 from app.catalogo.cotizacion import resumen
+from app.persistencia.catalogo import LIMITE_LISTADO
 from app.persistencia.db import ErrorPedido
 from app.servicios.chat import ServicioChat
 from app.servicios.recomendador import resumen_libro
@@ -125,7 +126,7 @@ def libros(
     categoria: Annotated[str | None, Query(max_length=40)] = None,
     autor: Annotated[str | None, Query(max_length=100)] = None,
     edad: Annotated[int | None, Query(ge=0, le=99)] = None,
-    limite: Annotated[int, Query(ge=1, le=20)] = 20,
+    limite: Annotated[int, Query(ge=1, le=LIMITE_LISTADO)] = 20,
 ) -> dict[str, Any]:
     """Búsqueda por palabras en título, autor, editorial, género, temas e ISBN."""
     items = estado.bd.buscar_libros(consulta, categoria, autor, edad, limite)

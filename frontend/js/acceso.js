@@ -8,7 +8,7 @@
  */
 
 import { cerrarSesion, estadoAcceso, iniciarSesion } from './api.js';
-import { porId, ponerTexto } from './util.js';
+import { CLAVES, borrarLocal, porId, ponerTexto } from './util.js';
 
 function enMinutos(segundos) {
   if (!Number.isFinite(segundos)) return 'unos minutos';
@@ -29,6 +29,16 @@ export function iniciarAcceso({ alEntrar, alSalir } = {}) {
   const boton = porId('acceso-entrar');
   const error = porId('acceso-error');
   const salir = porId('salir');
+
+  // Logo: la mascota de img/logo.png; si no está, queda el ícono del libro.
+  const logo = porId('acceso-logo-img');
+  const sinLogo = () => {
+    logo.hidden = true;
+    porId('acceso-logo-icono').removeAttribute('hidden'); // en un <svg>, .hidden no existe
+  };
+  if (logo.complete && !logo.naturalWidth) sinLogo();
+  else logo.addEventListener('error', sinLogo);
+
   // Mientras la pantalla está visible, el resto de la página no recibe foco ni clics.
   const fondo = [document.querySelector('.cabecera'), document.querySelector('main')].filter(Boolean);
   let dentro = false; // hubo una sesión abierta en esta pestaña
@@ -84,14 +94,21 @@ export function iniciarAcceso({ alEntrar, alSalir } = {}) {
     }
   });
 
+  // Cerrar sesión borra todo lo de esta persona en el navegador: la cookie de sesión (en el
+  // servidor), el token de administración, el id del cliente, la vista y los filtros del log.
+  // Después se recarga la página: arranca limpia, en la vista de cliente y con el login vacío.
   salir.addEventListener('click', async () => {
+    salir.disabled = true;
     try {
       await cerrarSesion();
     } catch {
-      // Aunque falle la llamada, se muestra la pantalla: la cookie vence sola.
+      // Aunque falle la llamada, se borra lo local: la cookie vence sola.
     }
+    for (const nombre of [...Object.values(CLAVES), 'vista']) borrarLocal(nombre);
+    usuario.value = '';
+    clave.value = '';
     alSalir?.();
-    mostrar();
+    window.location.reload();
   });
 
   /** Consulta el estado al arrancar; sin conexión no muestra nada (lo informa la cabecera). */

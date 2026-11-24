@@ -25,7 +25,7 @@ from app.core import seguridad
 from app.core.logs import RegistroEventos, nuevo_turno
 from app.llm.cliente import ModeloChat, SinProveedores
 from app.persistencia.db import BaseDatos
-from app.servicios.contexto import CandadosPorSesion, mensajes_iniciales
+from app.servicios.contexto import RUTA_FILTRO, CandadosPorSesion, mensajes_iniciales
 from app.servicios.faq import Decision, IndiceFAQ
 from app.servicios.herramientas import Herramientas
 from app.servicios.medios_de_pago import pedido_para_pagar, redactar_y_guardar
@@ -126,7 +126,7 @@ class ServicioChat:
                 seguridad.respuesta_bloqueo(motivo),
                 limpio,
                 inicio,
-                ruta="filtro",
+                ruta=RUTA_FILTRO,
                 fuente="filtro de seguridad",
                 modo="sin_llm",
                 **cierre,
@@ -229,7 +229,7 @@ class ServicioChat:
                     # Un id de pedido inventado o una política citada sin consultarla no se
                     # entregan: el modelo recibe una corrección y tiene una vuelta más.
                     problema = revisar_respuesta(
-                        resp.texto, acumulado, self.bd, usuario_id, mensaje
+                        resp.texto, acumulado, self.bd, usuario_id, mensaje, mensajes
                     )
                     if problema and not corregido:
                         corregido = True
@@ -275,7 +275,9 @@ class ServicioChat:
             # se agotaron las vueltas: una última llamada sin herramientas para cerrar
             resp = self.llm.chat(mensajes, temperatura=a.temperatura, max_tokens=a.max_tokens)
             acumulado.sumar_uso(resp.uso)
-            problema = revisar_respuesta(resp.texto, acumulado, self.bd, usuario_id, mensaje)
+            problema = revisar_respuesta(
+                resp.texto, acumulado, self.bd, usuario_id, mensaje, mensajes
+            )
             texto, _, _ = seguridad.validar_salida(
                 (problema.respaldo if problema else resp.texto.strip())
                 or "No se pudo completar la gestión."

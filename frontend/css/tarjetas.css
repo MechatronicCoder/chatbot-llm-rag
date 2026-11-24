@@ -1,0 +1,98 @@
+/* Asistente de librería — Tarjetas dentro de las respuestas: libros mostrados y pedido con su pago.
+   Orden de carga en index.html: base, disposicion, vistas, chat, tarjetas, paneles, responsive, animaciones. */
+
+/* Tarjetas de libros mostrados en la respuesta */
+
+.libros {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--esp-2);
+  margin: var(--esp-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.libro {
+  display: flex;
+  animation: entrar-chip var(--dur-chip) var(--curva-salida) both;
+}
+
+/* Cada tarjeta es un botón: elegirla envía "Quiero el libro «…»" al librero (libros.js) */
+.libro-boton {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--esp-1);
+  padding: var(--esp-3);
+  border: 1px solid var(--color-linea);
+  border-top: 3px solid var(--color-acento); /* el 10 % de turquesa: cada libro del catálogo */
+  border-radius: var(--radio-m);
+  background: var(--color-panel-alto);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--dur-rapida) ease-out,
+    box-shadow var(--dur-rapida) ease-out;
+}
+
+.libro-boton:hover:not(:disabled) {
+  border-color: var(--color-linea-fuerte);
+  border-top-color: var(--color-acento);
+  box-shadow: 0 2px 8px rgb(21 21 21 / 0.08);
+}
+
+.libro-boton:disabled {
+  border-top-color: var(--color-linea-fuerte);
+  cursor: not-allowed;
+}
+
+.libro-titulo { color: var(--color-texto); font-weight: 600; line-height: 1.3; }
+.libro-autor { color: var(--color-tenue); font-size: var(--texto-s); }
+.libro-datos { color: var(--color-ok-texto); font-size: var(--texto-s); }
+
+.libro-elegir {
+  align-self: flex-start;
+  margin-top: auto; /* al pie, alineado aunque los títulos tengan otro largo */
+  padding: 2px var(--esp-3);
+  border-radius: var(--radio-pildora);
+  background: var(--color-acento);
+  color: var(--color-sobre-acento);
+  font-size: var(--texto-s);
+  font-weight: 600;
+}
+
+.libro-boton:hover:not(:disabled) .libro-elegir { background: var(--color-acento-hover); }
+.libro-boton:disabled .libro-elegir { background: var(--color-boton-suave); color: var(--color-tenue); }
+
+/* Tarjeta del pedido: los montos vienen calculados por el servidor */
+
+.carrito {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-linea-fuerte);
+  border-radius: var(--radio-s);
+  font-size: var(--texto-s);
+  animation: entrar-chip var(--dur-chip) var(--curva-salida) both;
+}
+.carrito-cabecera, .carrito-lineas li, .carrito-fila {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.carrito-estado { color: var(--color-aviso-texto); }
+.carrito-lineas { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 4px; }
+.carrito-importe, .carrito-fila dd { margin: 0; font-variant-numeric: tabular-nums; }
+.carrito-totales { margin: 0; padding-top: 6px; border-top: 1px solid var(--color-linea); }
+.carrito-fila dt { color: var(--color-tenue); }
+.carrito-total { font-weight: 600; color: var(--color-texto); }
+.carrito-nota { margin: 6px 0 0; color: var(--color-ok-texto); }
+.carrito-pago { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.carrito-metodo { padding: 6px 8px; border-radius: var(--radio-s); border: 1px solid var(--color-linea-fuerte); background: var(--color-panel-alto); color: var(--color-texto); }
+.carrito-pagar { padding: 6px 14px; border: 0; border-radius: var(--radio-s); background: var(--color-acento); color: var(--color-sobre-acento); font-weight: 600; cursor: pointer; }
+.carrito-pagar:hover:not(:disabled) { background: var(--color-acento-hover); }
+.carrito-pagar:disabled, .carrito-metodo:disabled { opacity: 0.55; cursor: not-allowed; }
+.carrito-aviso { flex-basis: 100%; margin: 0; color: var(--color-tenue); }
+.carrito-numero { flex: 1 1 180px; padding: 6px 8px; border-radius: var(--radio-s); border: 1px solid var(--color-linea-fuerte); background: var(--color-panel-alto); color: var(--color-texto); }
+.carrito-numero[hidden] { display: none; }

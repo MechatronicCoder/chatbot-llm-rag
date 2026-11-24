@@ -58,8 +58,10 @@ RE_BUSQUEDA = re.compile(
     # "me das un libro", "quiero una novela" ("quiero devolver un libro" no: va a la FAQ)
     r"\b(me das|dame|quiero|necesito|tienes|tienen)\s+(un|una|algún|algun|alguna)\s+"
     r"(libro|novela|cuento)\b|"
+    # "un libro para cambiarlo por otro" es una política, no una búsqueda
     r"\b(un|una|algún|algun|algo)\s+(libro|novela|cuento|cómic|comic)\b"
-    r"(?!\s+de\s+reclamaciones)\s*(para|de|sobre|que|como|parecid[oa]|similar|con)\b|"
+    r"(?!\s+de\s+reclamaciones|\s+para\s+(?:cambiar|devolver|reclamar))"
+    r"\s*(para|de|sobre|que|como|parecid[oa]|similar|con)\b|"
     r"\blibros\s+(de|sobre|para(?!\s+regalo)|como|parecidos|similares|con)\b|"
     r"\b(parecid[oa]s?|similar(es)?)\s+a\b",
     re.IGNORECASE,

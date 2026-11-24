@@ -10,14 +10,24 @@ base y en el turno.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from typing import Any
 
-from app.catalogo.cotizacion import a_centimos, montos_en_centimos
+from app.catalogo.cotizacion import a_centimos
 from app.core.texto import normalizar
 from app.persistencia.db import BaseDatos
+from app.servicios.lectura import (
+    RE_DESTACADO,
+    RE_ID,
+    RE_MONTO,
+    RE_MONTO_COMPLETO,
+    RE_OTRO_MEDIO,
+    centimos,
+)
+from app.servicios.mundo_cerrado import montos_del_sistema, revisar_mundo_cerrado
+from app.servicios.problema import NOTA, Problema
 from app.servicios.turno import RE_BUSQUEDA, RE_EDAD, Acumulado
 
-RE_ID = re.compile(r"\b(?:PED|PAG)-[0-9A-Z]{4,16}\b", re.IGNORECASE)
+__all__ = ["NOTA", "Problema", "montos_sin_respaldo", "revisar_respuesta", "titulos_ajenos"]
 # "página 2", "pág. 3", "secc. 4", 'sección "Libros con defectos"', "según nuestra política"
 RE_CITA = re.compile(
     r"\bp[aá]g(?:ina|\.)\s*\d"
@@ -50,19 +60,18 @@ RE_CARRITO_CAMBIADO = re.compile(
 )
 # "algo de terror…", "algún libro…": pedidos que RE_BUSQUEDA no cubre
 RE_ALGO = re.compile(r"\b(?:algo|alg[uú]n)\b", re.IGNORECASE)
-# "quiero el libro Drácula", "me llevo el primero": pedir un libro concreto (no buscar uno)
+# "quiero el libro Drácula", "me llevo el primero": pedir un libro concreto (no buscar uno).
+# "Quiero ver la ficha de…" (la tarjeta del libro) pide información, no comprar: en la demo
+# la regla lo tomó por compra y obligó al modelo a agregarlo al carrito.
 RE_COMPRA = re.compile(
-    r"\b(?:quiero|me llevo|me lo llevo|dame|compro|comprar|agrega|añade)\b", re.IGNORECASE
+    r"\b(?:quiero|dame)\b(?!\s+(?:ver|saber|conocer|leer|m[aá]s|la\s+ficha|informaci|detalles))"
+    r"|\b(?:me llevo|me lo llevo|compro|comprar|agrega|añade)\b",
+    re.IGNORECASE,
 )
 PEDIDOS = {"actualizar_carrito", "reservar_pedido"}
 # el libro es para un menor: preguntar la edad antes de recomendar es lo correcto
 RE_MENOR = re.compile(
     r"\b(?:hij[oa]s?|niñ[oa]s?|sobrin[oa]s?|niet[oa]s?|alumn[oa]s?|adolescentes?|beb[eé]s?)\b",
-    re.IGNORECASE,
-)
-# Pedir películas, series o música no es pedir libros, aunque diga "recomiendas".
-RE_OTRO_MEDIO = re.compile(
-    r"\b(?:pel[ií]culas?|series?|m[uú]sica|canci[oó]n(?:es)?|videojuegos?|podcasts?|anime)\b",
     re.IGNORECASE,
 )
 RE_LECTURA = re.compile(r"\b(?:libros?|novelas?|cuentos?|leer|lectura|c[oó]mics?)\b", re.IGNORECASE)
@@ -71,10 +80,6 @@ RE_DATOS_CATALOGO = re.compile(
     r"\bstock\b|\bvaloraci[oó]n|\bficha\b|\bISBN\b|S/\s?\d|\bdisponibles?\b|cat[aá]logo|"
     r"\btenemos\b|\bcontamos con\b|\bc[oó]mpral[oa]s?\b|\bcomprarl[oa]s?\b|\breservarl[oa]s?\b",
     re.IGNORECASE,
-)
-# Títulos destacados en la respuesta: **Título**, *Título*, «Título» o “Título”.
-RE_DESTACADO = re.compile(
-    r"\*\*([^*\n]{2,90})\*\*|(?<![*\w])\*([^*\n]{2,90})\*(?![*\w])|«([^»\n]{2,90})»|“([^”\n]{2,90})”"
 )
 # Lo que sigue a un título cuando el modelo lo presenta como libro: ", de J. K. Rowling".
 RE_AUTOR = re.compile(r"\s*,?\s*(?:de|por)\s+[A-ZÁÉÍÓÚÑ]")
@@ -98,18 +103,6 @@ ETIQUETAS = frozenset(
         "pedido", "carrito", "pago", "envio a provincias", "envio a lima metropolitana",
     }
 )  # fmt: skip
-# "S/ 59.90", "S/1,234.50", "S/ 59,90", "S/. 59.90"
-RE_MONTO = re.compile(r"S/\.?\s?(\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d+(?:[.,]\d{1,2})?)")
-RE_MONTO_COMPLETO = re.compile(r"S/\.?\s?[\d.,]+")
-RE_NUMERO = re.compile(r"\d+(?:[.,]\d{1,2})?")
-NOTA = "[Revisión interna; no la menciones al cliente] "
-
-
-@dataclass(frozen=True)
-class Problema:
-    motivo: str  # para el log
-    instruccion: str  # lo que se le pide al modelo para corregir
-    respaldo: str  # lo que ve el cliente si el modelo no corrige
 
 
 def _id_real(ident: str, acumulado: Acumulado, bd: BaseDatos, usuario_id: str) -> bool:
@@ -121,24 +114,14 @@ def _id_real(ident: str, acumulado: Acumulado, bd: BaseDatos, usuario_id: str) -
     return any(pago["id"] == ident for p in pedidos for pago in bd.pagos_de(p["pedido_id"]))
 
 
-def _centimos(texto: str) -> int:
-    """'1,234.50' -> 123450; '59,90' -> 5990 (coma decimal)."""
-    miles = re.fullmatch(r"\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?", texto)
-    return a_centimos(texto.replace(",", "") if miles else texto.replace(",", "."))
-
-
 def montos_sin_respaldo(texto: str, bd: BaseDatos, usuario_id: str, mensaje: str) -> list[str]:
     """Montos en soles que no son precio, tarifa, monto de un pedido ni algo que dijo el cliente."""
     escritos = RE_MONTO.findall(texto)
     if not escritos:
         return []
     conocidos = {a_centimos(lb["precio"]) for lb in bd.libros_activos()}
-    for pedido in bd.pedidos_de(usuario_id):
-        conocidos |= montos_en_centimos(pedido)
-    for tarifa in bd.tienda.envio.values():
-        conocidos |= {a_centimos(v) for v in (tarifa.costo, tarifa.gratis_desde) if v is not None}
-    conocidos |= {_centimos(n) for n in RE_NUMERO.findall(mensaje)}  # "menos de 50 soles"
-    return [m for m in dict.fromkeys(escritos) if _centimos(m) not in conocidos]
+    conocidos |= montos_del_sistema(bd, usuario_id, mensaje)
+    return [m for m in dict.fromkeys(escritos) if centimos(m) not in conocidos]
 
 
 def titulos_ajenos(texto: str, bd: BaseDatos, mensaje: str = "") -> list[str]:
@@ -177,9 +160,18 @@ def titulos_ajenos(texto: str, bd: BaseDatos, mensaje: str = "") -> list[str]:
 
 
 def revisar_respuesta(
-    texto: str, acumulado: Acumulado, bd: BaseDatos, usuario_id: str, mensaje: str = ""
+    texto: str,
+    acumulado: Acumulado,
+    bd: BaseDatos,
+    usuario_id: str,
+    mensaje: str = "",
+    vistos: list[dict[str, Any]] | None = None,
 ) -> Problema | None:
-    """El primer problema encontrado, o None si la respuesta se puede entregar."""
+    """El primer problema encontrado, o None si la respuesta se puede entregar.
+
+    `vistos` son los mensajes que leyó el modelo en el turno: un nombre que no está en el
+    catálogo ni en ellos salió de su memoria.
+    """
     # "algo de terror para mi hijo de 10 años": ya dijo qué busca y la edad, así que
     # una pregunta sin haber recomendado nada es una vuelta de más para el cliente.
     pide = RE_BUSQUEDA.search(mensaje) or RE_ALGO.search(mensaje)
@@ -218,6 +210,9 @@ def revisar_respuesta(
             respaldo=f"No tenemos {ajenos[0]} en nuestro catálogo. Si me cuentas qué te "
             "gustó de él, te recomiendo libros parecidos que sí tenemos.",
         )
+    # Lo que existe: catálogo cerrado, agotados, datos de cada libro y alcance (mundo_cerrado)
+    if problema := revisar_mundo_cerrado(texto, acumulado, bd, usuario_id, mensaje, vistos):
+        return problema
     # "quiero el libro Drácula": encontró ese único libro, pero pregunta si lo agrega en vez
     # de agregarlo. Con una recomendación o varios resultados, preguntar sí es razonable.
     nombres = {u["nombre"] for u in acumulado.usadas}

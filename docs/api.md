@@ -108,7 +108,7 @@ Invoke-RestMethod "http://localhost:8000/api/politicas"
 
 | Ruta | Respuesta |
 |---|---|
-| `/api/libros?consulta=&categoria=&autor=&edad=&limite=` | `{total, libros: [...]}` con el resumen de cada libro (mismos campos que `libros` en el chat). `consulta` busca palabras completas en título, autor, editorial, categoría, género, protagonista, temas e ISBN; `edad` devuelve los libros cuyo rango la incluye; `limite` va de 1 a 20 |
+| `/api/libros?consulta=&categoria=&autor=&edad=&limite=` | `{total, libros: [...]}` con el resumen de cada libro (mismos campos que `libros` en el chat). `consulta` busca palabras completas en título, autor, editorial, categoría, género, protagonista, temas e ISBN; `edad` devuelve los libros cuyo rango la incluye; `limite` va de 1 a 500 (el panel lista el catálogo entero; el modelo, en cambio, ve a lo más 10 libros por búsqueda) |
 | `/api/libros/{isbn}` | Ficha completa con todos los campos del catálogo (ver el README, sección "Catálogo de libros"); acepta el ISBN con guiones; 404 si no existe o fue retirado |
 | `/api/categorias` | `[{categoria, libros}]`, de la categoría con más libros a la de menos |
 | `/api/tarjetas/{usuario_id}` | `{usuario_id, tarjetas: [{id, marca, ultimos4, etiqueta}]}`: tarjetas guardadas del cliente, solo con marca y últimos 4 dígitos |
