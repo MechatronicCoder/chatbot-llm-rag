@@ -365,5 +365,5 @@ Lista de revisión manual con el backend en marcha:
 - La cabecera y el título de la pestaña muestran el nombre de `datos/tienda.json`.
 - Backend detenido: la cabecera pasa a "Sin conexión" y vuelve sola a "En línea" al reiniciarlo.
 - Con token de administración configurado: el panel de logs pide el token y, tras guardarlo, muestra los eventos.
-- Con el acceso configurado: la pantalla de acceso cubre la página sin pedir datos protegidos; una clave incorrecta muestra el error y vacía el campo; al entrar se cargan catálogo, pedidos y logs; Salir vuelve a la pantalla.
+- Con el acceso configurado: la pantalla de acceso cubre la página sin pedir datos protegidos; una clave incorrecta muestra el error y vacía el campo; al entrar se cargan catálogo, pedidos y logs; el ícono de salir cierra la sesión, borra el token de administración, el id del cliente, la vista y el filtro del log guardados en el navegador, y recarga la página en la pantalla de acceso.
 - Ante un `401` con `X-Acceso: requerido` (sesión vencida), `api.js` avisa a `acceso.js`, que vuelve a mostrar la pantalla; ese `401` no abre el formulario del token de administración.

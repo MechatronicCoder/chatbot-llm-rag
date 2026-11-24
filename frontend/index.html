@@ -43,7 +43,14 @@
         <span class="solo-lectores">Vista de programador</span>
       </button>
     </div>
-    <button class="enlace salir" id="salir" type="button" hidden>Salir</button>
+    <!-- Cerrar sesión: borra la sesión, el token de administración y lo guardado en el navegador -->
+    <button class="salir" id="salir" type="button" hidden aria-label="Cerrar sesión"
+            title="Cerrar sesión: borra la sesión, el token de administración y los datos de este navegador">
+      <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 20H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h3M16 17l5-5-5-5M21 12H9"/>
+      </svg>
+    </button>
   </header>
 
   <main class="disposicion">
