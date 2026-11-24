@@ -36,6 +36,27 @@
   color: var(--color-sobre-acento);
 }
 
+/* Cerrar sesión (acceso.js): ícono junto al interruptor, en rojo al pasar el puntero */
+.salir {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--color-linea-fuerte);
+  border-radius: var(--radio-pildora);
+  background: transparent;
+  color: var(--color-tenue);
+  cursor: pointer;
+  transition:
+    color var(--dur-rapida) ease-out,
+    border-color var(--dur-rapida) ease-out;
+}
+
+.salir:hover {
+  border-color: var(--color-error-texto);
+  color: var(--color-error-texto);
+}
+
 .acciones-dialogo {
   justify-content: flex-end;
   margin-top: var(--esp-2);
