@@ -140,12 +140,23 @@ def tema_critico(texto: str, temas: Iterable[str]) -> bool:
     return any(normalizar(tema) in normalizado for tema in temas)
 
 
+# Líneas internas que el modelo ve en el historial y a veces copia en su respuesta: en la
+# demo, una recomendación terminó con "[Referencias del turno: ISBN 978…]" a la vista.
+RE_LINEA_INTERNA = re.compile(
+    r"^[ \t]*\[(?:Referencias del turno|Contexto interno|Tarjeta guardada|Revisión interna)"
+    r"[^\n]*\][ \t]*$\n?",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+
 def validar_salida(texto: str) -> tuple[str, bool, str]:
     """Revisa la respuesta del LLM antes de entregarla.
 
     Devuelve `(texto_validado, bloqueado, motivo)`: una palabra fuera de política
-    reemplaza toda la respuesta; un dato sensible solo se redacta.
+    reemplaza toda la respuesta; un dato sensible solo se redacta. Las líneas internas
+    ([Referencias del turno…], [Contexto interno…]) nunca llegan al cliente.
     """
+    texto = RE_LINEA_INTERNA.sub("", texto).strip()
     normalizado = normalizar(texto)
     for palabra in PALABRAS_SALIDA:
         if normalizar(palabra) in normalizado:

@@ -256,3 +256,18 @@ def test_la_nota_de_la_tarjeta_llega_al_modelo(
     servicio_con_modelo.responder("Quiero el libro «La escuela de magos»", "ana", "s-tarjeta")
     ultimo = modelo.llamadas[0]["mensajes"][-1]["content"]
     assert ultimo.startswith("Quiero el libro «La escuela de magos»") and ISBN_MAGO in ultimo
+
+
+# -- 11. la respuesta mostró "[Referencias del turno: ISBN …]" al cliente ----------------
+def test_las_lineas_internas_nunca_llegan_al_cliente() -> None:
+    from app.core.seguridad import validar_salida
+
+    texto = (
+        "Te recomiendo *La escuela de magos*.\n\n"
+        "[Referencias del turno: ISBN 9786070000035 «La escuela de magos»]\n"
+        "[Contexto interno, no lo escribió el cliente: eligió una tarjeta]"
+    )
+    limpio, bloqueado, _ = validar_salida(texto)
+    assert limpio == "Te recomiendo *La escuela de magos*." and not bloqueado
+    # una mención entre corchetes dentro del texto no es una línea interna
+    assert validar_salida("Mira [esta ficha] del libro.")[0] == "Mira [esta ficha] del libro."
