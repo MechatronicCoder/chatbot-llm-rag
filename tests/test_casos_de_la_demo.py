@@ -271,3 +271,51 @@ def test_las_lineas_internas_nunca_llegan_al_cliente() -> None:
     assert limpio == "Te recomiendo *La escuela de magos*." and not bloqueado
     # una mención entre corchetes dentro del texto no es una línea interna
     assert validar_salida("Mira [esta ficha] del libro.")[0] == "Mira [esta ficha] del libro."
+
+
+# -- 11. simulación de una compra: "¡Reservado con éxito!" sin haber reservado ------------
+def test_no_se_afirma_una_reserva_que_no_se_hizo(bd: BaseDatos) -> None:
+    carrito = bd.actualizar_carrito("ana", [{"isbn": ISBN_MAGO, "cantidad": 1}], "lima")
+    pedido = carrito["pedido_id"]
+    inventada = f"¡Reservado con éxito! 🎉\n- **Pedido ID**: {pedido}\n- **Estado**: Reservado"
+    problema = revisar_respuesta(inventada, Acumulado(), bd, "ana", "resérvalo, eso es todo")
+    assert problema is not None and problema.motivo == "afirma una reserva que no se registró"
+    # decir que todavía no está reservado, u ofrecer reservarlo, es correcto
+    honesta = "Tu pedido todavía no está reservado. ¿Deseas reservarlo ahora?"
+    assert revisar_respuesta(honesta, Acumulado(), bd, "ana", "¿ya está reservado?") is None
+    # con la reserva hecha en el turno, o ya registrada, sí puede decirlo
+    hecha = Acumulado(usadas=[{"nombre": "reservar_pedido"}])
+    assert revisar_respuesta(inventada, hecha, bd, "ana", "resérvalo") is None
+    bd.reservar_pedido("ana", ISBN_MAGO, 1)
+    assert (
+        revisar_respuesta("Tu pedido está reservado.", Acumulado(), bd, "ana", "¿y mi pedido?")
+        is None
+    )
+
+
+def test_explicar_la_reserva_no_es_afirmarla(bd: BaseDatos) -> None:
+    bd.actualizar_carrito("ana", [{"isbn": ISBN_MAGO, "cantidad": 1}], "lima")
+    agregado = (
+        "Agregué *La escuela de magos*, S/ 69.90, a tu carrito, sin reservar. Al reservarlo, "
+        "el stock queda reservado para ti. Una vez reservado, podrás pagar con el botón "
+        "«Pagar». ¿Deseas reservarlo ahora?"
+    )
+    agrego = Acumulado(usadas=[{"nombre": "actualizar_carrito"}])
+    assert (
+        revisar_respuesta(agregado, agrego, bd, "ana", "Quiero el libro «La escuela de magos»")
+        is None
+    )
+
+
+# -- 12. simulación: "aún no está pagado" de un pedido que se pagó con el botón -----------
+def test_no_dice_que_falta_pagar_lo_que_ya_se_pago(bd: BaseDatos) -> None:
+    pedido = bd.actualizar_carrito("ana", [{"isbn": ISBN_MAGO, "cantidad": 1}], "lima")
+    texto = f"No, tu pedido {pedido['pedido_id']} aún no está pagado."
+    assert revisar_respuesta(texto, Acumulado(), bd, "ana", "¿ya pagué?") is None  # es verdad
+    bd.registrar_pago("ana", pedido["pedido_id"], "efectivo")
+    problema = revisar_respuesta(texto, Acumulado(), bd, "ana", "¿ya pagué?")
+    assert problema is not None and problema.motivo.startswith("dice que no está pagado")
+    consultado = Acumulado(usadas=[{"nombre": "consultar_pedido"}])
+    assert (
+        revisar_respuesta("Tu pedido ya está pagado.", consultado, bd, "ana", "¿ya pagué?") is None
+    )

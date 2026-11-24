@@ -20,6 +20,7 @@ from app.servicios.lectura import (
     RE_ID,
     RE_MONTO,
     RE_MONTO_COMPLETO,
+    RE_NEGACION,
     RE_OTRO_MEDIO,
     centimos,
 )
@@ -43,6 +44,43 @@ RE_PAGADO = re.compile(
     re.IGNORECASE,
 )
 RE_CANCELADO = re.compile(r"\bcancelad[oa]s?\b", re.IGNORECASE)
+# Solo afirmaciones explícitas: "reservado con éxito", "Estado: reservado", "ya está reservado",
+# "lo reservé". "Una vez reservado, podrás pagar" explica el paso y no cuenta.
+RE_RESERVADO = re.compile(
+    r"\breservad[oa]s?\s+con\s+[eé]xito|\bestado\W{0,6}reservad|"
+    r"\b(?:est[aá]|qued[oó]|fue|ha\s+sido)\s+reservad|\breserv[eé]\b|"
+    r"\breserva\s+(?:confirmada|realizada|hecha|exitosa|lista)\b",
+    re.IGNORECASE,
+)
+
+
+# "Al reservar, el stock queda reservado", "¿deseas reservarlo?": explican, no afirman
+RE_CONDICIONAL = re.compile(r"\?|\b(?:al|si|cuando|para|puedes?|deseas?|quieres?)\s+reserv", re.I)
+# "aún no está pagado", "pendiente de pago", "falta pagar"
+RE_NO_PAGADO = re.compile(
+    r"\b(?:no|a[uú]n no|todav[ií]a no)\s+(?:est[aá]\s+|ha sido\s+|fue\s+)?pagad|"
+    r"\bpendiente de pago\b|\bfalta pagar\b|\bsin pagar\b",
+    re.IGNORECASE,
+)
+
+
+def _oraciones(texto: str) -> list[str]:
+    return [o for linea in texto.splitlines() for o in RE_ORACION.split(linea)]
+
+
+def afirma_reserva(texto: str) -> bool:
+    """Alguna oración dice que el pedido quedó reservado ("todavía no está reservado" no)."""
+    return any(
+        RE_RESERVADO.search(o) and not RE_NEGACION.search(o) and not RE_CONDICIONAL.search(o)
+        for o in _oraciones(texto)
+    )
+
+
+def afirma_pago(texto: str) -> bool:
+    """Alguna oración dice que se pagó ("aún no está pagado" no lo dice)."""
+    return any(RE_PAGADO.search(o) and not RE_NO_PAGADO.search(o) for o in _oraciones(texto))
+
+
 # Plazos y envíos que solo dicen las políticas: "24 horas hábiles", "1 a 3 días útiles",
 # "guía de envío", "comprobante … a tu correo".
 RE_PLAZO = re.compile(
@@ -243,7 +281,17 @@ def revisar_respuesta(
     usadas = {u["nombre"] for u in acumulado.usadas if u.get("ok", True)}
     estados = {(bd.consultar_pedido(i) or {}).get("estado") for i in ids if i.startswith("PED-")}
     # El bot no cobra: paga el cliente con el botón de la tarjeta del pedido.
-    if RE_PAGADO.search(texto) and "pagado" not in estados:
+    # El pago se hace con el botón, fuera del chat: el modelo no lo ve en el historial y en la
+    # simulación dijo "aún no está pagado" de un pedido que ya lo estaba.
+    pagados = estados or {p.get("estado") for p in bd.pedidos_de(usuario_id)}
+    if RE_NO_PAGADO.search(texto) and "pagado" in pagados and "consultar_pedido" not in usadas:
+        return Problema(
+            motivo="dice que no está pagado un pedido que ya se pagó",
+            instruccion=NOTA + "El cliente pagó con el botón «Pagar»: eso no aparece en la "
+            "conversación. Llama a consultar_pedido y responde con el estado que devuelva.",
+            respaldo="Revisé tu pedido: ya figura como pagado. ¿Te ayudo con algo más?",
+        )
+    if afirma_pago(texto) and "pagado" not in pagados:
         return Problema(
             motivo="afirma un pago que no se registró",
             instruccion=NOTA
@@ -263,6 +311,22 @@ def revisar_respuesta(
             + "No se canceló nada: no llamaste a cancelar_pedido. Si el cliente pidió "
             "cancelar, llámala ahora con el id exacto del pedido.",
             respaldo="Todavía no cancelé el pedido. ¿Me confirmas cuál quieres cancelar?",
+        )
+    # "¡Reservado con éxito! Pedido PED-…" sin haber llamado a reservar_pedido: en la simulación
+    # de una compra completa el pedido seguía en el carrito. Sin ids en el texto, vale el estado
+    # de los pedidos del cliente.
+    conocidos = estados or {p.get("estado") for p in bd.pedidos_de(usuario_id)}
+    if (
+        afirma_reserva(texto)
+        and "reservar_pedido" not in usadas
+        and not conocidos & {"reservado", "pagado"}
+    ):
+        return Problema(
+            motivo="afirma una reserva que no se registró",
+            instruccion=NOTA
+            + "El pedido no está reservado: no llamaste a reservar_pedido. Si el cliente pidió "
+            "reservar, llámala ahora con el id exacto del pedido y muestra lo que devuelve.",
+            respaldo="Todavía no reservé el pedido. ¿Quieres que lo reserve ahora?",
         )
     if RE_CARRITO_CAMBIADO.search(texto) and "actualizar_carrito" not in usadas:
         return Problema(
