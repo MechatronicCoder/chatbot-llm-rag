@@ -253,6 +253,21 @@ export function buscarLibros({ consulta = '', categoria = '', limite = 8 } = {},
   return peticion(`/api/libros?${parametros}`, opciones);
 }
 
+/** GET /api/catalogo → { total, libros }: todos los libros a la venta (vitrina). */
+export function catalogoCompleto(opciones = {}) {
+  return peticion('/api/catalogo', opciones);
+}
+
+/** GET /api/libros/{isbn}: ficha completa de un libro. */
+export function fichaLibro(isbn, opciones = {}) {
+  return peticion(`/api/libros/${encodeURIComponent(isbn)}`, opciones);
+}
+
+/** GET /api/categorias → [{ categoria, libros }] */
+export function categorias(opciones = {}) {
+  return peticion('/api/categorias', opciones);
+}
+
 /** GET /api/pedidos/{usuario_id} */
 export function pedidosDe(usuarioId, opciones = {}) {
   return peticion(`/api/pedidos/${encodeURIComponent(usuarioId)}`, opciones);

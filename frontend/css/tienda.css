@@ -1,0 +1,327 @@
+/* Tienda — página de la vitrina (tienda.html): cabecera, filtros y tarjetas de libros.
+   Orden de carga en tienda.html: base, disposicion, tienda, ficha. */
+
+/* La página del chat ocupa la pantalla sin desplazarse; la tienda se desplaza normalmente. */
+body.pagina-tienda {
+  display: block;
+  height: auto;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow: visible;
+}
+
+.cabecera-tienda {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: color-mix(in srgb, var(--color-fondo) 92%, transparent);
+  backdrop-filter: blur(8px);
+}
+
+.tienda {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: var(--esp-5) var(--esp-4) 48px;
+}
+
+/* Portada de la tienda --------------------------------------------------- */
+
+.portada-tienda {
+  padding: 28px var(--esp-5);
+  border: 1px solid var(--color-linea);
+  border-radius: var(--radio-l);
+  background:
+    radial-gradient(circle at 85% 20%, rgba(47, 108, 198, 0.28), transparent 55%),
+    linear-gradient(135deg, var(--color-panel-alto), var(--color-panel));
+}
+
+.portada-titulo {
+  font-size: clamp(22px, 3vw, 30px);
+  font-weight: 700;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+.portada-texto {
+  max-width: 60ch;
+  margin-top: var(--esp-2);
+  color: var(--color-tenue);
+  font-size: var(--texto-l);
+}
+
+/* Filtros ---------------------------------------------------------------- */
+
+.filtros {
+  display: grid;
+  gap: var(--esp-3);
+  margin-top: var(--esp-5);
+}
+
+.filtros-fila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--esp-2) var(--esp-3);
+}
+
+.filtros-buscar {
+  flex: 1 1 260px;
+  min-height: 38px;
+  font-size: var(--texto-m);
+}
+
+.filtros-fila .campo-compacto {
+  min-height: 38px;
+}
+
+.filtros-casilla {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-tenue);
+  font-size: var(--texto-s);
+  cursor: pointer;
+}
+
+.categorias {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--esp-2);
+}
+
+.chip-categoria {
+  padding: 5px var(--esp-3);
+  border: 1px solid var(--color-linea);
+  border-radius: var(--radio-pildora);
+  background: var(--color-panel);
+  color: var(--color-tenue);
+  font: inherit;
+  font-size: var(--texto-s);
+  text-transform: capitalize;
+  cursor: pointer;
+  transition: border-color var(--dur-rapida) ease-out, color var(--dur-rapida) ease-out;
+}
+
+.chip-categoria:hover {
+  border-color: var(--color-linea-fuerte);
+  color: var(--color-texto);
+}
+
+.chip-categoria[aria-pressed="true"] {
+  border-color: var(--color-acento);
+  background: var(--color-acento);
+  color: #fff;
+}
+
+.resultado {
+  margin: var(--esp-4) 0 var(--esp-3);
+  color: var(--color-tenue);
+  font-size: var(--texto-s);
+}
+
+/* Tarjetas --------------------------------------------------------------- */
+
+.vitrina {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
+  gap: var(--esp-5) var(--esp-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tarjeta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--color-linea);
+  border-radius: var(--radio-l);
+  background: var(--color-panel);
+  overflow: hidden;
+  transition: border-color var(--dur-rapida) ease-out, transform var(--dur-mensaje) var(--curva-salida);
+}
+
+.tarjeta:hover {
+  border-color: var(--color-linea-fuerte);
+  transform: translateY(-2px);
+}
+
+.tarjeta-abrir {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: var(--color-panel-alto);
+  cursor: pointer;
+}
+
+.portada-marco {
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+}
+
+.portada,
+.ficha-portada {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tarjeta-agotada .portada-marco {
+  filter: grayscale(0.7) brightness(0.75);
+}
+
+.insignia {
+  position: absolute;
+  top: var(--esp-2);
+  left: var(--esp-2);
+  padding: 2px var(--esp-2);
+  border-radius: var(--radio-pildora);
+  font-size: var(--texto-xs);
+  font-weight: 700;
+  color: #fff;
+}
+
+.insignia-disponible {
+  display: none; /* en la tarjeta solo se destacan las excepciones */
+}
+
+.insignia-pocas {
+  background: var(--color-aviso);
+  color: #1a1204;
+}
+
+.insignia-agotado {
+  background: var(--color-error);
+}
+
+.tarjeta-cuerpo {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--esp-3);
+}
+
+.tarjeta-categoria {
+  color: var(--color-acento-texto);
+  font-size: var(--texto-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.tarjeta-titulo {
+  display: -webkit-box;
+  margin: 2px 0 0;
+  overflow: hidden;
+  font-size: var(--texto-m);
+  font-weight: 650;
+  line-height: 1.3;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.tarjeta-autor {
+  margin: 0;
+  overflow: hidden;
+  color: var(--color-tenue);
+  font-size: var(--texto-s);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.estrellas {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--texto-xs);
+  color: var(--color-tenue);
+}
+
+.estrellas-iconos {
+  color: #e0b04a;
+  letter-spacing: 1px;
+}
+
+.tarjeta-pie {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--esp-2);
+  margin-top: auto;
+  padding-top: var(--esp-3);
+}
+
+.tarjeta-precio {
+  font-size: var(--texto-l);
+  font-weight: 700;
+}
+
+.tarjeta-comprar {
+  min-height: 32px;
+  padding: 0 var(--esp-3);
+  font-size: var(--texto-s);
+  text-decoration: none;
+}
+
+.tarjeta-comprar[aria-disabled="true"] {
+  cursor: default;
+  opacity: 0.7;
+}
+
+/* Tapa generada cuando el libro no tiene portada o la imagen no carga */
+.tapa {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+  padding: var(--esp-4) var(--esp-3);
+  color: #fff;
+  text-align: left;
+}
+
+.tapa-titulo {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.tapa-autor {
+  font-size: var(--texto-s);
+  opacity: 0.85;
+}
+
+.tapa-tono-0 { background: linear-gradient(160deg, #3b4f8a, #1c2547); }
+.tapa-tono-1 { background: linear-gradient(160deg, #7a3b52, #351a26); }
+.tapa-tono-2 { background: linear-gradient(160deg, #2f6b5c, #14302a); }
+.tapa-tono-3 { background: linear-gradient(160deg, #8a5a2b, #3b2612); }
+.tapa-tono-4 { background: linear-gradient(160deg, #5b3f8a, #251a3d); }
+.tapa-tono-5 { background: linear-gradient(160deg, #3f6f8a, #18303d); }
+
+@media (max-width: 599.98px) {
+  .tienda {
+    padding: var(--esp-4) var(--esp-4) 40px;
+  }
+
+  .vitrina {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--esp-3);
+  }
+
+  .tarjeta-pie {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tarjeta,
+  .tarjeta:hover {
+    transform: none;
+    transition: none;
+  }
+}

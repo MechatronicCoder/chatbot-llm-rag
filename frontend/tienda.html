@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="Vitrina de la librería: todos los libros con su portada, precio y disponibilidad.">
+  <title>Librería · Tienda</title>
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/disposicion.css">
+  <link rel="stylesheet" href="css/tienda.css">
+  <link rel="stylesheet" href="css/ficha.css">
+  <script type="module" src="js/tienda.js"></script>
+</head>
+<body class="pagina-tienda">
+  <a class="saltar" href="#vitrina">Ir a los libros</a>
+
+  <header class="cabecera cabecera-tienda">
+    <h1 class="marca"><span id="marca-nombre">Librería</span> <span class="marca-sub">· Tienda</span></h1>
+    <nav class="navegacion" aria-label="Secciones">
+      <a class="navegacion-enlace" href="./">Asistente</a>
+      <a class="navegacion-enlace" href="tienda.html" aria-current="page">Tienda</a>
+    </nav>
+  </header>
+
+  <main class="tienda">
+    <section class="portada-tienda" aria-labelledby="titulo-tienda">
+      <h2 class="portada-titulo" id="titulo-tienda">Encuentra tu próxima lectura</h2>
+      <p class="portada-texto" id="tienda-descripcion">Fantasía, ciencia ficción, terror, misterio, romance y más.
+        ¿No sabes cuál elegir? Pregúntale al librero.</p>
+    </section>
+
+    <section class="filtros" aria-label="Buscar y filtrar">
+      <div class="filtros-fila">
+        <label class="solo-lectores" for="buscar">Buscar por título, autor o ISBN</label>
+        <input class="campo filtros-buscar" id="buscar" type="search"
+               placeholder="Buscar por título, autor o ISBN…" autocomplete="off">
+        <label class="solo-lectores" for="orden">Ordenar por</label>
+        <select class="campo campo-compacto" id="orden">
+          <option value="destacados">Mejor valorados</option>
+          <option value="precio-asc">Precio: menor a mayor</option>
+          <option value="precio-desc">Precio: mayor a menor</option>
+          <option value="titulo">Título (A–Z)</option>
+        </select>
+        <label class="filtros-casilla">
+          <input type="checkbox" id="solo-disponibles"> Solo disponibles
+        </label>
+      </div>
+      <div class="categorias" id="categorias" role="group" aria-label="Categorías"></div>
+    </section>
+
+    <p class="resultado" id="resultado" role="status" aria-live="polite">Cargando libros…</p>
+    <ul class="vitrina" id="vitrina" aria-label="Libros"></ul>
+  </main>
+
+  <dialog class="ficha" id="ficha" aria-labelledby="ficha-titulo">
+    <button class="ficha-cerrar" id="ficha-cerrar" type="button" aria-label="Cerrar">×</button>
+    <div class="ficha-cuerpo" id="ficha-cuerpo"></div>
+  </dialog>
+</body>
+</html>

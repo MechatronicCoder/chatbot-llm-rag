@@ -138,6 +138,13 @@ def libro(estado: Estado, isbn: Annotated[str, Path(pattern=r"^[0-9-]{10,17}$")]
     return encontrado
 
 
+@router.get("/catalogo", response_model=ListaLibros, tags=["tienda"])
+def catalogo(estado: Estado) -> dict[str, Any]:
+    """Todos los libros a la venta, para la vitrina (sin el tope de 20 de /libros)."""
+    items = estado.bd.libros_activos()
+    return {"total": len(items), "libros": [resumen_libro(lb) for lb in items]}
+
+
 @router.get("/categorias", response_model=list[Categoria], tags=["tienda"])
 def categorias(estado: Estado) -> list[dict[str, Any]]:
     return estado.bd.categorias()

@@ -199,7 +199,7 @@ El catálogo está en `datos/catalogo.json`, con un objeto `{"libros": [...]}`. 
 | `formato`, `paginas`, `idioma` | texto, número, texto | No | Ficha |
 | `valoracion`, `num_valoraciones` | 0 a 5, entero | No | Ordenamiento bayesiano; van siempre juntos |
 | `similares` | lista de ISBN del catálogo | No | Venta cruzada después de una reserva |
-| `portada` | ruta relativa dentro de `frontend/` | No | Imagen en las tarjetas |
+| `portada` | enlace `https://` o ruta relativa dentro de `frontend/` | No | Imagen de la vitrina (`tienda.html`) |
 
 Para reemplazar el catálogo:
 
@@ -422,6 +422,7 @@ La documentación interactiva está en `/docs`. Resumen:
 | POST | `/api/acceso/logout` | Cierra la sesión | público |
 | GET | `/api/libros` | Búsqueda en el catálogo con filtros de categoría, autor y edad | sesión |
 | GET | `/api/libros/{isbn}` | Ficha completa de un libro | sesión |
+| GET | `/api/catalogo` | Todos los libros a la venta, para la vitrina | sesión |
 | GET | `/api/categorias` | Categorías con su cantidad de libros | sesión |
 | GET | `/api/pedidos/{usuario_id}` | Pedidos y totales del cliente | sesión |
 | GET | `/api/politicas` | Documentos y fragmentos indexados | sesión |
@@ -485,7 +486,7 @@ El informe se guarda en `evaluacion/resultados/` con la tasa de aciertos por cat
 | Uso del chat por terceros o bots y gasto de la API | Acceso con usuario y clave: la clave solo existe como hash PBKDF2 fuera del repositorio, la sesión va en una cookie HttpOnly y SameSite=Strict, y los intentos se limitan por IP y en total |
 | Abuso del chat con sesión | Límite de mensajes por minuto por IP y tope de tokens por respuesta |
 | Exposición de logs y ventas | Rutas de administración con `X-Admin-Token` |
-| Inyección de scripts en el navegador | Content-Security-Policy estricta, escape de todo el contenido dinámico y portadas solo con rutas locales |
+| Inyección de scripts en el navegador | Content-Security-Policy estricta, escape de todo el contenido dinámico y portadas solo con enlaces https o rutas locales, insertadas como atributo `src` (nunca HTML) |
 | Claves filtradas | `.env` fuera de Git, secretos de Container Apps y OIDC en el despliegue |
 
 ## Despliegue en Azure

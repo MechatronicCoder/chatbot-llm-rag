@@ -83,6 +83,12 @@ def test_ficha_de_un_libro(cliente: TestClient) -> None:
     assert cliente.get("/api/libros/no-es-isbn").status_code == 422
 
 
+def test_catalogo_completo_para_la_vitrina(cliente: TestClient) -> None:
+    datos = cliente.get("/api/catalogo").json()
+    assert datos["total"] == len(LIBROS_PRUEBA) == len(datos["libros"])
+    assert {"isbn", "titulo", "autor", "precio", "stock", "portada"} <= datos["libros"][0].keys()
+
+
 def test_categorias(cliente: TestClient) -> None:
     categorias = {c["categoria"]: c["libros"] for c in cliente.get("/api/categorias").json()}
     assert categorias["novela"] == 4 and sum(categorias.values()) == len(LIBROS_PRUEBA)

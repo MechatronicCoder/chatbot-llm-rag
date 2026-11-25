@@ -110,6 +110,7 @@ Invoke-RestMethod "http://localhost:8000/api/politicas"
 |---|---|
 | `/api/libros?consulta=&categoria=&autor=&edad=&limite=` | `{total, libros: [...]}` con el resumen de cada libro (mismos campos que `libros` en el chat). `consulta` busca palabras completas en título, autor, editorial, categoría, género, protagonista, temas e ISBN; `edad` devuelve los libros cuyo rango la incluye; `limite` va de 1 a 20 |
 | `/api/libros/{isbn}` | Ficha completa con todos los campos del catálogo (ver el README, sección "Catálogo de libros"); acepta el ISBN con guiones; 404 si no existe o fue retirado |
+| `/api/catalogo` | `{total, libros: [...]}` con todos los libros a la venta (mismo resumen que `/api/libros`, incluida `portada`), sin tope; lo usa la vitrina (`tienda.html`) |
 | `/api/categorias` | `[{categoria, libros}]`, de la categoría con más libros a la de menos |
 | `/api/pedidos/{usuario_id}` | `{usuario_id, total, pendiente, pagado, pedidos: [...]}`, del más nuevo al más viejo. Cada pedido trae `pedido_id`, `estado` (`carrito`, `reservado`, `pagado` o `cancelado`), `zona` y `zona_nombre` del envío, `lineas` (`isbn`, `titulo`, `autor`, `cantidad`, `precio_unitario`, `importe`), `unidades`, `subtotal`, `envio` (`null` mientras falte la zona), `total`, `falta_para_envio_gratis` y `creado_en`. Un carrito vacío no se lista |
 | `/api/politicas` | Documentos y cantidad de fragmentos indexados |

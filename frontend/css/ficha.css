@@ -1,0 +1,160 @@
+/* Tienda — ficha completa de un libro (el <dialog> de tienda.html).
+   Orden de carga en tienda.html: base, disposicion, tienda, ficha. */
+
+.ficha {
+  width: min(880px, calc(100vw - 32px));
+  max-height: calc(100dvh - 48px);
+  padding: 0;
+  border: 1px solid var(--color-linea-fuerte);
+  border-radius: var(--radio-l);
+  background: var(--color-panel);
+  color: var(--color-texto);
+  overflow: auto;
+}
+
+.ficha::backdrop {
+  background: rgba(5, 7, 10, 0.72);
+}
+
+.ficha-cerrar {
+  position: sticky;
+  top: var(--esp-2);
+  float: right;
+  z-index: 1;
+  width: 36px;
+  height: 36px;
+  margin: var(--esp-2) var(--esp-2) 0 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--color-boton-suave);
+  color: var(--color-texto);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.ficha-cerrar:hover {
+  background: var(--color-boton-suave-hover);
+}
+
+.ficha-cuerpo {
+  display: grid;
+  grid-template-columns: minmax(0, 280px) minmax(0, 1fr);
+  gap: var(--esp-5) 28px;
+  padding: 28px;
+}
+
+.ficha-portada-marco {
+  aspect-ratio: 2 / 3;
+  border-radius: var(--radio-m);
+  overflow: hidden;
+  background: var(--color-panel-alto);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+.ficha-info {
+  display: flex;
+  flex-direction: column;
+  gap: var(--esp-2);
+  min-width: 0;
+}
+
+.ficha-titulo {
+  font-size: clamp(20px, 2.6vw, 26px);
+  font-weight: 700;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+.ficha-autor {
+  color: var(--color-tenue);
+  font-size: var(--texto-l);
+}
+
+.ficha-compra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--esp-3);
+  margin-top: var(--esp-2);
+}
+
+.ficha-precio {
+  font-size: 26px;
+  font-weight: 750;
+}
+
+.insignia-linea {
+  position: static;
+}
+
+.insignia-linea.insignia-disponible {
+  display: inline-block;
+  background: var(--color-ok);
+}
+
+.ficha-comprar {
+  align-self: flex-start;
+  min-height: 42px;
+  padding: 0 var(--esp-5);
+  text-decoration: none;
+}
+
+.ficha-aviso {
+  color: var(--color-aviso-texto);
+  font-size: var(--texto-s);
+}
+
+.ficha-sinopsis {
+  margin-top: var(--esp-2);
+  line-height: 1.6;
+}
+
+.ficha-temas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: var(--esp-1) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ficha-temas li {
+  padding: 2px var(--esp-2);
+  border: 1px solid var(--color-linea);
+  border-radius: var(--radio-pildora);
+  color: var(--color-tenue);
+  font-size: var(--texto-xs);
+}
+
+.ficha-datos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--esp-3);
+  margin: var(--esp-3) 0 0;
+  padding-top: var(--esp-3);
+  border-top: 1px solid var(--color-linea);
+}
+
+.ficha-dato dt {
+  color: var(--color-tenue);
+  font-size: var(--texto-xs);
+}
+
+.ficha-dato dd {
+  margin: 0;
+  font-size: var(--texto-s);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 679.98px) {
+  .ficha-cuerpo {
+    grid-template-columns: minmax(0, 1fr);
+    padding: var(--esp-4);
+  }
+
+  .ficha-portada-marco {
+    width: min(220px, 70%);
+    margin: 0 auto;
+  }
+}

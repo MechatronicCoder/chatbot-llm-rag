@@ -232,6 +232,37 @@
   }
 }
 
+/* Navegación entre el asistente y la tienda (index.html y tienda.html) */
+.navegacion {
+  display: flex;
+  gap: var(--esp-1);
+  margin-left: auto;
+}
+
+.navegacion-enlace {
+  padding: 6px var(--esp-3);
+  border-radius: var(--radio-pildora);
+  color: var(--color-tenue);
+  font-size: var(--texto-s);
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color var(--dur-rapida) ease-out, color var(--dur-rapida) ease-out;
+}
+
+.navegacion-enlace:hover {
+  background: var(--color-boton-suave);
+  color: var(--color-texto);
+}
+
+.navegacion-enlace[aria-current="page"] {
+  background: var(--color-boton-suave);
+  color: var(--color-texto);
+}
+
+.navegacion + .salir {
+  margin-left: 0;
+}
+
 /* ---------------------------------------------------------------------------
    Acceso de la demo
    --------------------------------------------------------------------------- */

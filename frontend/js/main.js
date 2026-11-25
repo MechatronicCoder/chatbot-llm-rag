@@ -195,6 +195,21 @@ async function revisarSalud() {
 // Arranque
 // ---------------------------------------------------------------------------
 
+/* Desde la tienda (tienda.html), "Comprar" abre el chat con ?pedir=<isbn>: el pedido
+   queda escrito en la caja, sin enviarse, para que la persona lo revise o lo complete. */
+function prellenarPedido() {
+  const url = new URL(location.href);
+  const isbn = url.searchParams.get('pedir');
+  if (!isbn) return;
+  url.searchParams.delete('pedir');
+  history.replaceState(null, '', url.pathname + url.search + url.hash);
+  if (!/^[0-9-]{10,17}$/.test(isbn)) return;
+  const entrada = porId('entrada');
+  if (!entrada.value.trim()) entrada.value = `Quiero comprar el libro con ISBN ${isbn}.`;
+  entrada.focus();
+}
+
+prellenarPedido();
 revisarSalud();
 // Con el acceso activado, los datos se cargan recién al iniciar sesión (alEntrar).
 acceso.verificar().then((d) => {

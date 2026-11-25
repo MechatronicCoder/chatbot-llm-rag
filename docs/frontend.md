@@ -15,12 +15,15 @@ La interfaz tiene tres zonas:
 ```
 frontend/
 ├── index.html          estructura de la página (sin estilos ni scripts en línea)
+├── tienda.html         vitrina de la tienda: todos los libros con su portada
 ├── css/
 │   ├── base.css          variables y estilos base
 │   ├── disposicion.css   columnas y controles
 │   ├── chat.css          hilo, burbujas, tarjetas de libros, chips y formulario
 │   ├── paneles.css       panel lateral y panel de logs
 │   ├── responsive.css    ajustes por ancho de pantalla
+│   ├── tienda.css        vitrina: filtros y tarjetas (solo tienda.html)
+│   ├── ficha.css         ficha completa de un libro (solo tienda.html)
 │   └── animaciones.css   animaciones y preferencias del sistema
 └── js/
     ├── main.js         arranque, estado de la cabecera y temporizadores
@@ -33,6 +36,8 @@ frontend/
     ├── libros.js       tarjetas de los libros de cada respuesta
     ├── carrito.js      tarjeta del carrito o pedido de cada respuesta
     ├── panel.js        cliente, pedidos y catálogo de libros
+    ├── tienda.js       arranque de la vitrina: filtros, orden y ficha
+    ├── vitrina.js      tarjetas, portadas y ficha de la vitrina
     └── logs.js         log en vivo, filtros, métricas y formulario de token
 ```
 
@@ -50,6 +55,8 @@ frontend/
 | `carrito.js` | Tarjeta del pedido que tocó una respuesta: líneas, subtotal, envío, total y cuánto falta para el envío gratis. Solo formatea los montos que calculó el servidor; nunca suma. | `tarjetaCarrito(carrito)` → `<section>` o `null` |
 | `panel.js` | Columna del cliente: id (guardado en localStorage), recargar, borrar conversación, pedidos y catálogo. | `iniciarPanel({ alCambiarUsuario, alRecargar, alBorrar })` → `{ usuario, cargarPedidos, cargarCatalogo }` |
 | `logs.js` | Panel de logs: refresco pausable, filtros, métricas, formulario de token ante 401. | `iniciarLogs({ alCambiarTurno })` → `{ refrescar, refrescarSiActivo, filtrarTurno, turnoActual }` |
+| `vitrina.js` | Tarjeta de cada libro de la tienda (portada con `src = libro.portada`, tapa generada si no hay o no carga, precio, valoración, disponibilidad) y contenido de la ficha. | `tarjeta(libro, alAbrir)`, `contenidoFicha(ficha)`, `portada`, `disponibilidad`, `estrellas`, `enlaceComprar` |
+| `tienda.js` | Punto de entrada de `tienda.html`: carga `/api/catalogo` una vez y filtra en el navegador (búsqueda, categoría, solo disponibles, orden; el filtro queda en la URL), abre la ficha con `/api/libros/{isbn}`. "Comprar" lleva a `./?pedir=<isbn>` y `main.js` deja el pedido escrito en la caja del chat, sin enviarlo. | (nada; es el punto de entrada) |
 | `main.js` | Crea los tres módulos, los conecta mediante callbacks, pinta la cabecera desde `/api/health` (incluidos el nombre de la tienda, el título de la pestaña y la moneda) y mantiene los temporizadores. | (nada; es el punto de entrada) |
 
 ### Dependencias
@@ -181,7 +188,7 @@ El motivo es de seguridad: una política sin `'unsafe-inline'` neutraliza la may
 Cualquier recurso de otro origen que la política por defecto no contemple exige ajustar `CONTENT_SECURITY_POLICY` en el `.env` y reiniciar el backend. La política por defecto (definida en `app/core/config.py`) es:
 
 ```dotenv
-CONTENT_SECURITY_POLICY=default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'
+CONTENT_SECURITY_POLICY=default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'
 ```
 
 Casos habituales:
@@ -189,7 +196,7 @@ Casos habituales:
 - Google Fonts: ya está cubierto. La hoja de estilos viene de `fonts.googleapis.com` (`style-src`) y los archivos de fuente de `fonts.gstatic.com` (`font-src`). Basta un `<link rel="stylesheet">` en `index.html`, nunca un `@import` dentro de un bloque `<style>`.
 - Otro proveedor de fuentes: su host se agrega a `style-src` y a `font-src`.
 - Librería desde un CDN: su host se agrega a `script-src`. Es preferible copiar el archivo a `frontend/js/vendor/` y mantener solo `'self'`.
-- Imágenes externas: su host se agrega a `img-src`.
+- Imágenes externas: `img-src` ya admite cualquier origen `https:` (las portadas del catálogo vienen de otro dominio); no hace falta agregar hosts.
 - Peticiones a otro origen: el host se agrega a `connect-src` (hoy no hace falta, todo es del mismo origen).
 
 Al sobrescribir la variable se reemplaza la política completa, de modo que se parte de la política por defecto y se agrega solo lo necesario.
