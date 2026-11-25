@@ -1,5 +1,5 @@
 /* Tienda — página de la vitrina (tienda.html): cabecera, filtros y tarjetas de libros.
-   Orden de carga en tienda.html: base, disposicion, tienda, ficha. */
+   Orden de carga en tienda.html: base, disposicion, tienda, ficha (paleta marfil de base.css). */
 
 /* La página del chat ocupa la pantalla sin desplazarse; la tienda se desplaza normalmente. */
 body.pagina-tienda {
@@ -10,12 +10,11 @@ body.pagina-tienda {
   overflow: visible;
 }
 
+/* La cabecera negra queda fija arriba mientras se recorre la vitrina. */
 .cabecera-tienda {
   position: sticky;
   top: 0;
   z-index: 5;
-  background: color-mix(in srgb, var(--color-fondo) 92%, transparent);
-  backdrop-filter: blur(8px);
 }
 
 .tienda {
@@ -29,9 +28,10 @@ body.pagina-tienda {
 .portada-tienda {
   padding: 28px var(--esp-5);
   border: 1px solid var(--color-linea);
+  border-left: 4px solid var(--color-acento);
   border-radius: var(--radio-l);
   background:
-    radial-gradient(circle at 85% 20%, rgba(47, 108, 198, 0.28), transparent 55%),
+    radial-gradient(circle at 88% 15%, rgb(0 194 181 / 0.16), transparent 55%),
     linear-gradient(135deg, var(--color-panel-alto), var(--color-panel));
 }
 
@@ -91,9 +91,9 @@ body.pagina-tienda {
 
 .chip-categoria {
   padding: 5px var(--esp-3);
-  border: 1px solid var(--color-linea);
+  border: 1px solid var(--color-linea-fuerte);
   border-radius: var(--radio-pildora);
-  background: var(--color-panel);
+  background: var(--color-superficie);
   color: var(--color-tenue);
   font: inherit;
   font-size: var(--texto-s);
@@ -110,7 +110,8 @@ body.pagina-tienda {
 .chip-categoria[aria-pressed="true"] {
   border-color: var(--color-acento);
   background: var(--color-acento);
-  color: #fff;
+  color: var(--color-sobre-acento);
+  font-weight: 600;
 }
 
 .resultado {
@@ -135,15 +136,26 @@ body.pagina-tienda {
   flex-direction: column;
   min-width: 0;
   border: 1px solid var(--color-linea);
-  border-radius: var(--radio-l);
-  background: var(--color-panel);
+  border-top: 3px solid var(--color-acento); /* como las tarjetas de libros del chat */
+  border-radius: var(--radio-m);
+  background: var(--color-superficie);
   overflow: hidden;
-  transition: border-color var(--dur-rapida) ease-out, transform var(--dur-mensaje) var(--curva-salida);
+  transition:
+    border-color var(--dur-rapida) ease-out,
+    box-shadow var(--dur-rapida) ease-out,
+    transform var(--dur-mensaje) var(--curva-salida);
 }
 
 .tarjeta:hover {
   border-color: var(--color-linea-fuerte);
+  border-top-color: var(--color-acento);
+  box-shadow: 0 6px 18px rgb(21 21 21 / 0.12);
   transform: translateY(-2px);
+}
+
+.tarjeta-agotada,
+.tarjeta-agotada:hover {
+  border-top-color: var(--color-linea-fuerte);
 }
 
 .tarjeta-abrir {
@@ -170,7 +182,7 @@ body.pagina-tienda {
 }
 
 .tarjeta-agotada .portada-marco {
-  filter: grayscale(0.7) brightness(0.75);
+  filter: grayscale(0.8) opacity(0.7);
 }
 
 .insignia {
@@ -190,7 +202,7 @@ body.pagina-tienda {
 
 .insignia-pocas {
   background: var(--color-aviso);
-  color: #1a1204;
+  color: var(--color-texto);
 }
 
 .insignia-agotado {
@@ -242,7 +254,7 @@ body.pagina-tienda {
 }
 
 .estrellas-iconos {
-  color: #e0b04a;
+  color: var(--color-aviso);
   letter-spacing: 1px;
 }
 
@@ -268,18 +280,19 @@ body.pagina-tienda {
 }
 
 .tarjeta-comprar[aria-disabled="true"] {
-  cursor: default;
-  opacity: 0.7;
+  color: var(--color-tenue);
+  cursor: not-allowed;
 }
 
-/* Tapa generada cuando el libro no tiene portada o la imagen no carga */
+/* Tapa generada cuando el libro no tiene portada o la imagen no carga: colores de
+   tela de encuadernación, oscuros para que el texto marfil se lea (AA). */
 .tapa {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   height: 100%;
   padding: var(--esp-4) var(--esp-3);
-  color: #fff;
+  color: #eee3cc;
   text-align: left;
 }
 
@@ -295,12 +308,12 @@ body.pagina-tienda {
   opacity: 0.85;
 }
 
-.tapa-tono-0 { background: linear-gradient(160deg, #3b4f8a, #1c2547); }
-.tapa-tono-1 { background: linear-gradient(160deg, #7a3b52, #351a26); }
-.tapa-tono-2 { background: linear-gradient(160deg, #2f6b5c, #14302a); }
-.tapa-tono-3 { background: linear-gradient(160deg, #8a5a2b, #3b2612); }
-.tapa-tono-4 { background: linear-gradient(160deg, #5b3f8a, #251a3d); }
-.tapa-tono-5 { background: linear-gradient(160deg, #3f6f8a, #18303d); }
+.tapa-tono-0 { background: linear-gradient(160deg, #2b2b2b, #151515); }
+.tapa-tono-1 { background: linear-gradient(160deg, #6e2b2b, #3a1616); }
+.tapa-tono-2 { background: linear-gradient(160deg, #1f5c56, #0f2e2b); }
+.tapa-tono-3 { background: linear-gradient(160deg, #6b4a24, #36250f); }
+.tapa-tono-4 { background: linear-gradient(160deg, #3d3462, #1e1a33); }
+.tapa-tono-5 { background: linear-gradient(160deg, #2f4a3a, #16241c); }
 
 @media (max-width: 599.98px) {
   .tienda {

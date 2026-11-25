@@ -1,47 +1,53 @@
 /* Asistente de librería — Variables (colores, tipografía, espacios, duraciones) y estilos base.
-   Orden de carga en index.html: base, disposicion, chat, paneles, responsive, animaciones. */
+   Orden de carga en index.html: base, disposicion, vistas, chat, tarjetas, paneles, responsive, animaciones. */
 
 /* 1. Variables ------------------------------------------------------------- */
 
+/* Paleta 60-30-10: marfil antiguo (#EEE3CC) de fondo, negro piano (#151515) en el texto,
+   la cabecera, las burbujas del cliente y el log, y turquesa surf (#00C2B5) como acento.
+   Todo texto pequeño cumple AA (4.5:1) sobre su fondo. */
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 
   /* Superficies y texto */
-  --color-fondo: #0f1115;
-  --color-panel: #171a21;
-  --color-panel-alto: #1d212a;
-  --color-linea: #262b36;
-  --color-linea-fuerte: #364052;
-  --color-texto: #e8eaf0;
-  --color-tenue: #98a0b3;            /* 7:1 sobre el fondo */
-  --color-burbuja-cliente: #22304a;
-  --color-chip: #101318;
-  --color-codigo: #0c0e12;
-  --color-boton-suave: #232833;
-  --color-boton-suave-hover: #2b3140;
+  --color-fondo: #eee3cc;            /* marfil antiguo: la conversación */
+  --color-panel: #e7dbc1;            /* marfil más tostado: el panel del cliente */
+  --color-panel-alto: #f4ecdc;
+  --color-superficie: #fbf7ee;       /* burbujas del librero, tarjetas y campos */
+  --color-linea: #d6c8a8;
+  --color-linea-fuerte: #bcaa86;
+  --color-texto: #151515;            /* negro piano: 14:1 sobre el marfil */
+  --color-tenue: #5c5446;            /* 5.4:1 sobre el panel */
+  --color-burbuja-cliente: #151515;
+  --color-texto-cliente: #eee3cc;
+  --color-chip: transparent;
+  --color-codigo: #f4ecdc;
+  --color-boton-suave: #e0d2b3;
+  --color-boton-suave-hover: #d6c6a2;
 
-  /* Acento y semánticos (los "-texto" están aclarados para texto pequeño, AA) */
-  --color-acento: #2f6cc6;           /* fondo de botón primario: 5:1 con blanco */
-  --color-acento-hover: #2864bd;
-  --color-acento-activo: #2459a8;
-  --color-acento-texto: #6ea3ea;
-  --color-ok: #2e9e6b;
-  --color-ok-texto: #45b884;
-  --color-aviso: #c98a1a;
-  --color-aviso-texto: #d69a2d;
-  --color-error: #c2453d;
-  --color-error-texto: #e8776f;
-  --color-ruta: #b48ead;
-  --color-foco: #8cb8ff;
+  /* Acento y semánticos (los "-texto" están oscurecidos para texto pequeño, AA) */
+  --color-acento: #00c2b5;           /* turquesa surf: fondo de botón, con texto negro (8:1) */
+  --color-acento-hover: #00b0a4;
+  --color-acento-activo: #009d92;
+  --color-acento-texto: #006b64;
+  --color-sobre-acento: #151515;
+  --color-ok: #2e7d4f;
+  --color-ok-texto: #1e6a40;
+  --color-aviso: #b7791f;
+  --color-aviso-texto: #87580a;
+  --color-error: #b3261e;
+  --color-error-texto: #a3261d;
+  --color-ruta: #74497f;
+  --color-foco: #00857c;
 
-  /* Panel de logs */
-  --color-fondo-log: #0b0d11;
-  --color-linea-log: #161a21;
-  --color-hora-log: #7a8396;
-  --color-evento-log: #c9d1e0;
-  --color-campos-log: #8590a3;
-  --color-info-log: #6c9bd2;
-  --color-turno-activo: #131824;
+  /* Panel de logs (negro piano) */
+  --color-fondo-log: #151515;
+  --color-linea-log: #222222;
+  --color-hora-log: #8c8576;
+  --color-evento-log: #e6dcc6;
+  --color-campos-log: #a39c8c;
+  --color-info-log: #5fd4cb;
+  --color-turno-activo: #1f2624;
 
   /* Tipografía */
   --fuente-base: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -58,18 +64,21 @@
   --radio-l: 12px;
   --radio-pildora: 999px;
 
-  /* Espacios */
+  /* Espacios (escala de 4 px) */
   --esp-1: 4px;
   --esp-2: 8px;
   --esp-3: 12px;
   --esp-4: 16px;
   --esp-5: 20px;
+  --esp-6: 24px;
+  --esp-7: 32px;
 
   /* Columnas */
   --ancho-panel: 320px;
   --ancho-logs: 380px;
   --ancho-lateral-compacto: 340px;
-  --ancho-burbuja: 680px;
+  --ancho-burbuja: 640px;
+  --ancho-hilo: 820px;        /* la conversación se centra en este ancho en pantallas anchas */
 
   /* Movimiento */
   --dur-rapida: 120ms;        /* hover, foco, cambios de color */
@@ -83,6 +92,30 @@
   --curva-salida: cubic-bezier(0.22, 1, 0.36, 1);   /* ease-out: todo lo que entra */
   --curva-suave: cubic-bezier(0.45, 0, 0.55, 1);    /* ease-in-out: ciclos */
   --desplazamiento-entrada: 6px;
+}
+
+/* La cabecera y el log van en negro piano: dentro de ellos, los mismos nombres de
+   variable valen para fondo oscuro, así sus controles no necesitan reglas propias. */
+.cabecera,
+.logs {
+  color-scheme: dark;
+  --color-panel: #1f1f1f;
+  --color-panel-alto: #2a2a2a;
+  --color-superficie: #1f1f1f;
+  --color-linea: #2e2e2e;
+  --color-linea-fuerte: #454545;
+  --color-texto: #eee3cc;
+  --color-tenue: #a39c8c;            /* 6:1 sobre el negro piano */
+  --color-chip: transparent;
+  --color-boton-suave: #2a2a2a;
+  --color-boton-suave-hover: #363636;
+  --color-acento-texto: #00c2b5;
+  --color-ok-texto: #6fcf97;
+  --color-aviso-texto: #e0a64a;
+  --color-error-texto: #f08a80;
+  --color-foco: #00c2b5;
+  background: var(--color-fondo-log);
+  color: var(--color-texto);
 }
 
 /* 2. Base ------------------------------------------------------------------ */
@@ -160,7 +193,7 @@ code {
   padding: var(--esp-2) var(--esp-3);
   border-radius: var(--radio-m);
   background: var(--color-acento);
-  color: #fff;
+  color: var(--color-sobre-acento);
   font-weight: 600;
   text-decoration: none;
   transform: translateY(calc(-100% - var(--esp-4)));

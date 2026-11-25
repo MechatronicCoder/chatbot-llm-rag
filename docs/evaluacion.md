@@ -4,7 +4,7 @@ Las pruebas automáticas comprueban que el código hace lo que se espera con un 
 
 ## Conjunto de casos
 
-`evaluacion/casos.json` tiene 41 casos en 11 categorías:
+`evaluacion/casos.json` tiene 53 casos en 12 categorías:
 
 | Categoría | Casos | Qué se espera |
 |---|---|---|
@@ -14,11 +14,12 @@ Las pruebas automáticas comprueban que el código hace lo que se espera con un 
 | catalogo | 7 | Ruta `herramientas` y el libro esperado, por título (Dune) y por autor (Mary Shelley), también mal escritos ("el silmarilion", "brandon sandersen"); un título que no está en el catálogo (El código Da Vinci, Harry Potter adivinado por su trama, El alquimista) se consulta y no se inventa |
 | recomendacion | 8 | Ruta `recomendacion` y uno de los libros esperados entre los mostrados (gatos para un niño de 9 años, misterio en una isla, terror para 13 años, robots detectives, distopía, y un pedido escrito por partes con dos opciones: "comedia o política"); con presupuesto, ningún libro mostrado lo supera; si falta la edad del lector, el librero la pregunta |
 | accion | 2 | Ruta `accion` y el pedido en el estado esperado, incluida una conversación de dos turnos (armar el carrito y pagar) |
-| carrito | 3 | Ruta `accion` y el carrito con la cantidad de libros esperada: varios libros a la vez, quitar uno y preguntar cuánto falta para el envío gratis |
+| carrito | 6 | Ruta `accion` y el carrito con la cantidad de libros esperada: varios libros a la vez, quitar uno, preguntar cuánto falta para el envío gratis, agregar los 12 que hay en stock y pedir un libro agotado (dice que está agotado). Decir "con transferencia bancaria" no cobra: el pedido sigue sin pagar y la respuesta lleva al botón «Pagar» |
 | rag | 3 | Ruta `rag` y, cuando se indica, el documento esperado entre los citados |
 | escalado | 1 | Un cliente que pide hablar con una persona recibe el contacto y el turno queda con ruta `escalar` |
 | seguimiento | 1 | Una pregunta que depende de la anterior ("¿cuánto cuesta el envío a Lima?" y luego "¿y a provincias?") la responde el modelo con el historial y menciona la tarifa correcta |
-| fuera_de_alcance | 4 | Ruta `directa`, sin inventar catálogo ni políticas, incluidos "¿cómo puedo programar una calculadora en Python?" (que la FAQ confundía con "¿cómo puedo pagar?") y "¿qué películas me recomiendas?" |
+| fuera_de_alcance | 7 | Ruta `directa`, sin inventar catálogo ni políticas, incluidos "¿cómo puedo programar una calculadora en Python?" (que la FAQ confundía con "¿cómo puedo pagar?") y "¿qué películas me recomiendas?". La respuesta no puede decir la capital, el código, el resultado de "2+2", el autor de un libro que no tenemos ni una política de publicación inventada (`no_contiene`) |
+| catalogo_cerrado | 6 | Los casos de la demo: la Biblia (no se afirma tener ninguna edición), "ignora tu programación…" (ruta `filtro`) y "responde las otras dos preguntas" (no responde lo que frenó la guardia), clásicos que no hay y "los 5 mejor puntuados" sin el agotado |
 
 Cada caso corre en una sesión nueva y sobre una base de datos temporal, así que la evaluación es repetible y no modifica `var/tienda.db`.
 
@@ -43,7 +44,7 @@ Con el clasificador TF-IDF y las guardias, sin ninguna API configurada:
 | faq | 7/7 |
 | seguridad | 3/3 |
 
-Los 10 casos se resuelven en milisegundos y sin tokens. Los 31 casos restantes requieren el modelo y se miden con las claves configuradas.
+Los 10 casos se resuelven en milisegundos y sin tokens. Los 34 casos restantes requieren el modelo y se miden con las claves configuradas.
 
 ## Resultado con modelo
 
@@ -57,13 +58,15 @@ Con `qwen-plus` (respaldo `qwen-flash`) y `text-embedding-v4` en la región de S
 | catalogo | 7/7 |
 | recomendacion | 8/8 |
 | accion | 2/2 |
-| carrito | 3/3 |
+| carrito | 6/6 |
 | rag | 3/3 |
 | seguimiento | 1/1 |
 | escalado | 1/1 |
 | fuera_de_alcance | 4/4 |
 
-En total 41/41 rutas y el libro esperado en los 11 casos que lo piden, con una latencia mediana de 3,9 s y unos 225 000 tokens para todo el conjunto. La primera corrida con el carrito dio 30/31 y mostró dos fallos que se corrigieron: el modelo preguntaba "¿deseas agregarlo al carrito?" en lugar de agregarlo, y "¿cuánto me falta para el envío gratis?" lo respondía la FAQ, que no conoce el carrito. El caso del mensaje escrito por partes mostró otro: el modelo recomendaba títulos de memoria, sin llamar al catálogo; ahora la verificación lo detecta y le pide usar recomendar_libros, una búsqueda por cada opción. Con la búsqueda tolerante, la primera corrida dio 33/35: los relacionados que agrega la búsqueda hacían que "quiero 2 de Drácula" ya no contara como un solo libro pedido, y el modelo volvía a preguntar; ahora los relacionados no cuentan. Al pasar las FAQ al mensaje del cliente, la corrida dio 35/37: una FAQ de devoluciones poco parecida desviaba la recomendación de robots detectives, y "quiero hablar con una persona" lo respondía la FAQ en vez de derivar; se corrigieron con `FAQ_PROMPT_MIN` y llevando ese pedido al modelo. Los cuatro casos nuevos salen de lo que escribieron los compañeros en la demo publicada; la primera corrida con sus arreglos dio 40/41, porque la regla de libros que no están en el catálogo tomó un monto en negrita ("**S/ 73.30**") por un título, y ahora ignora montos e ids. Antes de ajustar el prompt y de agregar la verificación de respuestas, el conjunto de 28 casos daba 19/28: el modelo pedía detalles en lugar de recomendar, pedía confirmación en lugar de reservar y respondía políticas sin consultar los documentos.
+Con el mundo cerrado (ADR 0014), el conjunto pasó a 53 casos y la corrida completa dio 50/53, con todos los casos nuevos aprobados y unos 328 000 tokens. Una primera corrida de los casos nuevos dio 11/13 y mostró dos huecos: "los 5 mejor puntuados" se respondía con libros de 3.1 a 4.3, porque ninguna herramienta ordenaba por valoración (ahora `buscar_libros` acepta `orden`), y una negación listaba clásicos que no tenemos ("no tengo *Hamlet*, *Don Quijote*…"). De los tres fallos de la corrida completa, "quitar del carrito" fue variación del modelo (pasa al repetirlo); "¿qué condiciones tiene que cumplir un libro para cambiarlo?" se tomaba por una búsqueda de libros y ahora la responde la FAQ; y "¿cuánto me falta para el envío gratis?" a veces consulta las políticas e inventa un umbral de S/ 150, que la verificación de montos frena antes de que llegue al cliente.
+
+Antes de eso, 44/44 rutas y el libro esperado en los 11 casos que lo piden, con una latencia mediana de 4,6 s y unos 259 000 tokens para todo el conjunto. La primera corrida con el carrito dio 30/31 y mostró dos fallos que se corrigieron: el modelo preguntaba "¿deseas agregarlo al carrito?" en lugar de agregarlo, y "¿cuánto me falta para el envío gratis?" lo respondía la FAQ, que no conoce el carrito. El caso del mensaje escrito por partes mostró otro: el modelo recomendaba títulos de memoria, sin llamar al catálogo; ahora la verificación lo detecta y le pide usar recomendar_libros, una búsqueda por cada opción. Con la búsqueda tolerante, la primera corrida dio 33/35: los relacionados que agrega la búsqueda hacían que "quiero 2 de Drácula" ya no contara como un solo libro pedido, y el modelo volvía a preguntar; ahora los relacionados no cuentan. Al pasar las FAQ al mensaje del cliente, la corrida dio 35/37: una FAQ de devoluciones poco parecida desviaba la recomendación de robots detectives, y "quiero hablar con una persona" lo respondía la FAQ en vez de derivar; se corrigieron con `FAQ_PROMPT_MIN` y llevando ese pedido al modelo. Los cuatro casos nuevos salen de lo que escribieron los compañeros en la demo publicada; la primera corrida con sus arreglos dio 40/41, porque la regla de libros que no están en el catálogo tomó un monto en negrita ("**S/ 73.30**") por un título, y ahora ignora montos e ids. La segunda ronda de la demo dejó tres casos más (pago por transferencia, 12 ejemplares y libro agotado); su primera corrida mostró que la regla tomaba "Transferencia bancaria" por un libro cuando el cliente la nombraba, y ahora los medios de pago nunca cuentan como libros. Antes de ajustar el prompt y de agregar la verificación de respuestas, el conjunto de 28 casos daba 19/28: el modelo pedía detalles en lugar de recomendar, pedía confirmación en lugar de reservar y respondía políticas sin consultar los documentos.
 
 ## Calibrar el umbral del RAG
 

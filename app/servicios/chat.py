@@ -25,9 +25,10 @@ from app.core import seguridad
 from app.core.logs import RegistroEventos, nuevo_turno
 from app.llm.cliente import ModeloChat, SinProveedores
 from app.persistencia.db import BaseDatos
-from app.servicios.contexto import CandadosPorSesion, mensajes_iniciales
+from app.servicios.contexto import RUTA_FILTRO, CandadosPorSesion, mensajes_iniciales
 from app.servicios.faq import Decision, IndiceFAQ
 from app.servicios.herramientas import Herramientas
+from app.servicios.medios_de_pago import pedido_para_pagar, redactar_y_guardar
 from app.servicios.rag import BuscadorDocumentos
 from app.servicios.recomendador import Recomendador
 from app.servicios.resumen import Resumidor
@@ -105,8 +106,9 @@ class ServicioChat:
             "turno.inicio", turno_id, sesion=session_id, usuario=usuario_id, largo=len(mensaje)
         )
 
-        # 1. redacción: el valor original no llega ni a la base ni al log ni al modelo
-        limpio, tipos = seguridad.redactar_datos_sensibles(mensaje)
+        # 1. redacción: el valor original no llega ni a la base ni al log ni al modelo; una
+        # tarjeta válida queda guardada como medio de pago (solo marca y últimos 4 dígitos)
+        limpio, tipos, tarjetas = redactar_y_guardar(self.bd, usuario_id, mensaje)
         if tipos:
             self.registro.info("dato.enmascarado", turno_id, tipos=",".join(tipos))
 
@@ -124,7 +126,7 @@ class ServicioChat:
                 seguridad.respuesta_bloqueo(motivo),
                 limpio,
                 inicio,
-                ruta="filtro",
+                ruta=RUTA_FILTRO,
                 fuente="filtro de seguridad",
                 modo="sin_llm",
                 **cierre,
@@ -138,6 +140,8 @@ class ServicioChat:
             motivo_forzado = f"busqueda de libros: {busqueda.group(0)!r}"
         elif es_seguimiento(limpio):  # "¿y para 12 años?" depende del historial
             motivo_forzado = "seguimiento del mensaje anterior"
+        elif tarjetas:  # el modelo le avisa que ya puede pagar con ella
+            motivo_forzado = "tarjeta guardada"
         decision = self.faq.clasificar(
             limpio, forzar_llm=motivo_forzado is not None, motivo_forzado=motivo_forzado
         )
@@ -225,7 +229,7 @@ class ServicioChat:
                     # Un id de pedido inventado o una política citada sin consultarla no se
                     # entregan: el modelo recibe una corrección y tiene una vuelta más.
                     problema = revisar_respuesta(
-                        resp.texto, acumulado, self.bd, usuario_id, mensaje
+                        resp.texto, acumulado, self.bd, usuario_id, mensaje, mensajes
                     )
                     if problema and not corregido:
                         corregido = True
@@ -271,7 +275,9 @@ class ServicioChat:
             # se agotaron las vueltas: una última llamada sin herramientas para cerrar
             resp = self.llm.chat(mensajes, temperatura=a.temperatura, max_tokens=a.max_tokens)
             acumulado.sumar_uso(resp.uso)
-            problema = revisar_respuesta(resp.texto, acumulado, self.bd, usuario_id, mensaje)
+            problema = revisar_respuesta(
+                resp.texto, acumulado, self.bd, usuario_id, mensaje, mensajes
+            )
             texto, _, _ = seguridad.validar_salida(
                 (problema.respaldo if problema else resp.texto.strip())
                 or "No se pudo completar la gestión."
@@ -307,7 +313,7 @@ class ServicioChat:
             pagos=acumulado.pagos,
             documentos=acumulado.documentos,
             libros=acumulado.libros,
-            carrito=acumulado.carrito,
+            carrito=acumulado.carrito or pedido_para_pagar(self.bd, cierre["usuario_id"], mensaje),
             modo="real",
             modelo=modelo,
             endpoint=proveedor,

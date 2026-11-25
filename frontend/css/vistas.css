@@ -1,0 +1,178 @@
+/* Asistente de librería — Vistas: interruptor cliente/programador, vista de cliente y pantallas
+   sobre la app (acceso de la demo y token de administración).
+   Orden de carga en index.html: base, disposicion, vistas, chat, tarjetas, paneles, responsive, animaciones. */
+
+/* Interruptor de vista: cliente (💬) o programador (</>) */
+.vista {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: auto;
+  padding: 2px;
+  border: 1px solid var(--color-linea-fuerte);
+  border-radius: var(--radio-pildora);
+}
+
+.vista-boton {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 28px;
+  border: 0;
+  border-radius: var(--radio-pildora);
+  background: transparent;
+  color: var(--color-tenue);
+  cursor: pointer;
+  transition:
+    background-color var(--dur-rapida) ease-out,
+    color var(--dur-rapida) ease-out;
+}
+
+.vista-boton:hover {
+  color: var(--color-texto);
+}
+
+.vista-boton[aria-pressed="true"] {
+  background: var(--color-acento);
+  color: var(--color-sobre-acento);
+}
+
+/* Cerrar sesión (acceso.js): ícono junto al interruptor, en rojo al pasar el puntero */
+.salir {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--color-linea-fuerte);
+  border-radius: var(--radio-pildora);
+  background: transparent;
+  color: var(--color-tenue);
+  cursor: pointer;
+  transition:
+    color var(--dur-rapida) ease-out,
+    border-color var(--dur-rapida) ease-out;
+}
+
+.salir:hover {
+  border-color: var(--color-error-texto);
+  color: var(--color-error-texto);
+}
+
+.acciones-dialogo {
+  justify-content: flex-end;
+  margin-top: var(--esp-2);
+}
+
+/* Vista de cliente: solo la conversación. Lo técnico vive en la de programador. */
+body[data-modo="cliente"] .disposicion {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: "chat";
+}
+
+body[data-modo="cliente"] :is(.panel, .logs, .divisor, .estado-meta, .datos, .json) {
+  display: none;
+}
+
+body[data-modo="cliente"] .chat {
+  border-right: 0;
+}
+
+/* Pantallas sobre la app (acceso y token): la app se ve detrás, difuminada. */
+.acceso {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: var(--esp-4);
+  background: rgb(21 21 21 / 0.35);
+  -webkit-backdrop-filter: blur(14px) saturate(120%);
+  backdrop-filter: blur(14px) saturate(120%);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .acceso {
+    background: rgb(21 21 21 / 0.85); /* sin difuminado, el fondo tapa la app */
+  }
+}
+
+.acceso-tarjeta {
+  display: grid;
+  gap: var(--esp-2);
+  width: min(100%, 380px);
+  padding: var(--esp-7) var(--esp-6) var(--esp-6);
+  border: 1px solid var(--color-linea);
+  border-radius: 16px;
+  background: var(--color-superficie);
+  box-shadow: 0 24px 60px rgb(21 21 21 / 0.28), 0 2px 6px rgb(21 21 21 / 0.12);
+  animation: entrar var(--dur-mensaje) var(--curva-salida) both;
+}
+
+/* Login: logo, nombre de la librería y los campos debajo */
+.acceso-logo {
+  display: grid;
+  place-items: center;
+  margin: calc(-1 * var(--esp-3)) auto var(--esp-1);
+}
+
+.acceso-logo-img {
+  width: 120px;
+  height: 120px;
+  object-fit: contain; /* la mascota (256 px, fondo transparente) se ve nítida al doble de densidad */
+}
+
+.acceso-logo-icono {
+  box-sizing: content-box;
+  padding: 15px;
+  border-radius: 18px;
+  background: var(--color-burbuja-cliente);
+  color: var(--color-acento);
+}
+
+.acceso-login .acceso-titulo,
+.acceso-sub {
+  text-align: center;
+}
+
+.acceso-sub {
+  margin: -4px 0 0;
+  color: var(--color-tenue);
+  font-size: var(--texto-s);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.acceso-login .acceso-texto {
+  margin: var(--esp-3) 0 var(--esp-1);
+  text-align: center;
+}
+
+.acceso-login .campo {
+  min-height: 40px;
+  font-size: var(--texto-m);
+}
+
+.acceso-titulo {
+  margin: 0;
+  font-size: 20px;
+}
+
+.acceso-texto {
+  margin: 0 0 var(--esp-2);
+  color: var(--color-tenue);
+}
+
+.acceso-error {
+  margin: 0;
+  color: var(--color-error-texto);
+}
+
+.acceso-entrar {
+  margin-top: var(--esp-2);
+  background: var(--color-acento);
+  color: var(--color-sobre-acento);
+}
+
+.acceso-entrar:hover {
+  background: var(--color-acento-hover);
+}

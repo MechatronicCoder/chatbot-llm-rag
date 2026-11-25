@@ -1,5 +1,5 @@
 /* Asistente de librería — Disposición de las columnas y controles (botones, campos, selects).
-   Orden de carga en index.html: base, disposicion, chat, paneles, responsive, animaciones. */
+   Orden de carga en index.html: base, disposicion, vistas, chat, tarjetas, paneles, responsive, animaciones. */
 
 /* 3. Disposición ----------------------------------------------------------- */
 
@@ -13,9 +13,20 @@
 }
 
 .marca {
+  display: flex;
+  align-items: center;
+  gap: var(--esp-2);
   font-size: var(--texto-l);
   font-weight: 650;
   white-space: nowrap;
+}
+
+/* La mascota de la librería (la misma del login), junto al nombre */
+.marca-logo {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
 }
 
 .marca-sub {
@@ -93,9 +104,63 @@
 
 .disposicion {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) var(--ancho-panel) var(--ancho-logs);
-  grid-template-areas: "chat panel logs";
+  /* Los divisores ocupan columnas de ancho 0: su zona de agarre se dibuja encima del borde. */
+  grid-template-columns: minmax(0, 1fr) 0 var(--ancho-panel) 0 var(--ancho-logs);
+  grid-template-areas: "chat divisor-panel panel divisor-logs logs";
   min-height: 0;
+}
+
+/* Bordes arrastrables (divisores.js): una franja de 8 px sobre el borde, con la línea
+   resaltada al pasar el puntero, al enfocarla con el teclado o al arrastrar. */
+.divisor {
+  position: relative;
+  z-index: 2;
+  touch-action: none;
+}
+
+#divisor-panel {
+  grid-area: divisor-panel;
+}
+
+#divisor-logs {
+  grid-area: divisor-logs;
+}
+
+.divisor::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -3px; /* poco hacia la izquierda: ahí está la barra de desplazamiento de la columna */
+  right: -5px;
+  cursor: col-resize;
+}
+
+.divisor::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -1px;
+  width: 2px;
+  background: transparent;
+  pointer-events: none;
+  transition: background-color var(--dur-rapida) ease-out;
+}
+
+.divisor:hover::after,
+.divisor:focus-visible::after,
+.divisor[data-arrastrando]::after {
+  background: var(--color-acento-texto);
+}
+
+.divisor:focus-visible {
+  outline: none;
+}
+
+.redimensionando {
+  cursor: col-resize;
+  user-select: none;
 }
 
 .chat,
@@ -132,7 +197,7 @@
   border: 1px solid transparent;
   border-radius: var(--radio-m);
   background: var(--color-acento);
-  color: #fff;
+  color: var(--color-sobre-acento);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
@@ -192,7 +257,7 @@
   padding: 6px 9px;
   border: 1px solid var(--color-linea);
   border-radius: var(--radio-s);
-  background: var(--color-panel);
+  background: var(--color-superficie);
   color: var(--color-texto);
   font: inherit;
   font-size: var(--texto-s);
@@ -232,85 +297,37 @@
   }
 }
 
-/* Navegación entre el asistente y la tienda (index.html y tienda.html) */
+/* Navegación entre el asistente y la tienda (index.html y tienda.html), en la cabecera negra */
 .navegacion {
   display: flex;
-  gap: var(--esp-1);
+  gap: 2px;
   margin-left: auto;
+  padding: 2px;
+  border: 1px solid var(--color-linea-fuerte);
+  border-radius: var(--radio-pildora);
+}
+
+.navegacion + .vista {
+  margin-left: 0;
 }
 
 .navegacion-enlace {
-  padding: 6px var(--esp-3);
+  padding: 4px var(--esp-3);
   border-radius: var(--radio-pildora);
   color: var(--color-tenue);
   font-size: var(--texto-s);
   font-weight: 600;
   text-decoration: none;
-  transition: background-color var(--dur-rapida) ease-out, color var(--dur-rapida) ease-out;
+  transition:
+    background-color var(--dur-rapida) ease-out,
+    color var(--dur-rapida) ease-out;
 }
 
 .navegacion-enlace:hover {
-  background: var(--color-boton-suave);
   color: var(--color-texto);
 }
 
 .navegacion-enlace[aria-current="page"] {
-  background: var(--color-boton-suave);
-  color: var(--color-texto);
-}
-
-.navegacion + .salir {
-  margin-left: 0;
-}
-
-/* ---------------------------------------------------------------------------
-   Acceso de la demo
-   --------------------------------------------------------------------------- */
-.salir {
-  margin-left: auto;
-}
-
-.acceso {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  display: grid;
-  place-items: center;
-  padding: var(--esp-4);
-  background: rgb(10 12 16 / 0.92);
-}
-
-.acceso-tarjeta {
-  display: grid;
-  gap: var(--esp-2);
-  width: min(100%, 360px);
-  padding: var(--esp-5);
-  border: 1px solid var(--color-linea-fuerte);
-  border-radius: var(--radio-l);
-  background: var(--color-panel);
-}
-
-.acceso-titulo {
-  margin: 0;
-  font-size: 18px;
-}
-
-.acceso-texto {
-  margin: 0 0 var(--esp-2);
-  color: var(--color-tenue);
-}
-
-.acceso-error {
-  margin: 0;
-  color: var(--color-error-texto);
-}
-
-.acceso-entrar {
-  margin-top: var(--esp-2);
   background: var(--color-acento);
-  color: #fff;
-}
-
-.acceso-entrar:hover {
-  background: var(--color-acento-hover);
+  color: var(--color-sobre-acento);
 }

@@ -50,7 +50,8 @@ def evaluar_caso(servicio: Any, caso: dict[str, Any]) -> dict[str, Any]:
         fallos.append(f"ruta {respuesta.ruta} (se esperaba {'/'.join(caso['ruta'])})")
     if caso.get("faq") and respuesta.faq_id != caso["faq"]:
         fallos.append(f"faq {respuesta.faq_id} (se esperaba {caso['faq']})")
-    if caso.get("documento") and caso["documento"] not in documentos:
+    # el documento se exige cuando respondió el RAG; una FAQ verificada no cita documentos
+    if caso.get("documento") and respuesta.ruta == "rag" and caso["documento"] not in documentos:
         fallos.append(f"documento esperado {caso['documento']} no citado")
     libro_ok = None
     if caso.get("libro_titulo"):
@@ -62,6 +63,10 @@ def evaluar_caso(servicio: Any, caso: dict[str, Any]) -> dict[str, Any]:
             fallos.append(f"ningún libro esperado mostrado ({' / '.join(esperados)})")
     if (textos := caso.get("contiene")) and not any(t in respuesta.respuesta for t in textos):
         fallos.append(f"la respuesta no menciona {' ni '.join(textos)}")
+    # lo que no debe decir: un libro que no hay, un dato inventado, una respuesta fuera de tema
+    dichos = [t for t in caso.get("no_contiene", []) if t.lower() in respuesta.respuesta.lower()]
+    if dichos:
+        fallos.append(f"la respuesta dice {' y '.join(dichos)}")
     if (tope := caso.get("precio_max")) is not None:
         caros = [lb["titulo"] for lb in respuesta.libros if lb["precio"] > tope]
         if not respuesta.libros or caros:

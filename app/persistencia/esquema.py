@@ -9,10 +9,11 @@ from typing import Any
 
 # Se incrementa cada vez que cambia una tabla. Una base con otra versión se
 # reconstruye al arrancar: guarda datos de demostración, no históricos.
-ESQUEMA_VERSION = 4
+ESQUEMA_VERSION = 5
 
 TABLAS = (
-    "pagos", "pedido_lineas", "pedidos", "mensajes", "resumenes", "consumo_extra", "usuarios",
+    "pagos", "tarjetas", "pedido_lineas", "pedidos", "mensajes", "resumenes", "consumo_extra",
+    "usuarios",
     "libros", "productos",
 )  # fmt: skip
 
@@ -71,10 +72,21 @@ create table if not exists pedido_lineas (
     orden       integer not null,
     primary key (pedido_id, isbn)
 );
+-- De una tarjeta solo se guarda la marca y los últimos 4 dígitos: nunca el número, la fecha
+-- ni el CVV. El cobro de la demo es simulado.
+create table if not exists tarjetas (
+    id          text primary key,
+    usuario_id  text not null references usuarios(id),
+    marca       text not null,
+    ultimos4    text not null,
+    creado_en   text not null,
+    unique (usuario_id, marca, ultimos4)
+);
 create table if not exists pagos (
     id          text primary key,
     pedido_id   text not null references pedidos(id),
     metodo      text not null,              -- tarjeta | efectivo | transferencia
+    tarjeta_id  text references tarjetas(id),
     monto_cent  integer not null,
     estado      text not null,
     creado_en   text not null

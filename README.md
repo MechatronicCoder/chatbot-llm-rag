@@ -84,7 +84,7 @@ Copy-Item .env.example .env      # en macOS/Linux: cp .env.example .env
 docker compose up --build
 ```
 
-Luego se abre http://localhost:8000. Sin completar las claves del `.env` la aplicación funciona en modo demo; con las claves de DeepSeek y Qwen funciona completa.
+Luego se abre http://localhost:8000. Sin completar las claves del `.env` la aplicación funciona en modo demo; con una clave de Qwen (Alibaba Cloud Model Studio) funciona completa.
 
 <!-- Capturas: agregar en docs/img/ y enlazar aquí, por ejemplo:
 ![Chat con panel de logs](docs/img/chat.png) -->
@@ -98,7 +98,7 @@ flowchart LR
     A --> S[Servicio de chat]
     S --> G[Guardias de seguridad]
     S --> Q[Clasificador de FAQ<br/>TF-IDF]
-    S --> L[Cliente LLM<br/>DeepSeek, respaldo Qwen]
+    S --> L[Cliente LLM<br/>qwen-plus, respaldo qwen-flash]
     L -->|function calling| H[Herramientas]
     H --> D[(SQLite<br/>libros, pedidos,<br/>pagos, mensajes)]
     H --> REC[Recomendador híbrido<br/>contenido + valoración]
@@ -121,7 +121,7 @@ flowchart LR
     CD -->|nueva revisión| ACA[Azure Container Apps<br/>1 réplica, HTTPS]
     ACR --> ACA
     ACA --> LA[(Log Analytics)]
-    ACA -->|HTTPS| APIs[APIs de DeepSeek y Qwen]
+    ACA -->|HTTPS| APIs[API de Qwen en Model Studio]
 ```
 
 El detalle de cada componente, el modelo de datos y los eventos del log está en [docs/arquitectura.md](docs/arquitectura.md).
@@ -226,7 +226,7 @@ Para reponer el stock desde el archivo se borra `var/tienda.db` (o el volumen de
 | API | FastAPI, uvicorn, pydantic | Validación automática y documentación en `/docs` |
 | Configuración y datos | pydantic-settings y modelos pydantic | Un `.env` o un catálogo mal escrito falla al arrancar, con un mensaje claro |
 | Frontend | HTML, CSS y JavaScript con módulos ES | Una sola pantalla de chat, sin paso de compilación |
-| LLM | DeepSeek (principal) y Qwen (respaldo) por API compatible con OpenAI | Rápidos, económicos y con function calling |
+| LLM | Qwen: `qwen-plus` (principal) y `qwen-flash` (respaldo), por API compatible con OpenAI; DeepSeek es opcional | Rápidos, económicos y con function calling; una sola clave para el chat y los embeddings |
 | Embeddings | Qwen `text-embedding-v4` por API | Sin GPU ni modelos locales; imagen liviana |
 | Recomendación | Híbrido: similitud por embeddings o TF-IDF + valoración bayesiana | Entiende lo que se pide y desempata con la opinión de los lectores |
 | Clasificador FAQ | TF-IDF de palabras y caracteres (scikit-learn) | Rápido, sin red, tolera errores de tipeo |
@@ -280,7 +280,7 @@ chatbot-llm-rag/
 │       ├── fabrica.py        Arma el servicio real a partir de la configuración
 │       ├── faq.py            Clasificador de preguntas frecuentes
 │       ├── recomendador.py   Recomendador híbrido de libros
-│       ├── esquemas_herramientas.py  Las 10 herramientas que ve el modelo
+│       ├── esquemas_herramientas.py  Las 9 herramientas que ve el modelo (ninguna cobra)
 │       ├── herramientas.py   Ejecución de las herramientas
 │       └── rag.py            Fragmentación (PDF y Markdown), índice, caché y MMR
 ├── datos/                    Contenido del negocio (se cambia sin tocar código)
@@ -357,8 +357,8 @@ Todas las variables están documentadas en [.env.example](.env.example). Las pri
 
 | Variable | Para qué | Valor por defecto |
 |---|---|---|
-| `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL` | Modelo principal (DeepSeek) | vacío: modo demo |
-| `LLM_2_BASE_URL`, `LLM_2_API_KEY`, `LLM_2_MODEL` | Modelo de respaldo (Qwen) | vacío: sin respaldo |
+| `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL` | Modelo principal (`qwen-plus`) | sin clave: modo demo |
+| `LLM_2_BASE_URL`, `LLM_2_API_KEY`, `LLM_2_MODEL` | Modelo de respaldo (`qwen-flash`) | sin clave: sin respaldo |
 | `EMBEDDINGS_BASE_URL`, `EMBEDDINGS_API_KEY`, `EMBEDDINGS_MODEL` | Embeddings del RAG y del recomendador | vacío: TF-IDF |
 | `LLM_MAX_TOKENS` | Tope de tokens por respuesta (también limita el gasto) | 700 |
 | `LLM_TOKENS_POR_DIA` | Tope de tokens del chat en 24 horas; al pasarlo responde en modo demo | 2 000 000 |
@@ -382,9 +382,8 @@ Si un valor no tiene el tipo o el rango esperado (por ejemplo `RAG_MMR_LAMBDA=1.
 
 ### Obtener las claves
 
-- DeepSeek: crear una cuenta en la plataforma de DeepSeek, generar una API key y cargar saldo. La URL base es `https://api.deepseek.com`. El nombre del modelo se toma de su documentación vigente.
-- Qwen (Alibaba Cloud Model Studio): activar Model Studio, crear una API key y anotar la región. La misma clave sirve para el chat de respaldo y para los embeddings. La URL de modo compatible con OpenAI depende de la región; la de `.env.example` corresponde a la internacional.
-- Solo Qwen: DeepSeek es opcional. Con una sola clave de Model Studio se usa `qwen-plus` como modelo principal, `qwen-flash` como respaldo y `text-embedding-v4` para los embeddings; los valores exactos están comentados al inicio de la sección del LLM en `.env.example`.
+- Qwen (Alibaba Cloud Model Studio): activar Model Studio, crear una API key y anotar la región. Una sola clave sirve para todo: se pega en `LLM_API_KEY`, `LLM_2_API_KEY` y `EMBEDDINGS_API_KEY`. `.env.example` ya trae `qwen-plus` como modelo principal, `qwen-flash` como respaldo y `text-embedding-v4` para los embeddings, con la URL de la región internacional; si la cuenta es de otra región, se cambia la URL.
+- DeepSeek (opcional): puede ser el modelo principal con `LLM_BASE_URL=https://api.deepseek.com`, `LLM_MODEL=deepseek-chat` y una clave de su plataforma. Los embeddings siguen siendo de Qwen.
 
 Las claves van solo en `.env` (excluido de Git) o en los secretos de Azure. Nunca en el código, en issues ni en capturas.
 
@@ -464,14 +463,14 @@ Las pruebas no llaman a ninguna API: el modelo, los embeddings y los proveedores
 
 ## Evaluación
 
-Además de las pruebas, `evaluacion/casos.json` define 41 casos (FAQ, seguridad, cortesía, catálogo, recomendación, acciones, carrito, RAG, seguimiento, pase a una persona y preguntas fuera de alcance) con la ruta esperada y, cuando corresponde, la FAQ, el documento, el libro que debe aparecer o el estado del pedido.
+Además de las pruebas, `evaluacion/casos.json` define 44 casos (FAQ, seguridad, cortesía, catálogo, recomendación, acciones, carrito, RAG, seguimiento, pase a una persona y preguntas fuera de alcance) con la ruta esperada y, cuando corresponde, la FAQ, el documento, el libro que debe aparecer o el estado del pedido.
 
 ```powershell
 uv run python scripts/evaluar.py             # con el modelo del .env
 uv run python scripts/evaluar.py --sin-llm   # solo los casos que no usan el modelo
 ```
 
-El informe se guarda en `evaluacion/resultados/` con la tasa de aciertos por categoría, el acierto del libro esperado, la latencia y los tokens. Sin modelo configurado, los 10 casos de FAQ y seguridad aciertan la ruta (10/10); con `qwen-plus`, el conjunto completo da 41/41. Los casos de catálogo, recomendación y acción nombran libros del catálogo actual: si el catálogo cambia, se actualizan. La metodología y cómo calibrar `RAG_UMBRAL` y `RECO_UMBRAL` están en [docs/evaluacion.md](docs/evaluacion.md).
+El informe se guarda en `evaluacion/resultados/` con la tasa de aciertos por categoría, el acierto del libro esperado, la latencia y los tokens. Sin modelo configurado, los 10 casos de FAQ y seguridad aciertan la ruta (10/10); con `qwen-plus`, el conjunto completo da 44/44. Los casos de catálogo, recomendación y acción nombran libros del catálogo actual: si el catálogo cambia, se actualizan. La metodología y cómo calibrar `RAG_UMBRAL` y `RECO_UMBRAL` están en [docs/evaluacion.md](docs/evaluacion.md).
 
 ## Seguridad
 
@@ -526,6 +525,7 @@ Cada decisión importante está documentada con su contexto, las alternativas y 
 - [0010 Solo main despliega](docs/decisiones/0010-solo-main-despliega.md)
 - [0011 Acceso de demo con usuario y clave](docs/decisiones/0011-acceso-de-demo.md)
 - [0012 Carrito con montos calculados por el sistema](docs/decisiones/0012-carrito-y-montos-en-centimos.md)
+- [0013 El cliente paga con un botón y la tienda guarda solo marca y 4 dígitos](docs/decisiones/0013-el-cliente-paga-con-un-boton.md)
 
 ## Flujo de trabajo del equipo
 

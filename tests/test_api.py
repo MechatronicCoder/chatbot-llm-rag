@@ -140,7 +140,7 @@ def test_borrar_sesion(cliente: TestClient) -> None:
 def test_ventas_csv(cliente: TestClient) -> None:
     bd = cliente.app.state.estado.bd  # type: ignore[attr-defined]
     pedido = bd.reservar_pedido("u1", ISBN_MAGO, 1)
-    bd.registrar_pago("u1", pedido["pedido_id"], "tarjeta")
+    bd.registrar_pago("u1", pedido["pedido_id"], "transferencia")
     r = cliente.get("/api/ventas.csv")
     assert r.status_code == 200 and "text/csv" in r.headers["content-type"]
     assert r.text.splitlines()[0].startswith("pedido;usuario;isbn;titulo;autor")

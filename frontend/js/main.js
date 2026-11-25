@@ -12,6 +12,8 @@
 import { configurarAvisoDeAcceso, salud } from './api.js';
 import { iniciarAcceso } from './acceso.js';
 import { iniciarChat } from './chat.js';
+import { iniciarDivisores } from './divisores.js';
+import { iniciarModo } from './modo.js';
 import { iniciarPanel } from './panel.js';
 import { iniciarLogs } from './logs.js';
 import {
@@ -53,6 +55,7 @@ function pintarSalud(d) {
     configurarMoneda(d.tienda.moneda);
     if (d.tienda.nombre) {
       ponerTexto(porId('marca-nombre'), d.tienda.nombre);
+      ponerTexto(porId('acceso-marca'), d.tienda.nombre);
       document.title = `${d.tienda.nombre} · Asistente`;
     }
   }
@@ -99,12 +102,16 @@ function pintarSalud(d) {
 let chat;
 let logs;
 let panel;
+let modo;
+
+/** El log y las métricas solo se piden en la vista de programador (piden token de administración). */
+const enProgramador = () => Boolean(modo?.esProgramador());
 
 function alResponder(d) {
   revisarSalud();
   panel.cargarPedidos({ resaltar: Array.isArray(d?.pedidos) ? d.pedidos : [] });
   panel.cargarCatalogo(); // el stock pudo cambiar
-  logs.refrescarSiActivo();
+  if (enProgramador()) logs.refrescarSiActivo();
 }
 
 function alBorrar({ ok, sesion, borrados, error }) {
@@ -112,7 +119,7 @@ function alBorrar({ ok, sesion, borrados, error }) {
     chat.limpiar();
     const detalle = Number.isFinite(borrados) ? ` (${plural(borrados, 'mensaje')} eliminados en el servidor)` : '';
     chat.anotar(`Conversación de «${sesion}» borrada${detalle}.`);
-    logs.refrescarSiActivo();
+    if (enProgramador()) logs.refrescarSiActivo();
     revisarSalud();
   } else {
     chat.anotar(`No se pudo borrar la conversación. ${error?.mensaje ?? ''}`.trim(), 'error');
@@ -121,7 +128,7 @@ function alBorrar({ ok, sesion, borrados, error }) {
 
 panel = iniciarPanel({
   alCambiarUsuario: (nuevo) => chat.anotar(`Sesión cambiada a «${nuevo}». Los mensajes anteriores pertenecen a otra sesión.`),
-  alRecargar: () => Promise.allSettled([revisarSalud(), logs.refrescar()]),
+  alRecargar: () => Promise.allSettled([revisarSalud(), enProgramador() && logs.refrescar()]),
   alBorrar,
 });
 
@@ -141,6 +148,12 @@ const acceso = iniciarAcceso({
 });
 configurarAvisoDeAcceso(() => acceso.sesionRechazada());
 
+modo = iniciarModo({
+  alCambiar: (vista) => {
+    if (vista === 'programador' && !acceso.bloqueado()) logs.refrescar();
+  },
+});
+
 // ---------------------------------------------------------------------------
 // Bucle de salud
 // ---------------------------------------------------------------------------
@@ -153,7 +166,7 @@ let fallosSeguidos = 0;
 function alQuedarListo() {
   panel.cargarCatalogo();
   panel.cargarPedidos();
-  logs.refrescar();
+  if (enProgramador()) logs.refrescar();
 }
 
 async function revisarSalud() {
@@ -210,6 +223,7 @@ function prellenarPedido() {
 }
 
 prellenarPedido();
+iniciarDivisores();
 revisarSalud();
 // Con el acceso activado, los datos se cargan recién al iniciar sesión (alEntrar).
 acceso.verificar().then((d) => {
@@ -217,11 +231,11 @@ acceso.verificar().then((d) => {
 });
 
 setInterval(() => {
-  if (!acceso.bloqueado()) logs.refrescarSiActivo();
+  if (!acceso.bloqueado() && enProgramador()) logs.refrescarSiActivo();
 }, INTERVALO_LOGS_MS);
 
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) return;
-  if (!acceso.bloqueado()) logs.refrescarSiActivo();
+  if (!acceso.bloqueado() && enProgramador()) logs.refrescarSiActivo();
   revisarSalud();
 });

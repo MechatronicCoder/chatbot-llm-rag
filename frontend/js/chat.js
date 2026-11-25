@@ -9,7 +9,7 @@
  */
 
 import { crearAgrupador } from './agrupador.js';
-import { enviarMensaje, ErrorApi } from './api.js';
+import { enviarMensaje, ErrorApi, guardarTarjeta, pagarPedido, tarjetasDe } from './api.js';
 import { tarjetaCarrito } from './carrito.js';
 import { chipsDe, detalleJson } from './detalles.js';
 import { tarjetasDeLibros } from './libros.js';
@@ -147,7 +147,7 @@ export function iniciarChat({ obtenerUsuario, alFiltrarTurno, alResponder } = {}
     if (d.aviso) nodo.append(crear('p', { clase: 'msg-aviso', texto: d.aviso }));
     const libros = tarjetasDeLibros(d.libros);
     if (libros) nodo.append(libros);
-    const carrito = tarjetaCarrito(d.carrito);
+    const carrito = tarjetaCarrito(d.carrito, { alPagar: pagar, cargarTarjetas });
     if (carrito) nodo.append(carrito);
 
     const chips = chipsDe(d, turnoFiltrado);
@@ -156,6 +156,24 @@ export function iniciarChat({ obtenerUsuario, alFiltrarTurno, alResponder } = {}
     }
     nodo.append(detalleJson(d));
     return nodo;
+  }
+
+  async function cargarTarjetas() {
+    return (await tarjetasDe(obtenerUsuario()))?.tarjetas ?? [];
+  }
+
+  /** El cliente paga desde la tarjeta del pedido; luego se refresca el panel de pedidos. */
+  async function pagar(pedidoId, { metodo, tarjetaId, numeroNuevo }) {
+    const usuarioId = obtenerUsuario();
+    let id = tarjetaId;
+    if (metodo === 'tarjeta' && numeroNuevo) id = (await guardarTarjeta({ usuarioId, numero: numeroNuevo })).id;
+    const r = await pagarPedido({ pedidoId, usuarioId, metodo, tarjetaId: id });
+    try {
+      alResponder?.({ pedidos: [pedidoId] });
+    } catch (error) {
+      console.error(error);
+    }
+    return r;
   }
 
   function burbujaError(error) {
@@ -289,7 +307,7 @@ export function iniciarChat({ obtenerUsuario, alFiltrarTurno, alResponder } = {}
     enviarEntrada();
   });
 
-  // Delegación: sugerencias y chips de turno.
+  // Delegación: sugerencias, tarjetas de libros y chips de turno.
   hilo.addEventListener('click', (ev) => {
     const objetivo = ev.target instanceof Element ? ev.target : null;
     if (!objetivo) return;
@@ -298,6 +316,13 @@ export function iniciarChat({ obtenerUsuario, alFiltrarTurno, alResponder } = {}
     if (sugerencia) {
       entrada.focus({ preventScroll: true });
       enviar(sugerencia.textContent);
+      return;
+    }
+
+    // Elegir una tarjeta de libro envía "Quiero el libro «…»"; un doble clic no lo manda dos veces.
+    const pedido = objetivo.closest('[data-pedido]');
+    if (pedido && !pedido.disabled && ev.detail <= 1) {
+      enviar(pedido.dataset.pedido);
       return;
     }
 

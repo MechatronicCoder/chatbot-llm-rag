@@ -23,7 +23,9 @@ ESQUEMAS: list[dict[str, Any]] = [
         "description": "Busca en el catálogo cuando el cliente nombra un título, un autor, una "
         "saga, una editorial o un ISBN concreto. Devuelve precio y stock. Tolera errores de "
         "tipeo (`correcciones` dice cómo se entendió). Si encuentra menos de tres libros, agrega "
-        "`relacionados`: parecidos a lo pedido, pero no lo que pidió.",
+        "`relacionados`: parecidos a lo pedido, pero no lo que pidió. Con consulta vacía (o un "
+        "género) y `orden`, lista el catálogo ordenado: úsala para 'los mejor valorados', 'los "
+        "más baratos' o 'los más caros'.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -34,6 +36,11 @@ ESQUEMAS: list[dict[str, Any]] = [
                 "precio_max": _PRECIO_MAX,
                 "precio_min": _PRECIO_MIN,
                 "limite": {"type": "integer", "minimum": 1, "maximum": 10},
+                "orden": {
+                    "type": "string",
+                    "enum": ["valoracion", "precio_asc", "precio_desc"],
+                    "description": "Mejor valorados primero (por defecto), más baratos o más caros",
+                },
             },
             "required": ["consulta"],
         },
@@ -93,7 +100,7 @@ ESQUEMAS: list[dict[str, Any]] = [
                         "type": "object",
                         "properties": {
                             "isbn": _ISBN,
-                            "cantidad": {"type": "integer", "minimum": 0, "maximum": 10},
+                            "cantidad": {"type": "integer", "minimum": 0, "maximum": 50},
                         },
                         "required": ["isbn", "cantidad"],
                     },
@@ -114,11 +121,13 @@ ESQUEMAS: list[dict[str, Any]] = [
     },
     {
         "name": "consultar_pedido",
-        "description": "Devuelve el estado, el total y el detalle de un pedido del cliente.",
+        "description": "Devuelve el estado, el total y el detalle de un pedido del cliente. "
+        "Sin pedido_id devuelve su pedido más reciente (y en otros_pedidos, los anteriores): "
+        "úsala así cuando pregunte si su pedido está pagado o reservado, sin pedirle el id.",
         "parameters": {
             "type": "object",
             "properties": {"pedido_id": _PEDIDO},
-            "required": ["pedido_id"],
+            "required": [],
         },
     },
     {
@@ -128,20 +137,6 @@ ESQUEMAS: list[dict[str, Any]] = [
             "type": "object",
             "properties": {"pedido_id": _PEDIDO},
             "required": ["pedido_id"],
-        },
-    },
-    {
-        "name": "cobrar_pedido",
-        "description": "Cobra un pedido del cliente actual (un carrito se reserva y cobra a la "
-        "vez). Solo si el cliente ya vio el total y pidió pagar. Métodos: tarjeta, efectivo o "
-        "transferencia. Un pedido no se cobra dos veces.",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "pedido_id": _PEDIDO,
-                "metodo": {"type": "string", "enum": ["tarjeta", "efectivo", "transferencia"]},
-            },
-            "required": ["pedido_id", "metodo"],
         },
     },
     {
@@ -172,4 +167,5 @@ ESQUEMAS: list[dict[str, Any]] = [
 IDEMPOTENTES = frozenset(
     {"buscar_libros", "recomendar_libros", "ficha_libro", "consultar_pedido", "buscar_politica"}
 )
-ACCIONES = frozenset({"actualizar_carrito", "reservar_pedido", "cobrar_pedido", "cancelar_pedido"})
+# El modelo no cobra: el cliente paga con el botón de la tarjeta (POST /api/pedidos/…/pago).
+ACCIONES = frozenset({"actualizar_carrito", "reservar_pedido", "cancelar_pedido"})

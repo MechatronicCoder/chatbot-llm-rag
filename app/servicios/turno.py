@@ -58,8 +58,10 @@ RE_BUSQUEDA = re.compile(
     # "me das un libro", "quiero una novela" ("quiero devolver un libro" no: va a la FAQ)
     r"\b(me das|dame|quiero|necesito|tienes|tienen)\s+(un|una|algún|algun|alguna)\s+"
     r"(libro|novela|cuento)\b|"
+    # "un libro para cambiarlo por otro" es una política, no una búsqueda
     r"\b(un|una|algún|algun|algo)\s+(libro|novela|cuento|cómic|comic)\b"
-    r"(?!\s+de\s+reclamaciones)\s*(para|de|sobre|que|como|parecid[oa]|similar|con)\b|"
+    r"(?!\s+de\s+reclamaciones|\s+para\s+(?:cambiar|devolver|reclamar))"
+    r"\s*(para|de|sobre|que|como|parecid[oa]|similar|con)\b|"
     r"\blibros\s+(de|sobre|para(?!\s+regalo)|como|parecidos|similares|con)\b|"
     r"\b(parecid[oa]s?|similar(es)?)\s+a\b",
     re.IGNORECASE,
@@ -77,12 +79,6 @@ def es_seguimiento(mensaje: str) -> bool:
 
 # "para mi hijo de 5 años" -> 5 (solo para el modo demo; con modelo, lo deduce el LLM)
 RE_EDAD = re.compile(r"\b(\d{1,2})\s*años\b", re.IGNORECASE)
-
-# Confirmación fija: el cliente ve el total que calculó el sistema antes de que se cobre.
-AVISO_COBRO = (
-    "No se cobró: el total de este pedido cambió en este mismo turno y el cliente todavía no "
-    "lo vio. Muéstrale el resumen y pregúntale si confirma el pago."
-)
 
 MENSAJE_ESCALADO = (
     "Esa consulta la responde mejor un asesor humano; queda registrada. "
@@ -155,7 +151,6 @@ class Acumulado:
     libros: list[dict[str, Any]] = field(default_factory=list)
     tokens: list[int] = field(default_factory=lambda: [0, 0])
     cache: dict[str, dict[str, Any]] = field(default_factory=dict)
-    cotizados: set[str] = field(default_factory=set)  # pedidos cuyo total cambió en el turno
     carrito: dict[str, Any] | None = None
 
     def sumar_uso(self, uso: dict[str, int]) -> None:
@@ -235,8 +230,6 @@ def resumir(resultado: dict[str, Any]) -> str:
         return f"{len(resultado['recomendaciones'])} recomendaciones"
     if "similares_disponibles" in resultado:
         return f"ficha {resultado['isbn']}"
-    if "pago_id" in resultado:
-        return f"pago {resultado['pago_id']} · {resultado.get('monto')}"
     if "pedido_id" in resultado:
         return f"pedido {resultado['pedido_id']} · {resultado.get('estado')}"
     return ", ".join(resultado)[:60]
@@ -257,11 +250,7 @@ def ejecutar_llamada(
         return acumulado.cache[firma]
 
     t0 = time.perf_counter()
-    pedido_id = str((tc["arguments"] or {}).get("pedido_id", "")).upper()
-    if nombre == "cobrar_pedido" and pedido_id in acumulado.cotizados:
-        resultado: dict[str, Any] = {"error": AVISO_COBRO}
-    else:
-        resultado = herramientas.ejecutar(nombre, tc["arguments"], usuario_id)
+    resultado = herramientas.ejecutar(nombre, tc["arguments"], usuario_id)
     ms = int((time.perf_counter() - t0) * 1000)
     if nombre in IDEMPOTENTES:
         acumulado.cache[firma] = resultado
@@ -306,21 +295,11 @@ def ejecutar_llamada(
     if nombre in ("actualizar_carrito", "reservar_pedido") and ok:
         if resultado["pedido_id"] not in acumulado.pedidos:
             acumulado.pedidos.append(resultado["pedido_id"])
-        if nombre == "actualizar_carrito":
-            acumulado.cotizados.add(resultado["pedido_id"])
         registro.info(
             "carrito.actualizado" if nombre == "actualizar_carrito" else "pedido.creado",
             turno_id,
             pedido=resultado["pedido_id"],
             total=resultado.get("total"),
-        )
-    if nombre == "cobrar_pedido" and resultado.get("pago_id"):
-        acumulado.pagos.append(resultado["pago_id"])
-        registro.info(
-            "pedido.cobrado",
-            turno_id,
-            pago=resultado["pago_id"],
-            pedido=resultado.get("pedido_id"),
         )
     if nombre == "derivar_a_persona" and ok:  # aviso: alguien del equipo tiene que atenderlo
         registro.aviso("derivacion.solicitada", turno_id, motivo=resultado["motivo"][:120])

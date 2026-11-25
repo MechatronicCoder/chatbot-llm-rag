@@ -45,7 +45,7 @@ def test_los_titulos_del_catalogo_las_etiquetas_y_los_generos_no_cuentan(bd: Bas
     texto = (
         "**La escuela de magos**, de **Rosa Varita**, en **Librería Letra Viva**. "
         "Hay **ciencia ficción**. **Precio**: S/ 69.90. **Envío a Lima:** gratis. "
-        "*Libro Inventado* y «Otro Inventado»."
+        "*Libro Inventado*, de Ana Pérez y «Otro Inventado» de Luis Soto."
     )
     assert titulos_ajenos(texto, bd) == ["Libro Inventado", "Otro Inventado"]
 
@@ -76,7 +76,11 @@ def test_si_insiste_el_cliente_sabe_que_no_lo_tenemos(
 def test_con_el_catalogo_consultado_puede_decir_que_no_esta(bd: BaseDatos) -> None:
     consultado = Acumulado(usadas=[{"nombre": "buscar_libros", "ok": True}])
     texto = "No encontré *Harry Potter y la piedra filosofal* en el catálogo."
-    assert revisar_respuesta(texto, consultado, bd, "ana", ADIVINA) is None
+    busqueda = '{"consulta": "Harry Potter y la piedra filosofal"}'
+    vistos = [{"role": "assistant", "tool_calls": [{"function": {"arguments": busqueda}}]}]
+    assert revisar_respuesta(texto, consultado, bd, "ana", ADIVINA, vistos) is None
+    # sin haberlo buscado, el título sale de la memoria del modelo: no se nombra
+    assert revisar_respuesta(texto, consultado, bd, "ana", ADIVINA) is not None
 
 
 def test_un_precio_escrito_con_punto_tambien_se_verifica(bd: BaseDatos) -> None:

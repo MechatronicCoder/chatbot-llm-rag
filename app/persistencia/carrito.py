@@ -15,7 +15,7 @@ from app.catalogo.cotizacion import a_centimos
 from app.persistencia.esquema import ErrorPedido, momento_actual
 from app.persistencia.tienda import RepositorioTienda, nuevo_pedido_id
 
-MAX_POR_LIBRO = 10
+MAX_POR_LIBRO = 50  # el límite real es el stock; esto solo frena pedidos absurdos
 MAX_LINEAS = 20
 
 

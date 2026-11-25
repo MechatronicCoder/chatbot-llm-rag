@@ -10,14 +10,25 @@ base y en el turno.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from typing import Any
 
-from app.catalogo.cotizacion import a_centimos, montos_en_centimos
+from app.catalogo.cotizacion import a_centimos
 from app.core.texto import normalizar
 from app.persistencia.db import BaseDatos
+from app.servicios.lectura import (
+    RE_DESTACADO,
+    RE_ID,
+    RE_MONTO,
+    RE_MONTO_COMPLETO,
+    RE_NEGACION,
+    RE_OTRO_MEDIO,
+    centimos,
+)
+from app.servicios.mundo_cerrado import montos_del_sistema, revisar_mundo_cerrado
+from app.servicios.problema import NOTA, Problema
 from app.servicios.turno import RE_BUSQUEDA, RE_EDAD, Acumulado
 
-RE_ID = re.compile(r"\b(?:PED|PAG)-[0-9A-Z]{4,16}\b", re.IGNORECASE)
+__all__ = ["NOTA", "Problema", "montos_sin_respaldo", "revisar_respuesta", "titulos_ajenos"]
 # "página 2", "pág. 3", "secc. 4", 'sección "Libros con defectos"', "según nuestra política"
 RE_CITA = re.compile(
     r"\bp[aá]g(?:ina|\.)\s*\d"
@@ -33,6 +44,52 @@ RE_PAGADO = re.compile(
     re.IGNORECASE,
 )
 RE_CANCELADO = re.compile(r"\bcancelad[oa]s?\b", re.IGNORECASE)
+# Solo afirmaciones explícitas: "reservado con éxito", "Estado: reservado", "ya está reservado",
+# "lo reservé". "Una vez reservado, podrás pagar" explica el paso y no cuenta.
+RE_RESERVADO = re.compile(
+    r"\breservad[oa]s?\s+con\s+[eé]xito|\bestado\W{0,6}reservad|"
+    r"\b(?:est[aá]|qued[oó]|fue|ha\s+sido)\s+reservad|\breserv[eé]\b|"
+    r"\breserva\s+(?:confirmada|realizada|hecha|exitosa|lista)\b",
+    re.IGNORECASE,
+)
+
+
+# "Al reservar, el stock queda reservado", "¿deseas reservarlo?": explican, no afirman
+RE_CONDICIONAL = re.compile(r"\?|\b(?:al|si|cuando|para|puedes?|deseas?|quieres?)\s+reserv", re.I)
+# "aún no está pagado", "pendiente de pago", "falta pagar"
+RE_NO_PAGADO = re.compile(
+    r"\b(?:no|a[uú]n no|todav[ií]a no)\s+(?:est[aá]\s+|ha sido\s+|fue\s+)?pagad|"
+    r"\bpendiente de pago\b|\bfalta pagar\b|\bsin pagar\b",
+    re.IGNORECASE,
+)
+
+
+def _oraciones(texto: str) -> list[str]:
+    return [o for linea in texto.splitlines() for o in RE_ORACION.split(linea)]
+
+
+def afirma_reserva(texto: str) -> bool:
+    """Alguna oración dice que el pedido quedó reservado ("todavía no está reservado" no)."""
+    return any(
+        RE_RESERVADO.search(o) and not RE_NEGACION.search(o) and not RE_CONDICIONAL.search(o)
+        for o in _oraciones(texto)
+    )
+
+
+def afirma_pago(texto: str) -> bool:
+    """Alguna oración dice que se pagó ("aún no está pagado" no lo dice)."""
+    return any(RE_PAGADO.search(o) and not RE_NO_PAGADO.search(o) for o in _oraciones(texto))
+
+
+# Plazos y envíos que solo dicen las políticas: "24 horas hábiles", "1 a 3 días útiles",
+# "guía de envío", "comprobante … a tu correo".
+RE_PLAZO = re.compile(
+    r"\b\d+\s*(?:a\s*\d+\s*)?(?:d[ií]as?|horas?)\s+(?:h[aá]biles|[uú]tiles|laborables|calendario)\b"
+    r"|\bgu[ií]a de (?:env[ií]o|seguimiento)\b|\bn[uú]mero de seguimiento\b"
+    r"|\bcomprobante\b[^.\n]{0,60}\bcorreo\b",
+    re.IGNORECASE,
+)
+RE_ORACION = re.compile(r"(?<=[.!?])\s+")
 # "ya quité El Silmarillion", "lo agregué", "carrito actualizado"
 RE_CARRITO_CAMBIADO = re.compile(
     r"\b(?:quit[eé]|quitamos|agregu[eé]|agregamos|añad[ií]|añadimos|actualic[eé]|"
@@ -41,19 +98,18 @@ RE_CARRITO_CAMBIADO = re.compile(
 )
 # "algo de terror…", "algún libro…": pedidos que RE_BUSQUEDA no cubre
 RE_ALGO = re.compile(r"\b(?:algo|alg[uú]n)\b", re.IGNORECASE)
-# "quiero el libro Drácula", "me llevo el primero": pedir un libro concreto (no buscar uno)
+# "quiero el libro Drácula", "me llevo el primero": pedir un libro concreto (no buscar uno).
+# "Quiero ver la ficha de…" (la tarjeta del libro) pide información, no comprar: en la demo
+# la regla lo tomó por compra y obligó al modelo a agregarlo al carrito.
 RE_COMPRA = re.compile(
-    r"\b(?:quiero|me llevo|me lo llevo|dame|compro|comprar|agrega|añade)\b", re.IGNORECASE
+    r"\b(?:quiero|dame)\b(?!\s+(?:ver|saber|conocer|leer|m[aá]s|la\s+ficha|informaci|detalles))"
+    r"|\b(?:me llevo|me lo llevo|compro|comprar|agrega|añade)\b",
+    re.IGNORECASE,
 )
-PEDIDOS = {"actualizar_carrito", "reservar_pedido", "cobrar_pedido"}
+PEDIDOS = {"actualizar_carrito", "reservar_pedido"}
 # el libro es para un menor: preguntar la edad antes de recomendar es lo correcto
 RE_MENOR = re.compile(
     r"\b(?:hij[oa]s?|niñ[oa]s?|sobrin[oa]s?|niet[oa]s?|alumn[oa]s?|adolescentes?|beb[eé]s?)\b",
-    re.IGNORECASE,
-)
-# Pedir películas, series o música no es pedir libros, aunque diga "recomiendas".
-RE_OTRO_MEDIO = re.compile(
-    r"\b(?:pel[ií]culas?|series?|m[uú]sica|canci[oó]n(?:es)?|videojuegos?|podcasts?|anime)\b",
     re.IGNORECASE,
 )
 RE_LECTURA = re.compile(r"\b(?:libros?|novelas?|cuentos?|leer|lectura|c[oó]mics?)\b", re.IGNORECASE)
@@ -63,10 +119,21 @@ RE_DATOS_CATALOGO = re.compile(
     r"\btenemos\b|\bcontamos con\b|\bc[oó]mpral[oa]s?\b|\bcomprarl[oa]s?\b|\breservarl[oa]s?\b",
     re.IGNORECASE,
 )
-# Títulos destacados en la respuesta: **Título**, *Título*, «Título» o “Título”.
-RE_DESTACADO = re.compile(
-    r"\*\*([^*\n]{2,90})\*\*|(?<![*\w])\*([^*\n]{2,90})\*(?![*\w])|«([^»\n]{2,90})»|“([^”\n]{2,90})”"
+# Lo que sigue a un título cuando el modelo lo presenta como libro: ", de J. K. Rowling".
+RE_AUTOR = re.compile(r"\s*,?\s*(?:de|por)\s+[A-ZÁÉÍÓÚÑ]")
+# El mensaje del cliente habla de libros ("dime por qué El alquimista tiene buena valoración").
+RE_SOBRE_LIBROS = re.compile(
+    r"\b(?:libros?|novelas?|cuentos?|t[ií]tulos?|autora?|sagas?|leer|le[ií]|valoraci[oó]n|"
+    r"rese[ñn]as?|comprar|adivina)\b",
+    re.IGNORECASE,
 )
+# Medios de pago y zonas que el modelo pone en negrita y nunca son libros.
+NO_LIBROS = frozenset(
+    {
+        "tarjeta", "tarjetas", "efectivo", "transferencia", "transferencia bancaria", "yape",
+        "plin", "contra entrega", "efectivo contra entrega", "lima", "provincias", "pagar",
+    }
+)  # fmt: skip
 ETIQUETAS = frozenset(
     {
         "precio", "stock", "stock disponible", "formato", "valoracion", "isbn", "subtotal",
@@ -74,18 +141,6 @@ ETIQUETAS = frozenset(
         "pedido", "carrito", "pago", "envio a provincias", "envio a lima metropolitana",
     }
 )  # fmt: skip
-# "S/ 59.90", "S/1,234.50", "S/ 59,90", "S/. 59.90"
-RE_MONTO = re.compile(r"S/\.?\s?(\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d+(?:[.,]\d{1,2})?)")
-RE_MONTO_COMPLETO = re.compile(r"S/\.?\s?[\d.,]+")
-RE_NUMERO = re.compile(r"\d+(?:[.,]\d{1,2})?")
-NOTA = "[Revisión interna; no la menciones al cliente] "
-
-
-@dataclass(frozen=True)
-class Problema:
-    motivo: str  # para el log
-    instruccion: str  # lo que se le pide al modelo para corregir
-    respaldo: str  # lo que ve el cliente si el modelo no corrige
 
 
 def _id_real(ident: str, acumulado: Acumulado, bd: BaseDatos, usuario_id: str) -> bool:
@@ -97,37 +152,32 @@ def _id_real(ident: str, acumulado: Acumulado, bd: BaseDatos, usuario_id: str) -
     return any(pago["id"] == ident for p in pedidos for pago in bd.pagos_de(p["pedido_id"]))
 
 
-def _centimos(texto: str) -> int:
-    """'1,234.50' -> 123450; '59,90' -> 5990 (coma decimal)."""
-    miles = re.fullmatch(r"\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?", texto)
-    return a_centimos(texto.replace(",", "") if miles else texto.replace(",", "."))
-
-
 def montos_sin_respaldo(texto: str, bd: BaseDatos, usuario_id: str, mensaje: str) -> list[str]:
     """Montos en soles que no son precio, tarifa, monto de un pedido ni algo que dijo el cliente."""
     escritos = RE_MONTO.findall(texto)
     if not escritos:
         return []
     conocidos = {a_centimos(lb["precio"]) for lb in bd.libros_activos()}
-    for pedido in bd.pedidos_de(usuario_id):
-        conocidos |= montos_en_centimos(pedido)
-    for tarifa in bd.tienda.envio.values():
-        conocidos |= {a_centimos(v) for v in (tarifa.costo, tarifa.gratis_desde) if v is not None}
-    conocidos |= {_centimos(n) for n in RE_NUMERO.findall(mensaje)}  # "menos de 50 soles"
-    return [m for m in dict.fromkeys(escritos) if _centimos(m) not in conocidos]
+    conocidos |= montos_del_sistema(bd, usuario_id, mensaje)
+    return [m for m in dict.fromkeys(escritos) if centimos(m) not in conocidos]
 
 
-def titulos_ajenos(texto: str, bd: BaseDatos) -> list[str]:
-    """Títulos destacados en la respuesta que no son libros, autores ni zonas de la tienda.
+def titulos_ajenos(texto: str, bd: BaseDatos, mensaje: str = "") -> list[str]:
+    """Libros que la respuesta nombra y que no están en el catálogo.
 
-    "**Harry Potter y la piedra filosofal**" no está en el catálogo: si el modelo lo ofrece
-    con su stock y su valoración, los inventó. Las etiquetas ("**Precio**:"), los géneros
-    en minúscula y los nombres del catálogo no cuentan.
+    "**Harry Potter y la piedra filosofal**, de J. K. Rowling" no está en el catálogo: si
+    el modelo lo ofrece con su stock y su valoración, los inventó. Solo cuenta como libro
+    lo destacado que viene con su autor ("*Título*, de Autor") o que nombró el cliente: en
+    la demo, "**Tarjeta**", "**Efectivo**" y "**Transferencia bancaria**" se tomaron por
+    libros y la corrección hizo que el bot negara tener un libro que sí tenía.
     """
     conocidos = {bd.tienda.nombre, *(z.nombre for z in bd.tienda.envio.values())}
     for libro in bd.libros_activos():
         conocidos |= {libro["titulo"], libro["autor"]}
     normalizados = [f" {normalizar(c)} " for c in conocidos]
+    # lo que nombra el cliente cuenta como libro solo si su mensaje habla de libros: en la demo,
+    # "con transferencia bancaria" llevó al bot a decir "no tenemos el libro Transferencia…"
+    pedido = f" {normalizar(mensaje)} " if RE_SOBRE_LIBROS.search(mensaje) else ""
     ajenos = []
     for marca in RE_DESTACADO.finditer(texto):
         frase = next(g for g in marca.groups() if g).strip()
@@ -137,17 +187,29 @@ def titulos_ajenos(texto: str, bd: BaseDatos) -> list[str]:
         limpia = normalizar(sin_cifras)
         etiqueta = frase.endswith(":") or texto[marca.end() : marca.end() + 1] == ":"
         palabra = re.search(r"[^\W\d_]{4,}", sin_cifras)
-        if not palabra or not frase[0].isupper() or etiqueta or limpia in ETIQUETAS:
+        if not palabra or not frase[0].isupper() or etiqueta or limpia in ETIQUETAS | NO_LIBROS:
             continue
+        con_autor = RE_AUTOR.match(texto, marca.end())
+        if not (con_autor or f" {limpia} " in pedido):
+            continue  # destacado, pero nada dice que sea un libro
         if not any(f" {limpia} " in c or c in f" {limpia} " for c in normalizados):
             ajenos.append(frase)
     return list(dict.fromkeys(ajenos))
 
 
 def revisar_respuesta(
-    texto: str, acumulado: Acumulado, bd: BaseDatos, usuario_id: str, mensaje: str = ""
+    texto: str,
+    acumulado: Acumulado,
+    bd: BaseDatos,
+    usuario_id: str,
+    mensaje: str = "",
+    vistos: list[dict[str, Any]] | None = None,
 ) -> Problema | None:
-    """El primer problema encontrado, o None si la respuesta se puede entregar."""
+    """El primer problema encontrado, o None si la respuesta se puede entregar.
+
+    `vistos` son los mensajes que leyó el modelo en el turno: un nombre que no está en el
+    catálogo ni en ellos salió de su memoria.
+    """
     # "algo de terror para mi hijo de 10 años": ya dijo qué busca y la edad, así que
     # una pregunta sin haber recomendado nada es una vuelta de más para el cliente.
     pide = RE_BUSQUEDA.search(mensaje) or RE_ALGO.search(mensaje)
@@ -176,7 +238,7 @@ def revisar_respuesta(
     # "Es Harry Potter… ¿te muestro su ficha, stock y valoración?" sin haber consultado nada:
     # el libro no está en el catálogo y sus datos serían inventados.
     sin_consultar = not acumulado.usadas and not otro_medio and RE_DATOS_CATALOGO.search(texto)
-    if sin_consultar and (ajenos := titulos_ajenos(texto, bd)):
+    if sin_consultar and (ajenos := titulos_ajenos(texto, bd, mensaje)):
         return Problema(
             motivo=f"nombra libros que no están en el catálogo: {', '.join(ajenos)}",
             instruccion=NOTA + f"Nombraste {', '.join(ajenos)} como si estuviera en el "
@@ -186,6 +248,9 @@ def revisar_respuesta(
             respaldo=f"No tenemos {ajenos[0]} en nuestro catálogo. Si me cuentas qué te "
             "gustó de él, te recomiendo libros parecidos que sí tenemos.",
         )
+    # Lo que existe: catálogo cerrado, agotados, datos de cada libro y alcance (mundo_cerrado)
+    if problema := revisar_mundo_cerrado(texto, acumulado, bd, usuario_id, mensaje, vistos):
+        return problema
     # "quiero el libro Drácula": encontró ese único libro, pero pregunta si lo agrega en vez
     # de agregarlo. Con una recomendación o varios resultados, preguntar sí es razonable.
     nombres = {u["nombre"] for u in acumulado.usadas}
@@ -215,13 +280,25 @@ def revisar_respuesta(
         )
     usadas = {u["nombre"] for u in acumulado.usadas if u.get("ok", True)}
     estados = {(bd.consultar_pedido(i) or {}).get("estado") for i in ids if i.startswith("PED-")}
-    if RE_PAGADO.search(texto) and "cobrar_pedido" not in usadas and "pagado" not in estados:
+    # El bot no cobra: paga el cliente con el botón de la tarjeta del pedido.
+    # El pago se hace con el botón, fuera del chat: el modelo no lo ve en el historial y en la
+    # simulación dijo "aún no está pagado" de un pedido que ya lo estaba.
+    pagados = estados or {p.get("estado") for p in bd.pedidos_de(usuario_id)}
+    if RE_NO_PAGADO.search(texto) and "pagado" in pagados and "consultar_pedido" not in usadas:
+        return Problema(
+            motivo="dice que no está pagado un pedido que ya se pagó",
+            instruccion=NOTA + "El cliente pagó con el botón «Pagar»: eso no aparece en la "
+            "conversación. Llama a consultar_pedido y responde con el estado que devuelva.",
+            respaldo="Revisé tu pedido: ya figura como pagado. ¿Te ayudo con algo más?",
+        )
+    if afirma_pago(texto) and "pagado" not in pagados:
         return Problema(
             motivo="afirma un pago que no se registró",
             instruccion=NOTA
-            + "El pago no se registró: no llamaste a cobrar_pedido. Si el cliente pidió "
-            "pagar, llámala ahora con el id exacto del pedido.",
-            respaldo="Todavía no registré el pago. ¿Lo pago con tarjeta, efectivo o transferencia?",
+            + "El pedido no está pagado y tú no puedes cobrar: el cliente paga eligiendo el "
+            "método y pulsando «Pagar» en la tarjeta del pedido. Díselo, sin decir que ya pagó.",
+            respaldo="Todavía no está pagado. Para pagar, elige el método y pulsa «Pagar» en la "
+            "tarjeta del pedido.",
         )
     if (
         RE_CANCELADO.search(texto)
@@ -234,6 +311,22 @@ def revisar_respuesta(
             + "No se canceló nada: no llamaste a cancelar_pedido. Si el cliente pidió "
             "cancelar, llámala ahora con el id exacto del pedido.",
             respaldo="Todavía no cancelé el pedido. ¿Me confirmas cuál quieres cancelar?",
+        )
+    # "¡Reservado con éxito! Pedido PED-…" sin haber llamado a reservar_pedido: en la simulación
+    # de una compra completa el pedido seguía en el carrito. Sin ids en el texto, vale el estado
+    # de los pedidos del cliente.
+    conocidos = estados or {p.get("estado") for p in bd.pedidos_de(usuario_id)}
+    if (
+        afirma_reserva(texto)
+        and "reservar_pedido" not in usadas
+        and not conocidos & {"reservado", "pagado"}
+    ):
+        return Problema(
+            motivo="afirma una reserva que no se registró",
+            instruccion=NOTA
+            + "El pedido no está reservado: no llamaste a reservar_pedido. Si el cliente pidió "
+            "reservar, llámala ahora con el id exacto del pedido y muestra lo que devuelve.",
+            respaldo="Todavía no reservé el pedido. ¿Quieres que lo reserve ahora?",
         )
     if RE_CARRITO_CAMBIADO.search(texto) and "actualizar_carrito" not in usadas:
         return Problema(
@@ -264,5 +357,15 @@ def revisar_respuesta(
             "solo con lo que devuelva, citando el documento y la sección o página.",
             respaldo="Para darte la condición exacta tengo que revisar nuestras políticas. "
             "¿Me repites la consulta?",
+        )
+    # "te enviaremos el comprobante y la guía en 24 horas hábiles; llega en 2 días útiles"
+    if RE_PLAZO.search(texto) and "buscar_politica" not in usadas:
+        sin_plazos = " ".join(o for o in RE_ORACION.split(texto) if not RE_PLAZO.search(o))
+        return Problema(
+            motivo="promete plazos o comprobantes sin consultar las políticas",
+            instruccion=NOTA + "Prometiste plazos, comprobantes o seguimiento que no "
+            "consultaste. Quítalos, o llama a buscar_politica y usa solo lo que devuelva.",
+            respaldo=sin_plazos.strip()
+            or "Los plazos de entrega están en nuestras políticas. ¿Quieres que te los cuente?",
         )
     return None

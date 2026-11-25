@@ -5,7 +5,8 @@ excepciones: devuelven `{"error": ...}` para que el modelo explique el problema
 al cliente en lugar de romper la conversación.
 
 El `usuario_id` no lo elige el modelo: viene de la sesión. Así un cliente no
-puede reservar, cobrar ni consultar pedidos de otro cambiando un argumento.
+puede reservar, cancelar ni consultar pedidos de otro cambiando un argumento. El modelo
+no cobra: el cliente paga con el botón de la tarjeta del pedido.
 """
 
 from __future__ import annotations
@@ -27,6 +28,7 @@ Resultado = dict[str, Any]
 
 
 MINIMO_RESULTADOS = 3
+LIMITE_HERRAMIENTA = 10  # el modelo ve a lo más 10 libros por búsqueda, aunque pida más
 
 
 def _edad(valor: Any) -> int | None:
@@ -54,7 +56,6 @@ class Herramientas:
             "reservar_pedido": self._reservar_pedido,
             "consultar_pedido": self._consultar_pedido,
             "cancelar_pedido": self._cancelar_pedido,
-            "cobrar_pedido": self._cobrar_pedido,
             "buscar_politica": self._buscar_politica,
             "derivar_a_persona": self._derivar_a_persona,
         }
@@ -93,11 +94,12 @@ class Herramientas:
         limite: int = 5,
         precio_max: float | None = None,
         precio_min: float | None = None,
+        orden: str | None = None,
         **_: Any,
     ) -> Resultado:
         libros, correcciones = self.bd.buscar(
-            consulta or "", categoria, autor, _edad(edad), limite or 5,
-            _precio(precio_min), _precio(precio_max),
+            consulta or "", categoria, autor, _edad(edad), min(limite or 5, LIMITE_HERRAMIENTA),
+            _precio(precio_min), _precio(precio_max), orden,
         )  # fmt: skip
         resultado: Resultado = {
             "encontrados": len(libros),
@@ -178,6 +180,17 @@ class Herramientas:
         return self._con_resumen(self.bd.reservar_carrito(usuario_id))
 
     def _consultar_pedido(self, usuario_id: str, pedido_id: str = "", **_: Any) -> Resultado:
+        if not (pedido_id or "").strip():
+            # "¿ya está pagado mi pedido?": sin id, el último pedido del cliente de la sesión.
+            # Antes el modelo le pedía el id al cliente aunque lo tenía en el historial.
+            pedidos = self.bd.pedidos_de(usuario_id)
+            if not pedidos:
+                return {"error": "Este cliente no tiene pedidos."}
+            otros = [
+                {"pedido_id": p["pedido_id"], "estado": p["estado"], "total": p["total"]}
+                for p in pedidos[1:5]
+            ]
+            return {**self._con_resumen(pedidos[0]), "otros_pedidos": otros}
         pedido = self.bd.consultar_pedido(pedido_id)
         if pedido is None or pedido["usuario_id"] != usuario_id:
             # mismo mensaje en ambos casos: no se revela si existe un pedido ajeno
@@ -191,13 +204,6 @@ class Herramientas:
         if pedido["usuario_id"] != usuario_id:
             return {"error": "Ese pedido pertenece a otro cliente."}
         return self._con_resumen(self.bd.cancelar_pedido(pedido_id))
-
-    def _cobrar_pedido(
-        self, usuario_id: str, pedido_id: str = "", metodo: str = "tarjeta", **_: Any
-    ) -> Resultado:
-        pago = self.bd.registrar_pago(usuario_id, pedido_id, metodo)
-        pedido = self.bd.consultar_pedido(pago["pedido_id"])
-        return {**self._con_resumen(pedido), **pago} if pedido else pago
 
     # -- atención humana -----------------------------------------------------------
     def _derivar_a_persona(self, motivo: str = "", **_: Any) -> Resultado:

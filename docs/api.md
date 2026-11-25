@@ -108,10 +108,11 @@ Invoke-RestMethod "http://localhost:8000/api/politicas"
 
 | Ruta | Respuesta |
 |---|---|
-| `/api/libros?consulta=&categoria=&autor=&edad=&limite=` | `{total, libros: [...]}` con el resumen de cada libro (mismos campos que `libros` en el chat). `consulta` busca palabras completas en título, autor, editorial, categoría, género, protagonista, temas e ISBN; `edad` devuelve los libros cuyo rango la incluye; `limite` va de 1 a 20 |
+| `/api/libros?consulta=&categoria=&autor=&edad=&limite=` | `{total, libros: [...]}` con el resumen de cada libro (mismos campos que `libros` en el chat). `consulta` busca palabras completas en título, autor, editorial, categoría, género, protagonista, temas e ISBN; `edad` devuelve los libros cuyo rango la incluye; `limite` va de 1 a 500 (el panel lista el catálogo entero; el modelo, en cambio, ve a lo más 10 libros por búsqueda) |
 | `/api/libros/{isbn}` | Ficha completa con todos los campos del catálogo (ver el README, sección "Catálogo de libros"); acepta el ISBN con guiones; 404 si no existe o fue retirado |
 | `/api/catalogo` | `{total, libros: [...]}` con todos los libros a la venta (mismo resumen que `/api/libros`, incluida `portada`), sin tope; lo usa la vitrina (`tienda.html`) |
 | `/api/categorias` | `[{categoria, libros}]`, de la categoría con más libros a la de menos |
+| `/api/tarjetas/{usuario_id}` | `{usuario_id, tarjetas: [{id, marca, ultimos4, etiqueta}]}`: tarjetas guardadas del cliente, solo con marca y últimos 4 dígitos |
 | `/api/pedidos/{usuario_id}` | `{usuario_id, total, pendiente, pagado, pedidos: [...]}`, del más nuevo al más viejo. Cada pedido trae `pedido_id`, `estado` (`carrito`, `reservado`, `pagado` o `cancelado`), `zona` y `zona_nombre` del envío, `lineas` (`isbn`, `titulo`, `autor`, `cantidad`, `precio_unitario`, `importe`), `unidades`, `subtotal`, `envio` (`null` mientras falte la zona), `total`, `falta_para_envio_gratis` y `creado_en`. Un carrito vacío no se lista |
 | `/api/politicas` | Documentos y cantidad de fragmentos indexados |
 
@@ -144,3 +145,14 @@ Invoke-WebRequest "http://localhost:8000/api/ventas.csv" -Headers $h -OutFile ve
 | `/api/metricas` | Turnos por ruta, tokens totales y de las últimas 24 horas (`tokens_24h`, lo que mide el tope `LLM_TOKENS_POR_DIA`), latencia p50 y p95; con `PRECIO_*_USD_MILLON` configurados, también `costo_estimado_usd`, que no descuenta los tokens servidos de la caché del proveedor |
 | `/api/sesion/{session_id}` | Mensajes guardados (siempre redactados) |
 | `/api/ventas.csv?usuario_id=` | Una fila por libro vendido en pedidos pagados, separada por `;`, con las columnas pedido, usuario, isbn, titulo, autor, cantidad, precio_unitario, importe, envio_pedido, total_pedido, estado y creado_en |
+
+## Pago y tarjetas
+
+El modelo no cobra: el pago lo confirma el cliente con el botón «Pagar» de la tarjeta del pedido. En la demo es simulado.
+
+| Ruta | Cuerpo | Respuesta |
+|---|---|---|
+| `POST /api/pedidos/{pedido_id}/pago` | `{usuario_id, metodo, tarjeta_id}`; `metodo` es `tarjeta`, `efectivo` o `transferencia`, y con `tarjeta` hace falta una tarjeta guardada de ese cliente | `{pago_id, metodo, tarjeta, monto, estado, pedido, resumen}`. Un carrito se reserva y cobra en el mismo paso. 409 si el pedido es de otro cliente, ya está pagado o cancelado, falta la zona de envío, cambió un precio o falta la tarjeta |
+| `POST /api/tarjetas` | `{usuario_id, numero}` | `{id, marca, ultimos4, etiqueta}`. El número se valida con el dígito verificador y se descarta: solo se guardan la marca y los últimos 4 dígitos. 422 si no es válido, sin devolver el número |
+
+Una tarjeta que el cliente escribe en el chat también se guarda así, y el número se reemplaza por `[TARJETA REDACTADA]` antes de llegar a la base, al log o al modelo.

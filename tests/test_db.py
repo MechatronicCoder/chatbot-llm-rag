@@ -133,7 +133,7 @@ def test_cancelaciones_y_cobros_invalidos(bd: BaseDatos) -> None:
     with pytest.raises(ErrorPedido, match="no se puede cancelar"):
         bd.cancelar_pedido(pedido["pedido_id"])
     with pytest.raises(ErrorPedido, match="no se puede cobrar"):
-        bd.registrar_pago("alumno", pedido["pedido_id"], "tarjeta")
+        bd.registrar_pago("alumno", pedido["pedido_id"], "transferencia")
 
 
 def test_pedidos_del_cliente_y_categorias(bd: BaseDatos) -> None:

@@ -3,12 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="dark">
+  <meta name="color-scheme" content="light">
   <meta name="description" content="Librero virtual: recomendaciones, catálogo de libros, pedidos, pagos y políticas.">
   <title>Librería · Asistente</title>
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/disposicion.css">
+  <link rel="stylesheet" href="css/vistas.css">
   <link rel="stylesheet" href="css/chat.css">
+  <link rel="stylesheet" href="css/tarjetas.css">
   <link rel="stylesheet" href="css/paneles.css">
   <link rel="stylesheet" href="css/responsive.css">
   <link rel="stylesheet" href="css/animaciones.css">
@@ -18,7 +20,10 @@
   <a class="saltar" href="#entrada">Ir al campo de mensaje</a>
 
   <header class="cabecera">
-    <h1 class="marca"><span id="marca-nombre">Librería</span> <span class="marca-sub">· Asistente</span></h1>
+    <h1 class="marca">
+      <img class="marca-logo" src="img/logo.png" alt="" width="32" height="32" decoding="async">
+      <span><span id="marca-nombre">Librería</span> <span class="marca-sub">· Asistente</span></span>
+    </h1>
     <div class="estado">
       <span class="estado-indicador" id="estado-indicador" data-estado="cargando" role="status">Conectando…</span>
       <ul class="estado-meta" id="estado-meta" aria-label="Estado del servicio"></ul>
@@ -27,7 +32,29 @@
       <a class="navegacion-enlace" href="./" aria-current="page">Asistente</a>
       <a class="navegacion-enlace" href="tienda.html">Tienda</a>
     </nav>
-    <button class="enlace salir" id="salir" type="button" hidden>Salir</button>
+    <!-- Vista de cliente o de programador (modo.js) -->
+    <div class="vista" role="group" aria-label="Vista">
+      <button class="vista-boton" id="vista-cliente" type="button" aria-pressed="true"
+              title="Vista de cliente: solo la conversación">
+        <svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linejoin="round"><path d="M4 5h16v11H10l-6 4z"/></svg>
+        <span class="solo-lectores">Vista de cliente</span>
+      </button>
+      <button class="vista-boton" id="vista-programador" type="button" aria-pressed="false"
+              title="Vista de programador: logs, métricas y datos técnicos (pide el token de administración)">
+        <svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5M14 4l-4 16"/></svg>
+        <span class="solo-lectores">Vista de programador</span>
+      </button>
+    </div>
+    <!-- Cerrar sesión: borra la sesión, el token de administración y lo guardado en el navegador -->
+    <button class="salir" id="salir" type="button" hidden aria-label="Cerrar sesión"
+            title="Cerrar sesión: borra la sesión, el token de administración y los datos de este navegador">
+      <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+           stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 20H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h3M16 17l5-5-5-5M21 12H9"/>
+      </svg>
+    </button>
   </header>
 
   <main class="disposicion">
@@ -46,6 +73,11 @@
         <p class="ayuda compositor-ayuda" id="ayuda-entrada">Enter envía · Shift+Enter agrega un salto de línea</p>
       </form>
     </section>
+
+    <!-- Bordes arrastrables entre columnas (divisores.js) -->
+    <div class="divisor" id="divisor-panel" role="separator" aria-orientation="vertical" tabindex="0"
+         aria-label="Ancho de la conversación y del panel del cliente"
+         title="Arrastra para cambiar el ancho · doble clic para restablecer"></div>
 
     <!-- Columna 2: cliente, pedidos y catálogo -->
     <aside class="panel" aria-label="Cliente, pedidos y catálogo">
@@ -66,15 +98,19 @@
         <div id="pedidos"><p class="vacio">Cargando pedidos…</p></div>
       </section>
 
-      <section class="bloque" aria-labelledby="titulo-catalogo">
+      <section class="bloque bloque-catalogo" aria-labelledby="titulo-catalogo">
         <h2 class="bloque-titulo" id="titulo-catalogo">Catálogo</h2>
         <label class="solo-lectores" for="buscar-catalogo">Buscar en el catálogo</label>
         <input class="campo" id="buscar-catalogo" type="search" placeholder="Buscar libro, autor o ISBN…"
                autocomplete="off" aria-describedby="catalogo-resumen">
         <p class="ayuda" id="catalogo-resumen" aria-live="polite"></p>
-        <div id="catalogo"><p class="vacio">Cargando catálogo…</p></div>
+        <div class="catalogo-lista" id="catalogo" tabindex="0" aria-label="Libros del catálogo"><p class="vacio">Cargando catálogo…</p></div>
       </section>
     </aside>
+
+    <div class="divisor" id="divisor-logs" role="separator" aria-orientation="vertical" tabindex="0"
+         aria-label="Ancho del panel del cliente y del log"
+         title="Arrastra para cambiar el ancho · doble clic para restablecer"></div>
 
     <!-- Columna 3: logs en vivo -->
     <section class="logs" id="panel-logs" aria-labelledby="titulo-logs">
@@ -118,11 +154,39 @@
     </section>
   </main>
 
+  <!-- Token de administración para pasar a la vista de programador (modo.js) -->
+  <div class="acceso" id="dialogo-programador" role="dialog" aria-modal="true"
+       aria-labelledby="programador-titulo" hidden>
+    <form class="acceso-tarjeta" id="programador-formulario" novalidate>
+      <h2 class="acceso-titulo" id="programador-titulo">Vista de programador</h2>
+      <p class="acceso-texto">Muestra el log, las métricas y los datos técnicos de cada respuesta.
+        Ingresa el token de administración del servidor.</p>
+      <label class="etiqueta" for="programador-token">Token de administración</label>
+      <input class="campo" id="programador-token" type="password" autocomplete="off" spellcheck="false">
+      <p class="acceso-error" id="programador-error" role="alert" hidden></p>
+      <div class="acciones acciones-dialogo">
+        <button class="boton suave" id="programador-cancelar" type="button">Cancelar</button>
+        <button class="boton" id="programador-entrar" type="submit">Entrar</button>
+      </div>
+    </form>
+  </div>
+
   <!-- Acceso de la demo: visible solo si el backend tiene ACCESO_* configurado -->
   <div class="acceso" id="acceso" role="dialog" aria-modal="true" aria-labelledby="acceso-titulo" hidden>
-    <form class="acceso-tarjeta" id="acceso-formulario" novalidate>
-      <h2 class="acceso-titulo" id="acceso-titulo">Acceso a la demo</h2>
-      <p class="acceso-texto">Ingresa con el usuario y la clave que te compartieron.</p>
+    <form class="acceso-tarjeta acceso-login" id="acceso-formulario" novalidate>
+      <div class="acceso-logo" aria-hidden="true">
+        <!-- La mascota de la librería; si falta img/logo.png, acceso.js muestra el ícono del libro -->
+        <img class="acceso-logo-img" id="acceso-logo-img" src="img/logo.png" alt="" width="120" height="120"
+             decoding="async">
+        <svg class="acceso-logo-icono" id="acceso-logo-icono" viewBox="0 0 48 48" width="34" height="34" fill="none"
+             stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" hidden>
+          <path d="M24 13c-4-3-10-4-16-3v24c6-1 12 0 16 3 4-3 10-4 16-3V10c-6-1-12 0-16 3z"/>
+          <path d="M24 13v24"/>
+        </svg>
+      </div>
+      <h2 class="acceso-titulo" id="acceso-titulo"><span id="acceso-marca">Librería Letra Viva</span></h2>
+      <p class="acceso-sub">Tu librero virtual</p>
+      <p class="acceso-texto">Inicia sesión para continuar.</p>
       <label class="etiqueta" for="acceso-usuario">Usuario</label>
       <input class="campo" id="acceso-usuario" name="usuario" autocomplete="username"
              autocapitalize="off" spellcheck="false" maxlength="60" required>
