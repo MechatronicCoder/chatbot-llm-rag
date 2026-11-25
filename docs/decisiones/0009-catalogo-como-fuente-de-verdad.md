@@ -17,7 +17,7 @@ Antes, el catálogo se cargaba solo cuando la base estaba vacía: un cambio de p
   - valoración siempre acompañada de su cantidad de votos;
   - `similares` que existan en el catálogo y no apunten al mismo libro;
   - precio mayor que cero, redondeado a dos decimales;
-  - portada como ruta local.
+  - portada como enlace https o ruta local (desde 2026-11-25 se admiten enlaces: las portadas vienen de un sitio externo y la CSP permite `img-src https:`).
 
   Se informan todos los problemas a la vez, con el libro, el ISBN y el campo. Con un solo error la app no arranca y la base no se toca.
 - Después de validar, el catálogo se sincroniza con la base en una sola transacción:

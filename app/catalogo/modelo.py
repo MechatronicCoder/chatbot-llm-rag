@@ -88,10 +88,17 @@ class Libro(BaseModel):
     @field_validator("portada")
     @classmethod
     def _portada(cls, valor: str | None) -> str | None:
+        """Enlace https a la imagen o ruta relativa dentro de frontend/ (portadas/x.webp)."""
         if valor is None or valor == "":
             return None
+        if valor.startswith("https://"):
+            if len(valor) <= len("https://") or any(c in valor for c in " \"'<>\\"):
+                raise ValueError("portada: enlace https inválido")
+            return valor
         if ".." in valor or valor.startswith(("/", "\\")) or "://" in valor:
-            raise ValueError("portada debe ser una ruta relativa dentro de frontend/ (sin URL)")
+            raise ValueError(
+                "portada debe ser un enlace https o una ruta relativa dentro de frontend/"
+            )
         return valor
 
     @model_validator(mode="after")

@@ -74,7 +74,8 @@ def test_normaliza_campos() -> None:
         ({"num_valoraciones": 3}, "falta valoracion"),
         ({"similares": [ISBN_SUMAS]}, "similar a sí mismo"),
         ({"similares": ["111"]}, "ISBN-13 inválido"),
-        ({"portada": "https://x.com/a.jpg"}, "ruta relativa"),
+        ({"portada": "http://x.com/a.jpg"}, "ruta relativa"),
+        ({"portada": "https://x.com/a b.jpg"}, "enlace https"),
         ({"portada": "../secreto.png"}, "ruta relativa"),
         ({"precio": 0}, "greater than 0"),
         ({"stock": -1}, "greater than or equal"),
@@ -165,3 +166,8 @@ def test_tienda(tmp_path: Path) -> None:
 def test_portada_relativa_valida() -> None:
     lb = Libro.model_validate(libro(portada="portadas/9780000000019.webp"))
     assert lb.portada == "portadas/9780000000019.webp"
+
+
+def test_portada_con_enlace_https() -> None:
+    enlace = "https://m.media-amazon.com/images/S/compressed.photo.goodreads.com/books/1i/2.jpg"
+    assert Libro.model_validate(libro(portada=enlace)).portada == enlace
